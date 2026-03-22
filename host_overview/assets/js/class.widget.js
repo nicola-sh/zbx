@@ -14,21 +14,45 @@ class CWidgetHostOverview extends CWidget {
     // Previous settled values for direction arrows
     this.prevValues = new Map();
     // Sparkline state
-    this.sparklineCache = new Map();
-    this.sparklineState = { open: false, metricKey: null, itemRef: null, period: '1h' };
+    this.sparklineState = {
+      open: false,
+      metricKey: null,
+      itemRef: null,
+      fallbackTitle: '',
+      period: '1h',
+      data: null,
+      message: ''
+    };
     this.itemMap = {};
-    this._outsideClickHandler = null;
     this._sparklineDrawState = null;
     this._sparklineSnapshot = null;
     this._sparklineUpdatesPaused = false;
+    this._sparklineAbortController = null;
+    this._sparklineKeydownHandler = null;
+    this._sparklineRedrawRaf = null;
+    this._sparklineRequestId = 0;
+    this._sparklineResizeObserver = null;
   }
 
   onDeactivate() {
     this.closeSparkline();
   }
 
+  onResize() {
+    this._scheduleSparklineRedraw();
+  }
+
   onDestroy() {
-    this.removeOutsideClickHandler();
+    this._cancelSparklineRequest();
+    this._removeSparklineKeydownHandler();
+    if (this._sparklineResizeObserver) {
+      this._sparklineResizeObserver.disconnect();
+      this._sparklineResizeObserver = null;
+    }
+    if (this._sparklineRedrawRaf) {
+      cancelAnimationFrame(this._sparklineRedrawRaf);
+      this._sparklineRedrawRaf = null;
+    }
     this._resumeSparklineUpdating();
   }
 
@@ -90,6 +114,7 @@ class CWidgetHostOverview extends CWidget {
       this.updateViewModeAttr();
       // Attach sparkline click handlers
       this.attachSparklineHandlers();
+      this._setupSparklineResizeObserver();
     }
 
     // Store item map for sparkline lookups
@@ -187,6 +212,24 @@ class CWidgetHostOverview extends CWidget {
       const data = bar ? bar.closest('.data') : null;
       if (bar) bar.style.display = '';
       if (data) data.classList.remove('no-bar');
+    };
+
+    const setMultiMetricNoData = (subcell, labelName) => {
+      if (!subcell) return;
+      const bar = subcell.querySelector('.bar');
+      const text = subcell.querySelector('.text');
+
+      subcell.classList.add('no-bar');
+      if (bar) bar.style.display = 'none';
+      if (text) text.textContent = `${labelName} — No data.`;
+    };
+
+    const setMultiMetricVisible = (subcell) => {
+      if (!subcell) return;
+      const bar = subcell.querySelector('.bar');
+
+      subcell.classList.remove('no-bar');
+      if (bar) bar.style.display = '';
     };
 
     const metrics = fields["metrics_show"] || [];
@@ -374,15 +417,23 @@ class CWidgetHostOverview extends CWidget {
         if (!subcell) continue;
         const text = subcell.querySelector(".text");
         const fill = subcell.querySelector(".fill");
+        const labelName = nameFormatter ? nameFormatter(row) : row.name;
+        const percent = row.percent === null ? null : Number(row.percent);
+
+        if (percent === null || Number.isNaN(percent)) {
+          setMultiMetricNoData(subcell, labelName);
+          continue;
+        }
+
+        setMultiMetricVisible(subcell);
         if (fill) this.updateFillWidth(fill, Number(row.percent), fields);
         if (text) {
-          const labelName = nameFormatter ? nameFormatter(row) : row.name;
           const arrowKey = `${keyPrefix}:${row.name}`;
-          const arrowDir = this.getArrow(arrowKey, Number(row.percent));
+          const arrowDir = this.getArrow(arrowKey, percent);
           startPercentTicker(
             arrowKey,
             labelName,
-            Number(row.percent),
+            percent,
             text,
             arrowDir
           );
@@ -413,6 +464,11 @@ class CWidgetHostOverview extends CWidget {
         const text = sub.querySelector(".text");
         const fill = sub.querySelector(".fill");
 
+        if (bps === null) {
+          setMultiMetricNoData(sub, String(name));
+          return;
+        }
+
         const state = this.interfaceTicker.get(key) || {
           // Start from 0 on first render so bitrate ticks up
           value: 0,
@@ -426,6 +482,7 @@ class CWidgetHostOverview extends CWidget {
         const dur = 700;
         const arrowDir = this.getArrow(`iface:${name}`, to);
 
+        setMultiMetricVisible(sub);
         if (fill && Number.isFinite(Number(percent))) {
           this.updateFillWidth(fill, Number(percent), fields);
         }
@@ -480,66 +537,53 @@ class CWidgetHostOverview extends CWidget {
   attachSparklineHandlers() {
     if (!this._body) return;
 
-    // Single metric bars: cpu, ram, load, swap
-    const singleMetrics = [
-      { selector: '.cpu', key: 'cpu', title: 'Processor' },
-      { selector: '.ram', key: 'ram', title: 'Memory' },
-      { selector: '.load', key: 'load', title: 'Load' },
-      { selector: '.swap', key: 'swap', title: 'Swap' },
-    ];
-
-    for (const { selector, key, title } of singleMetrics) {
-      const fill = this._body.querySelector(selector);
-      if (!fill) continue;
-      const bar = fill.closest('.bar');
-      if (!bar) continue;
-      bar.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.toggleSparkline(key, title);
-      });
-    }
-
-    // Multi metric bars: disks, partitions
-    const multiContainers = [
-      { selector: '.disks-data', prefix: 'disk' },
-      { selector: '.partitions-data', prefix: 'partition' },
-      { selector: '.interfaces-data', prefix: 'iface' },
-    ];
-
-    for (const { selector, prefix } of multiContainers) {
-      const container = this._body.querySelector(selector);
-      if (!container) continue;
-      const cells = container.querySelectorAll('.cell[data-key]');
-      for (const cell of cells) {
-        const bar = cell.querySelector('.bar');
-        if (!bar) continue;
-        const name = cell.getAttribute('data-key');
-        const metricKey = `${prefix}:${name}`;
-        bar.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.toggleSparkline(metricKey, name);
-        });
+    this._body.addEventListener('click', (e) => {
+      const closeBtn = e.target.closest('.js-sparkline-close');
+      if (closeBtn) {
+        e.preventDefault();
+        this.closeSparkline();
+        return;
       }
-    }
 
-    // Period button handlers (event delegation)
-    const periodsContainer = this._body.querySelector('.sparkline-periods');
-    if (periodsContainer) {
-      periodsContainer.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-period]');
-        if (!btn) return;
-        e.stopPropagation();
-        const period = btn.getAttribute('data-period');
-        // Update active state
-        periodsContainer.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        // Fetch new period
-        this.sparklineState.period = period;
-        if (this.sparklineState.itemRef) {
-          this.fetchSparkline(this.sparklineState.itemRef, period);
+      const backdrop = e.target.closest('.sparkline-backdrop');
+      if (backdrop) {
+        e.preventDefault();
+        this.closeSparkline();
+        return;
+      }
+
+      const periodBtn = e.target.closest('.sparkline-periods button[data-period]');
+      if (periodBtn) {
+        e.preventDefault();
+        const period = periodBtn.getAttribute('data-period');
+        if (!period || this.sparklineState.itemRef === null) {
+          return;
         }
-      });
-    }
+
+        this.sparklineState.period = period;
+        this._updateSparklineChrome();
+        this.fetchSparkline(this.sparklineState.itemRef, period);
+        return;
+      }
+
+      const bar = e.target.closest('.bar');
+      if (!bar) {
+        return;
+      }
+
+      const overlay = this._body.querySelector('.sparkline-overlay');
+      if (overlay && overlay.contains(bar)) {
+        return;
+      }
+
+      const metric = this._getSparklineMetricFromBar(bar);
+      if (!metric) {
+        return;
+      }
+
+      e.preventDefault();
+      this.toggleSparkline(metric.key, metric.title);
+    });
 
     // Canvas seeker (hover) handlers
     const canvas = this._body.querySelector('.sparkline-canvas');
@@ -561,99 +605,246 @@ class CWidgetHostOverview extends CWidget {
     this.sparklineState.open = true;
     this.sparklineState.metricKey = metricKey;
     this.sparklineState.itemRef = itemRef;
+    this.sparklineState.fallbackTitle = fallbackTitle;
+    this.sparklineState.data = null;
+    this.sparklineState.message = 'Loading...';
     this._pauseSparklineUpdating();
+    this._updateSparklineChrome();
 
-    // Set title
-    const titleEl = this._body.querySelector('.sparkline-title');
-    if (titleEl) titleEl.textContent = this._getSparklineTitle(itemRef, fallbackTitle);
-    this._setSparklineYLabelsVisible(false);
+    const root = this._getWidgetRoot();
+    if (root) {
+      root.classList.add('sparkline-open');
+    }
 
-    // Apply fill color to active period button
-    const fields = this._fields || {};
-    const fillColor = fields.fill_color ? `#${fields.fill_color}` : '#458ADC';
-    this._body.querySelectorAll('.sparkline-periods button').forEach(btn => {
-      btn.style.setProperty('--sparkline-active-color', fillColor);
-      btn.classList.toggle('active', btn.getAttribute('data-period') === this.sparklineState.period);
-    });
-
-    // Show overlay
     const overlay = this._body.querySelector('.sparkline-overlay');
     if (overlay) {
-      // Detect theme background by walking up the DOM
-      let bg = 'rgb(255, 255, 255)';
-      let el = overlay.parentElement;
-      while (el) {
-        const c = getComputedStyle(el).backgroundColor;
-        if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') {
-          bg = c;
-          break;
-        }
-        el = el.parentElement;
-      }
-      overlay.style.backgroundColor = bg;
-      overlay.style.display = 'grid';
-
-      // Center overlay within the full widget panel, not just #container
-      const widgetPanel = this._target || this._body.closest('.dashboard-grid-widget');
-      if (widgetPanel) {
-        const panelRect = widgetPanel.getBoundingClientRect();
-        const containerRect = overlay.parentElement.getBoundingClientRect();
-        const overlayH = overlay.offsetHeight;
-        const panelCenter = panelRect.top + panelRect.height / 2;
-        const topInContainer = panelCenter - overlayH / 2 - containerRect.top;
-        overlay.style.top = `${topInContainer}px`;
-        overlay.style.transform = 'none';
-      }
-
+      overlay.style.backgroundColor = this._getSparklineSurfaceColor();
       overlay.classList.add('visible');
     }
+
+    const backdrop = this._body.querySelector('.sparkline-backdrop');
+    if (backdrop) {
+      backdrop.classList.add('visible');
+    }
+
     const container = this._body.querySelector('#container');
     if (container) container.classList.add('sparkline-active');
-
-    // Attach outside click handler — scoped to this widget
-    this.removeOutsideClickHandler();
-    this._outsideClickHandler = (e) => {
-      if (!overlay) return;
-      if (overlay.contains(e.target)) return;
-      // Only close if click is within this widget's panel
-      const widgetEl = this._target || this._body;
-      if (!widgetEl.contains(e.target)) return;
-      this.closeSparkline();
-    };
-    document.addEventListener('mousedown', this._outsideClickHandler);
-
+    this._bindSparklineKeydown();
+    this._scheduleSparklineRedraw();
     this.fetchSparkline(itemRef, this.sparklineState.period);
   }
 
   closeSparkline() {
     if (!this.sparklineState.open && !this._sparklineUpdatesPaused) {
-      this.removeOutsideClickHandler();
+      this._removeSparklineKeydownHandler();
       return;
     }
+
+    this._cancelSparklineRequest();
 
     this.sparklineState.open = false;
     this.sparklineState.metricKey = null;
     this.sparklineState.itemRef = null;
+    this.sparklineState.fallbackTitle = '';
+    this.sparklineState.data = null;
+    this.sparklineState.message = '';
     this._sparklineDrawState = null;
     this._sparklineSnapshot = null;
+    this._setSparklineYLabelsVisible(false);
+
+    if (this._sparklineRedrawRaf) {
+      cancelAnimationFrame(this._sparklineRedrawRaf);
+      this._sparklineRedrawRaf = null;
+    }
 
     const overlay = this._body.querySelector('.sparkline-overlay');
     if (overlay) {
       overlay.classList.remove('visible');
-      overlay.style.display = 'none';
     }
+
+    const backdrop = this._body.querySelector('.sparkline-backdrop');
+    if (backdrop) {
+      backdrop.classList.remove('visible');
+    }
+
+    const root = this._getWidgetRoot();
+    if (root) {
+      root.classList.remove('sparkline-open');
+    }
+
     const container = this._body.querySelector('#container');
     if (container) container.classList.remove('sparkline-active');
 
-    this.removeOutsideClickHandler();
+    this._removeSparklineKeydownHandler();
     this._resumeSparklineUpdating();
   }
 
-  removeOutsideClickHandler() {
-    if (this._outsideClickHandler) {
-      document.removeEventListener('mousedown', this._outsideClickHandler);
-      this._outsideClickHandler = null;
+  _getWidgetRoot() {
+    return this._body?.closest('.dashboard-widget-host_overview')
+      || this._target
+      || this._body;
+  }
+
+  _setupSparklineResizeObserver() {
+    if (this._sparklineResizeObserver || typeof ResizeObserver === 'undefined') {
+      return;
     }
+
+    const target = this._getWidgetRoot();
+    if (!target) {
+      return;
+    }
+
+    this._sparklineResizeObserver = new ResizeObserver(() => {
+      this._scheduleSparklineRedraw();
+    });
+    this._sparklineResizeObserver.observe(target);
+  }
+
+  _scheduleSparklineRedraw() {
+    if (!this.sparklineState.open) {
+      return;
+    }
+
+    if (this._sparklineRedrawRaf) {
+      cancelAnimationFrame(this._sparklineRedrawRaf);
+    }
+
+    this._sparklineRedrawRaf = requestAnimationFrame(() => {
+      this._sparklineRedrawRaf = null;
+      this._redrawSparkline();
+    });
+  }
+
+  _redrawSparkline() {
+    if (!this.sparklineState.open) {
+      return;
+    }
+
+    const overlay = this._body?.querySelector('.sparkline-overlay');
+    if (!overlay || !overlay.classList.contains('visible')) {
+      return;
+    }
+
+    const data = this.sparklineState.data;
+    if (data) {
+      this.drawSparkline(
+        data.points,
+        data.min,
+        data.max,
+        data.timeFrom,
+        data.timeTill,
+        data.gapThresholdFloor
+      );
+      return;
+    }
+
+    this.drawSparklineMessage(this.sparklineState.message || 'Loading...');
+  }
+
+  _cancelSparklineRequest() {
+    if (this._sparklineAbortController) {
+      this._sparklineAbortController.abort();
+      this._sparklineAbortController = null;
+    }
+  }
+
+  _bindSparklineKeydown() {
+    if (this._sparklineKeydownHandler) {
+      return;
+    }
+
+    this._sparklineKeydownHandler = (e) => {
+      if (e.key === 'Escape' && this.sparklineState.open) {
+        e.preventDefault();
+        this.closeSparkline();
+      }
+    };
+
+    document.addEventListener('keydown', this._sparklineKeydownHandler);
+  }
+
+  _removeSparklineKeydownHandler() {
+    if (!this._sparklineKeydownHandler) {
+      return;
+    }
+
+    document.removeEventListener('keydown', this._sparklineKeydownHandler);
+    this._sparklineKeydownHandler = null;
+  }
+
+  _updateSparklineChrome() {
+    const titleEl = this._body?.querySelector('.sparkline-title');
+    if (titleEl) {
+      titleEl.textContent = this._getSparklineTitle(
+        this.sparklineState.itemRef,
+        this.sparklineState.fallbackTitle
+      );
+    }
+
+    const fields = this._fields || {};
+    const fillColor = fields.fill_color ? `#${fields.fill_color}` : '#458ADC';
+
+    this._body?.querySelectorAll('.sparkline-periods button').forEach((btn) => {
+      btn.style.setProperty('--sparkline-active-color', fillColor);
+      btn.classList.toggle('active', btn.getAttribute('data-period') === this.sparklineState.period);
+    });
+  }
+
+  _getSparklineMetricFromBar(bar) {
+    const cell = bar.closest('.cell[data-key]');
+    if (cell) {
+      const name = cell.getAttribute('data-key');
+      if (!name) {
+        return null;
+      }
+
+      if (cell.closest('.interfaces-data')) {
+        return { key: `iface:${name}`, title: name };
+      }
+      if (cell.closest('.disks-data')) {
+        return { key: `disk:${name}`, title: name };
+      }
+      if (cell.closest('.partitions-data')) {
+        return { key: `partition:${name}`, title: name };
+      }
+
+      return null;
+    }
+
+    const fill = bar.querySelector('.fill');
+    if (!fill) {
+      return null;
+    }
+
+    if (fill.classList.contains('cpu')) {
+      return { key: 'cpu', title: 'Processor' };
+    }
+    if (fill.classList.contains('ram')) {
+      return { key: 'ram', title: 'Memory' };
+    }
+    if (fill.classList.contains('load')) {
+      return { key: 'load', title: 'Load' };
+    }
+    if (fill.classList.contains('swap')) {
+      return { key: 'swap', title: 'Swap' };
+    }
+
+    return null;
+  }
+
+  _getSparklineSurfaceColor() {
+    let el = this._getWidgetRoot();
+
+    while (el) {
+      const color = getComputedStyle(el).backgroundColor;
+      if (color && color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') {
+        return color;
+      }
+      el = el.parentElement;
+    }
+
+    return 'rgb(255, 255, 255)';
   }
 
   _pauseSparklineUpdating() {
@@ -681,54 +872,75 @@ class CWidgetHostOverview extends CWidget {
 
   fetchSparkline(itemRef, period) {
     const normalizedRef = this._normalizeSparklineRef(itemRef);
-    const cacheKey = this._getSparklineCacheKey(normalizedRef, period);
 
-    if (!normalizedRef || cacheKey === null) {
-      this.drawSparklineMessage('Item not found');
+    if (!normalizedRef || (!normalizedRef.itemid && !normalizedRef.name)) {
+      this.sparklineState.data = null;
+      this.sparklineState.message = 'Item not found';
+      this._scheduleSparklineRedraw();
       return;
     }
 
-    const cached = this.sparklineCache.get(cacheKey);
-    if (cached) {
-      this.drawSparkline(
-        cached.points,
-        cached.min,
-        cached.max,
-        cached.timeFrom,
-        cached.timeTill,
-        cached.gapThresholdFloor
-      );
-      return;
-    }
+    this.sparklineState.itemRef = normalizedRef;
+    this.sparklineState.period = period;
+    this.sparklineState.data = null;
+    this.sparklineState.message = 'Loading...';
+    this._updateSparklineChrome();
+    this._scheduleSparklineRedraw();
 
-    this.drawSparklineMessage('Loading...');
-    this._fetchSparklineAsync(normalizedRef, period, cacheKey);
+    this._cancelSparklineRequest();
+    const requestId = ++this._sparklineRequestId;
+    const controller = new AbortController();
+    this._sparklineAbortController = controller;
+    this._fetchSparklineAsync(
+      normalizedRef,
+      period,
+      this.sparklineState.metricKey,
+      requestId,
+      controller.signal
+    );
   }
 
-  async _fetchSparklineAsync(itemRef, period, cacheKey) {
+  async _fetchSparklineAsync(itemRef, period, metricKey, requestId, signal) {
     try {
       let itemid = itemRef.itemid || null;
       let valueType = itemRef.value_type != null ? parseInt(itemRef.value_type) : NaN;
+      let resolvedRef = { ...itemRef };
 
       if (!itemid || Number.isNaN(valueType)) {
         const hostid = (this._fields.hostid || [])[0];
-        if (!hostid) { this.drawSparklineMessage('No host'); return; }
+        if (!hostid) {
+          if (requestId === this._sparklineRequestId && this.sparklineState.open) {
+            this.sparklineState.data = null;
+            this.sparklineState.message = 'No host';
+            this._scheduleSparklineRedraw();
+          }
+          return;
+        }
 
         // Fallback path for item refs that only carry a name.
         const items = await this._apiCall('item.get', {
-          output: ['itemid', 'value_type'],
+          output: ['itemid', 'name', 'value_type'],
           hostids: [hostid],
           search: { name: itemRef.name },
           limit: 1,
-        });
+        }, signal);
 
         if (!items || items.length === 0) {
-          this.drawSparklineMessage('Item not found');
+          if (requestId === this._sparklineRequestId && this.sparklineState.open) {
+            this.sparklineState.data = null;
+            this.sparklineState.message = 'Item not found';
+            this._scheduleSparklineRedraw();
+          }
           return;
         }
 
         itemid = items[0].itemid;
         valueType = parseInt(items[0].value_type);
+        resolvedRef = {
+          itemid,
+          name: items[0].name ?? itemRef.name,
+          value_type: valueType
+        };
       }
 
       const periods = { '1h': 3600, '3h': 10800, '6h': 21600, '12h': 43200, '1d': 86400, '3d': 259200, '1w': 604800, '2w': 1209600 };
@@ -737,11 +949,11 @@ class CWidgetHostOverview extends CWidget {
       const timeFrom = timeTill - seconds;
 
       const { points: sparklinePoints, gapThresholdFloor } =
-        await this._loadSparklinePoints(itemid, valueType, timeFrom, timeTill, seconds);
+        await this._loadSparklinePoints(itemid, valueType, timeFrom, timeTill, seconds, signal);
       let points = sparklinePoints;
 
       // Invert swap values when configured (free % -> used %).
-      if (this.sparklineState.metricKey === 'swap' && this._fields.item_swap_invert == 1) {
+      if (metricKey === 'swap' && this._fields.item_swap_invert == 1) {
         points = points.map(p => ({ t: p.t, v: 100 - p.v }));
       }
 
@@ -765,7 +977,7 @@ class CWidgetHostOverview extends CWidget {
       if (points.length === 0) { min = 0; max = 0; }
 
       // For interface metrics, use configured capacity as max Y.
-      if (this.sparklineState.metricKey?.startsWith('iface:')) {
+      if (metricKey?.startsWith('iface:')) {
         const fields = this._fields || {};
         const high = parseInt(fields.interfaces_high) || 0;
         const unit = parseInt(fields.interfaces_unit) || 0;
@@ -776,27 +988,35 @@ class CWidgetHostOverview extends CWidget {
       }
 
       // For load metrics, use configured load_high as max Y.
-      if (this.sparklineState.metricKey === 'load') {
+      if (metricKey === 'load') {
         const loadHigh = parseFloat((this._fields || {}).load_high) || 0;
         if (loadHigh > 0) max = loadHigh;
       }
 
       const result = { points, min, max, timeFrom, timeTill, gapThresholdFloor };
-      this.sparklineCache.set(cacheKey, result);
-
-      if (this.sparklineState.period === period
-          && this._getSparklineCacheKey(this.sparklineState.itemRef, period) === cacheKey) {
-        this.drawSparkline(
-          result.points,
-          result.min,
-          result.max,
-          timeFrom,
-          timeTill,
-          result.gapThresholdFloor
-        );
+      if (requestId === this._sparklineRequestId
+          && this.sparklineState.open
+          && this.sparklineState.period === period) {
+        this.sparklineState.itemRef = resolvedRef;
+        this.sparklineState.data = result;
+        this.sparklineState.message = '';
+        this._updateSparklineChrome();
+        this._scheduleSparklineRedraw();
       }
     } catch (e) {
-      this.drawSparklineMessage('Error loading data');
+      if (e?.name === 'AbortError') {
+        return;
+      }
+
+      if (requestId === this._sparklineRequestId && this.sparklineState.open) {
+        this.sparklineState.data = null;
+        this.sparklineState.message = 'Error loading data';
+        this._scheduleSparklineRedraw();
+      }
+    } finally {
+      if (this._sparklineAbortController?.signal === signal) {
+        this._sparklineAbortController = null;
+      }
     }
   }
 
@@ -828,15 +1048,10 @@ class CWidgetHostOverview extends CWidget {
     return (ref && ref.name) ? ref.name : fallbackTitle;
   }
 
-  _getSparklineCacheKey(ref, period) {
-    if (!ref) return null;
-    const identity = ref.itemid || ref.name;
-    return identity ? `${identity}:${period}` : null;
-  }
-
-  async _apiCall(method, params) {
+  async _apiCall(method, params, signal = undefined) {
     const resp = await fetch('api_jsonrpc.php', {
       method: 'POST',
+      signal,
       headers: { 'Content-Type': 'application/json-rpc' },
       body: JSON.stringify({
         jsonrpc: '2.0',
@@ -850,15 +1065,15 @@ class CWidgetHostOverview extends CWidget {
     return data.result;
   }
 
-  async _loadSparklinePoints(itemid, valueType, timeFrom, timeTill, seconds) {
+  async _loadSparklinePoints(itemid, valueType, timeFrom, timeTill, seconds, signal) {
     const supportsTrends = valueType === 0 || valueType === 3;
     const useTrendBlend = supportsTrends && seconds > 43200;
 
     if (!useTrendBlend) {
-      let points = await this._fetchHistory(itemid, valueType, timeFrom, timeTill);
+      let points = await this._fetchHistory(itemid, valueType, timeFrom, timeTill, { signal });
 
       if (points.length === 0 && supportsTrends) {
-        points = await this._fetchTrends(itemid, valueType, timeFrom, timeTill);
+        points = await this._fetchTrends(itemid, valueType, timeFrom, timeTill, signal);
       }
 
       return {
@@ -870,10 +1085,11 @@ class CWidgetHostOverview extends CWidget {
     // For longer periods, use trends for broad coverage and a recent history tail
     // so the chart keeps its newest samples instead of truncating the right edge.
     const [trendPoints, historyTail] = await Promise.all([
-      this._fetchTrends(itemid, valueType, timeFrom, timeTill),
+      this._fetchTrends(itemid, valueType, timeFrom, timeTill, signal),
       this._fetchHistory(itemid, valueType, timeFrom, timeTill, {
         sortorder: 'DESC',
         limit: 500,
+        signal,
       }),
     ]);
 
@@ -894,7 +1110,7 @@ class CWidgetHostOverview extends CWidget {
     }
 
     return {
-      points: await this._fetchHistory(itemid, valueType, timeFrom, timeTill),
+      points: await this._fetchHistory(itemid, valueType, timeFrom, timeTill, { signal }),
       gapThresholdFloor: 300,
     };
   }
@@ -902,6 +1118,7 @@ class CWidgetHostOverview extends CWidget {
   async _fetchHistory(itemid, valueType, timeFrom, timeTill, options = {}) {
     const sortorder = options.sortorder || 'ASC';
     const limit = options.limit || 500;
+    const signal = options.signal;
     const records = await this._apiCall('history.get', {
       output: ['value', 'clock'],
       history: valueType,
@@ -911,7 +1128,7 @@ class CWidgetHostOverview extends CWidget {
       sortfield: 'clock',
       sortorder,
       limit,
-    });
+    }, signal);
 
     const points = records.map(r => ({ t: parseInt(r.clock), v: parseFloat(r.value) }));
 
@@ -920,7 +1137,7 @@ class CWidgetHostOverview extends CWidget {
       : points;
   }
 
-  async _fetchTrends(itemid, valueType, timeFrom, timeTill) {
+  async _fetchTrends(itemid, valueType, timeFrom, timeTill, signal = undefined) {
     const records = await this._apiCall('trend.get', {
       output: ['value_avg', 'clock'],
       history: valueType,
@@ -928,7 +1145,7 @@ class CWidgetHostOverview extends CWidget {
       time_from: timeFrom,
       time_till: timeTill,
       limit: 500,
-    });
+    }, signal);
     return records.map(r => ({ t: parseInt(r.clock), v: parseFloat(r.value_avg) }))
       .sort((a, b) => a.t - b.t);
   }

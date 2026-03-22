@@ -7,11 +7,11 @@
 .dashboard-widget-host_overview {
   position: relative;
 }
-.dashboard-widget-host_overview.is-loading:has(#container.sparkline-active) {
+.dashboard-widget-host_overview.is-loading.sparkline-open {
   pointer-events: auto !important;
 }
-.dashboard-widget-host_overview.is-loading:has(#container.sparkline-active)::before,
-.dashboard-widget-host_overview.is-loading:has(#container.sparkline-active)::after {
+.dashboard-widget-host_overview.is-loading.sparkline-open::before,
+.dashboard-widget-host_overview.is-loading.sparkline-open::after {
   content: none !important;
   display: none !important;
 }
@@ -185,6 +185,9 @@
 .dashboard-widget-host_overview #container .row .data .cell {
   grid-template-columns: 60px 1fr;
 }
+.dashboard-widget-host_overview #container .row .data .cell.no-bar {
+  grid-template-columns: 1fr;
+}
 .dashboard-widget-host_overview #container .row .data .cell .text,
 .dashboard-widget-host_overview #container .row .data .na-indicator {
   opacity: 0.6;
@@ -210,10 +213,7 @@
 }
 .dashboard-widget-host_overview #container.square-corners .bar,
 .dashboard-widget-host_overview #container.square-corners .bar .fill,
-.dashboard-widget-host_overview #container.square-corners .info-bar .badge,
-.dashboard-widget-host_overview #container.square-corners .sparkline-overlay,
-.dashboard-widget-host_overview #container.square-corners .sparkline-periods button,
-.dashboard-widget-host_overview #container.square-corners .sparkline-canvas {
+.dashboard-widget-host_overview #container.square-corners .info-bar .badge {
   border-radius: 0;
 }
 
@@ -233,7 +233,7 @@
 }
 
 /* Sparkline overlay */
-.dashboard-widget-host_overview #container.sparkline-active > *:not(.sparkline-overlay) {
+.dashboard-widget-host_overview #container.sparkline-active {
   filter: blur(16px);
   pointer-events: none;
 }
@@ -245,29 +245,41 @@
   background: rgba(0, 0, 0, 0.3);
   pointer-events: none;
 }
-.dashboard-widget-host_overview:has(#container.sparkline-active) .sparkline-backdrop {
+.dashboard-widget-host_overview .sparkline-backdrop.visible {
   display: block;
+  pointer-events: auto;
 }
-.dashboard-widget-host_overview #container .sparkline-overlay {
+.dashboard-widget-host_overview .sparkline-overlay {
   position: absolute;
-  left: 0;
-  right: 0;
+  top: 50%;
+  left: 50%;
   z-index: 10;
   display: none;
+  width: calc(100% - 20px);
+  max-width: 920px;
+  max-height: calc(100% - 20px);
   padding: 10px;
   box-sizing: border-box;
+  overflow: auto;
   background: rgb(255, 255, 255);
   border-radius: 8px;
   box-shadow: 0 25.6px 57.6px 0 rgb(0 0 0 / 22%), 0 4.8px 14.4px 0 rgb(0 0 0 / 18%);
+  transform: translate(-50%, -50%);
 }
-.dashboard-widget-host_overview #container .sparkline-overlay.visible {
+.dashboard-widget-host_overview .sparkline-overlay.visible {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: auto 1fr;
   column-gap: 8px;
   row-gap: 10px;
 }
-.dashboard-widget-host_overview #container .sparkline-header {
+.dashboard-widget-host_overview .sparkline-overlay.square-corners,
+.dashboard-widget-host_overview .sparkline-overlay.square-corners .sparkline-periods button,
+.dashboard-widget-host_overview .sparkline-overlay.square-corners .sparkline-close,
+.dashboard-widget-host_overview .sparkline-overlay.square-corners .sparkline-canvas {
+  border-radius: 0;
+}
+.dashboard-widget-host_overview .sparkline-header {
   grid-column: 1;
   grid-row: 1;
   display: grid;
@@ -275,18 +287,25 @@
   align-items: center;
   gap: 8px;
 }
-.dashboard-widget-host_overview #container .sparkline-title {
+.dashboard-widget-host_overview .sparkline-title {
   min-width: 0;
   opacity: 0.7;
 }
-.dashboard-widget-host_overview #container .sparkline-periods {
+.dashboard-widget-host_overview .sparkline-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.dashboard-widget-host_overview .sparkline-periods {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   min-width: 0;
   justify-content: flex-end;
 }
-.dashboard-widget-host_overview #container .sparkline-periods button {
+.dashboard-widget-host_overview .sparkline-periods button,
+.dashboard-widget-host_overview .sparkline-close {
   padding: 1px 8px 2px;
   color: inherit;
   cursor: pointer;
@@ -297,14 +316,15 @@
   letter-spacing: 0.5px;
   transition: background 100ms ease;
 }
-.dashboard-widget-host_overview #container .sparkline-periods button:hover {
+.dashboard-widget-host_overview .sparkline-periods button:hover,
+.dashboard-widget-host_overview .sparkline-close:hover {
   background: rgba(128, 128, 128, 0.25);
 }
-.dashboard-widget-host_overview #container .sparkline-periods button.active {
+.dashboard-widget-host_overview .sparkline-periods button.active {
   color: #fff;
   background: var(--sparkline-active-color, #458ADC);
 }
-.dashboard-widget-host_overview #container .sparkline-canvas {
+.dashboard-widget-host_overview .sparkline-canvas {
   grid-column: 1;
   grid-row: 2;
   display: block;
@@ -315,10 +335,10 @@
   border: 1px solid rgba(128, 128, 128, 0.3);
   border-radius: 4px;
 }
-.dashboard-widget-host_overview #container .sparkline-overlay.visible .sparkline-canvas {
+.dashboard-widget-host_overview .sparkline-overlay.visible .sparkline-canvas {
   cursor: crosshair;
 }
-.dashboard-widget-host_overview #container .sparkline-y-labels {
+.dashboard-widget-host_overview .sparkline-y-labels {
   grid-column: 2;
   grid-row: 2;
   display: flex;

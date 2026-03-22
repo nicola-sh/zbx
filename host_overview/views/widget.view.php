@@ -318,15 +318,20 @@ if (in_array(WidgetForm::METRIC_PARTITIONS, $enabled)) {
 $sparkline_backdrop = (new CDiv())->addClass('sparkline-backdrop');
 
 $sparkline_overlay = (new CDiv())->addClass('sparkline-overlay');
+if ($corners === WidgetForm::CORNERS_SQUARE) {
+    $sparkline_overlay->addClass('square-corners');
+}
 
 $sparkline_header = (new CDiv())->addClass('sparkline-header');
 $sparkline_header->addItem(
     (new CTag('span', true))->addClass('sparkline-title')
 );
 
+$sparkline_actions = (new CDiv())->addClass('sparkline-header-actions');
 $sparkline_periods = (new CDiv())->addClass('sparkline-periods');
 foreach (['1h', '3h', '6h', '12h', '1d', '3d', '1w', '2w'] as $p) {
     $btn = (new CTag('button', true))
+        ->setAttribute('type', 'button')
         ->setAttribute('data-period', $p)
         ->addItem($p);
     if ($p === '1h') {
@@ -334,7 +339,16 @@ foreach (['1h', '3h', '6h', '12h', '1d', '3d', '1w', '2w'] as $p) {
     }
     $sparkline_periods->addItem($btn);
 }
-$sparkline_header->addItem($sparkline_periods);
+$sparkline_actions->addItem($sparkline_periods);
+$sparkline_actions->addItem(
+    (new CTag('button', true))
+        ->setAttribute('type', 'button')
+        ->setAttribute('aria-label', _('Close sparkline dialog'))
+        ->addClass('sparkline-close')
+        ->addClass('js-sparkline-close')
+        ->addItem(_('Close'))
+);
+$sparkline_header->addItem($sparkline_actions);
 
 $sparkline_overlay->addItem($sparkline_header);
 $sparkline_overlay->addItem(
@@ -346,10 +360,9 @@ $sparkline_labels->addItem((new CTag('span', true))->addItem('50%'));
 $sparkline_labels->addItem((new CTag('span', true))->addItem('0%'));
 $sparkline_overlay->addItem($sparkline_labels);
 
-$container->addItem($sparkline_overlay);
-
 $view
     ->addItem($sparkline_backdrop)
+    ->addItem($sparkline_overlay)
     ->addItem($container)
     ->setVar('cpu', $data['cpu'] ?? null)
     ->setVar('ram', $data['ram'] ?? null)
