@@ -2,7 +2,7 @@
 
 /*
  * MIT License
- * Copyright (c) 2025 ObviousAIChicken
+ * Copyright (c) 2026 ObviousAIChicken
  * github.com/obviousaichicken/zabbix_widgets
  */
 
@@ -10,20 +10,43 @@ namespace Modules\HostOverview\Includes;
 
 use Zabbix\Widgets\CWidgetField;
 use Zabbix\Widgets\CWidgetForm;
-use Zabbix\Widgets\Fields\CWidgetFieldCheckBox;
+use Zabbix\Widgets\Fields\CWidgetFieldCheckBoxList;
 use Zabbix\Widgets\Fields\CWidgetFieldColor;
 use Zabbix\Widgets\Fields\CWidgetFieldIntegerBox;
+use Zabbix\Widgets\Fields\CWidgetFieldCheckBox;
 use Zabbix\Widgets\Fields\CWidgetFieldMultiSelectHost;
 use Zabbix\Widgets\Fields\CWidgetFieldRadioButtonList;
+use Zabbix\Widgets\Fields\CWidgetFieldSelect;
+use Zabbix\Widgets\Fields\CWidgetFieldTextBox;
 
 class WidgetForm extends CWidgetForm
 {
     public const COLOR_SCHEME_THRESHOLD = 0;
     public const COLOR_SCHEME_SOLID     = 1;
 
+    public const CORNERS_ROUNDED = 0;
+    public const CORNERS_SQUARE  = 1;
+
+    public const LABELS_FULL  = 0;
+    public const LABELS_SHORT = 1;
+
+    public const BADGES_TINY    = 0;
+    public const BADGES_SMALL   = 1;
+    public const BADGES_REGULAR = 2;
+
+    public const DEFAULT_BAR_HEIGHT = 8;
+
     public const INTERFACES_UNIT_KBPS = 0;
     public const INTERFACES_UNIT_MBPS = 1;
     public const INTERFACES_UNIT_GBPS = 2;
+
+    public const METRIC_CPU        = 0;
+    public const METRIC_RAM        = 1;
+    public const METRIC_LOAD       = 2;
+    public const METRIC_SWAP       = 3;
+    public const METRIC_INTERFACES = 4;
+    public const METRIC_DISKS      = 5;
+    public const METRIC_PARTITIONS = 6;
 
     public const DEFAULT_COLOR_FILL             = '458ADC';
     public const DEFAULT_COLOR_THRESHOLD_HIGH   = 'FF4136';
@@ -36,6 +59,15 @@ class WidgetForm extends CWidgetForm
     public const DEFAULT_LOAD_HIGH       = 2;
     public const DEFAULT_INTERFACES_HIGH = 1;
 
+    public const DEFAULT_ITEM_CPU      = 'CPU utilization';
+    public const DEFAULT_ITEM_RAM      = 'Memory utilization';
+    public const DEFAULT_ITEM_LOAD     = 'Load average (5m avg)';
+    public const DEFAULT_ITEM_SWAP     = 'Free swap space in %';
+
+    public const DEFAULT_ITEM_DISK        = '*:: Disk utilization by idle time';
+    public const DEFAULT_ITEM_PARTITION   = 'FS [*]: Space: Used, in %';
+    public const DEFAULT_ITEM_INTERFACE   = 'Interface *: Bits *';
+
     public function addFields(): self
     {
         return $this
@@ -45,7 +77,10 @@ class WidgetForm extends CWidgetForm
                     ->setMultiple(false)
             )
             ->addField(
-                (new CWidgetFieldColor('fill_color', _('Color')))
+                (new CWidgetFieldBadgesList('badges', _('Alignment')))
+            )
+            ->addField(
+                (new CWidgetFieldColor('fill_color', _('Solid')))
                     ->setDefault(self::DEFAULT_COLOR_FILL)
             )
             ->addField(
@@ -61,35 +96,39 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_COLOR_THRESHOLD_LOW)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_num_1', null))
+                (new CWidgetFieldIntegerBox('th_num_1', null, 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_num_2', null))
+                (new CWidgetFieldIntegerBox('th_num_2', null, 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('cpu_show', _('Show Processor')))
-                    ->setDefault(1)
+                (new CWidgetFieldCheckBoxList('metrics_show', _('Metrics'), [
+                    self::METRIC_CPU        => _('Processor'),
+                    self::METRIC_RAM        => _('Memory'),
+                    self::METRIC_LOAD       => _('Load'),
+                    self::METRIC_SWAP       => _('Swap'),
+                    self::METRIC_INTERFACES => _('Interfaces'),
+                    self::METRIC_DISKS      => _('Disk util.'),
+                    self::METRIC_PARTITIONS => _('Partitions'),
+                ]))
+                    ->setDefault([
+                        self::METRIC_CPU,
+                        self::METRIC_RAM,
+                        self::METRIC_LOAD,
+                        self::METRIC_SWAP,
+                        self::METRIC_INTERFACES,
+                        self::METRIC_DISKS,
+                        self::METRIC_PARTITIONS,
+                    ])
             )
             ->addField(
-                (new CWidgetFieldCheckBox('ram_show', _('Show Memory')))
-                    ->setDefault(1)
-            )
-            ->addField(
-                (new CWidgetFieldCheckBox('load_show', _('Show Load')))
-                    ->setDefault(1)
-            )
-            ->addField(
-                (new CWidgetFieldIntegerBox('load_high', _('Load High')))
+                (new CWidgetFieldIntegerBox('load_high', _('Load High'), 1, 1000))
                     ->setDefault(self::DEFAULT_LOAD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('interfaces_show', _('Show Interfaces')))
-                    ->setDefault(1)
-            )
-            ->addField(
-                (new CWidgetFieldIntegerBox('interfaces_high', _('Interfaces High')))
+                (new CWidgetFieldIntegerBox('interfaces_high', _('Interfaces High'), 1, 10000))
                     ->setDefault(self::DEFAULT_INTERFACES_HIGH)
             )
             ->addField(
@@ -101,19 +140,93 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::INTERFACES_UNIT_GBPS)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('disks_show', _('Show Disks')))
-                    ->setDefault(1)
-            )
-            ->addField(
                 (new CWidgetFieldRadioButtonList('color_scheme', _('Color Scheme'), [
-                    self::COLOR_SCHEME_SOLID     => _('Solid'),
                     self::COLOR_SCHEME_THRESHOLD => _('Threshold'),
+                    self::COLOR_SCHEME_SOLID     => _('Solid'),
                 ]))
-                    ->setDefault(self::COLOR_SCHEME_SOLID)
+                    ->setDefault(self::COLOR_SCHEME_THRESHOLD)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('partitions_show', _('Show Partitions')))
+                (new CWidgetFieldRadioButtonList('corners', _('Corners'), [
+                    self::CORNERS_ROUNDED => _('Rounded'),
+                    self::CORNERS_SQUARE  => _('Square'),
+                ]))
+                    ->setDefault(self::CORNERS_ROUNDED)
+            )
+            ->addField(
+                (new CWidgetFieldRadioButtonList('label_length', _('Labels'), [
+                    self::LABELS_FULL  => _('Full'),
+                    self::LABELS_SHORT => _('Short'),
+                ]))
+                    ->setDefault(self::LABELS_FULL)
+            )
+            ->addField(
+                (new CWidgetFieldRadioButtonList('badge_size', _('Badges'), [
+                    self::BADGES_REGULAR => _('Regular'),
+                    self::BADGES_SMALL   => _('Small'),
+                    self::BADGES_TINY    => _('Tiny'),
+                ]))
+                    ->setDefault(self::BADGES_REGULAR)
+            )
+            ->addField(
+                (new CWidgetFieldSelect('bar_height', _('Bar height'), [
+                    4  => '4px',
+                    5  => '5px',
+                    6  => '6px',
+                    7  => '7px',
+                    8  => '8px',
+                    9  => '9px',
+                    10 => '10px',
+                ]))
+                    ->setDefault(self::DEFAULT_BAR_HEIGHT)
+            )
+            ->addField(
+                (new CWidgetFieldCheckBox('problems_pulse', _('Pulse problems badge')))
                     ->setDefault(1)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('interfaces_exclude', _('Interface filter')))
+                    ->setDefault('')
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('disks_exclude', _('Disk filter')))
+                    ->setDefault('')
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('partitions_exclude', _('Partition filter')))
+                    ->setDefault('')
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('item_name_cpu', _('Processor item')))
+                    ->setDefault(self::DEFAULT_ITEM_CPU)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('item_name_ram', _('Memory item')))
+                    ->setDefault(self::DEFAULT_ITEM_RAM)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('item_name_load', _('Load item')))
+                    ->setDefault(self::DEFAULT_ITEM_LOAD)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('item_name_swap', _('Swap item')))
+                    ->setDefault(self::DEFAULT_ITEM_SWAP)
+            )
+            ->addField(
+                (new CWidgetFieldCheckBox('item_swap_invert', _('Invert swap')))
+                    ->setDefault(1)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('item_name_disk', _('Disk pattern')))
+                    ->setDefault(self::DEFAULT_ITEM_DISK)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('item_name_partition', _('Partition pattern')))
+                    ->setDefault(self::DEFAULT_ITEM_PARTITION)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('item_name_interface', _('Interface pattern')))
+                    ->setDefault(self::DEFAULT_ITEM_INTERFACE)
             );
     }
 }
