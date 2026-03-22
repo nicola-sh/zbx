@@ -216,8 +216,8 @@ if (!empty($badges)) {
                 break;
 
             case CWidgetFieldBadgesList::BADGE_LINK:
-                $url = $badge['url'] ?? '';
-                if ($url !== '') {
+                $url = CWidgetFieldBadgesList::sanitizeLinkUrl($badge['url'] ?? null);
+                if ($url !== null) {
                     $el = (new CTag('a', true))
                         ->addClass('badge link-badge')
                         ->setAttribute('href', $url)
@@ -229,7 +229,8 @@ if (!empty($badges)) {
                                 ->addItem($badge['text'] ?? $url)
                         )
                         ->addItem($link_icon());
-                } else {
+                }
+                else {
                     $el = (new CTag('span', true))->addClass('badge link-badge')
                         ->addItem(
                             (new CTag('span', true))

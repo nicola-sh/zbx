@@ -167,8 +167,7 @@ window.form = new (class {
         </select>
         <span class="js-badge-item-name-label" style="display:none">...taken from item...</span>
         <input type="text" class="js-badge-item-name" placeholder="Uptime item name" value="System uptime" style="display:none">
-        <span class="js-badge-text-label" style="display:none">...with value...</span>
-        <input type="text" class="js-badge-text" placeholder="Display text" style="display:none">
+        <input type="text" class="js-badge-text" placeholder="Text" style="display:none">
         <input type="text" class="js-badge-url" placeholder="URL" style="display:none">
         <button type="button" class="btn-link js-badge-remove">Remove</button>
       `;

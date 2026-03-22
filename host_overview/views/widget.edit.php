@@ -286,8 +286,11 @@ function getBadgesListView(CWidgetFieldBadgesList $field): array
 
     $container->addItem($lanes);
 
+    $label = new CLabel($field->getLabel(), 'badges-list');
+    $label->addItem(makeHelpIcon(_('Link badges allow http://, https://, or relative URLs such as zabbix.php?action=...')));
+
     return [
-        new CLabel($field->getLabel(), 'badges-list'),
+        $label,
         new CFormField($container),
     ];
 }
@@ -401,7 +404,7 @@ function createBadgeRow(array $badge): CDiv
     }
 
     $url_input = (new CTextBox('', $badge['url'] ?? ''))
-        ->setAttribute('placeholder', _('URL'))
+        ->setAttribute('placeholder', _('https://example.com or /path'))
         ->addClass('js-badge-url');
 
     if (!$show_url) {
