@@ -373,11 +373,17 @@ class WidgetView extends CControllerDashboardWidgetView
                 continue;
             }
 
-            $percent = $this->clampPercent($details['value'] ?? 0);
+            $percent = $details['value'] === null
+                ? null
+                : $this->clampPercent($details['value']);
 
             if (array_key_exists($name, $index)) {
-                $row_index              = $index[$name];
-                $rows[$row_index]['percent'] = $percent;
+                $row_index = $index[$name];
+
+                if ($percent !== null || $rows[$row_index]['percent'] === null) {
+                    $rows[$row_index]['percent'] = $percent;
+                    $rows[$row_index]['item_name'] = $key;
+                }
             } else {
                 $index[$name] = count($rows);
                 $rows[]       = [
@@ -452,8 +458,8 @@ class WidgetView extends CControllerDashboardWidgetView
                 $label = $interface_name;
             }
 
-            $bps     = $details['value'] ?? 0;
-            $percent = 0;
+            $bps = $details['value'];
+            $percent = $bps === null ? null : 0;
 
             if ($capacity > 0 && is_numeric($bps)) {
                 $percent = $this->clampPercent(($bps / $capacity) * 100);
