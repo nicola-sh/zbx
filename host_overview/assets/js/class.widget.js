@@ -36,10 +36,10 @@ class CWidgetHostOverview extends CWidget {
   getArrow(key, newValue) {
     const prev = this.prevValues.get(key);
     this.prevValues.set(key, newValue);
-    if (prev === undefined) return '';
-    if (newValue > prev) return ' <span class="dir-arrow dir-up"></span>';
-    if (newValue < prev) return ' <span class="dir-arrow dir-down"></span>';
-    return '';
+    if (prev === undefined) return null;
+    if (newValue > prev) return 'up';
+    if (newValue < prev) return 'down';
+    return null;
   }
 
   // Toggle a class on the container div if the header is hidden
@@ -135,7 +135,19 @@ class CWidgetHostOverview extends CWidget {
       return Math.max(0, Math.min(100, v));
     };
 
-    const startPercentTicker = (key, name, toPercent, textEl, arrow = '') => {
+    const renderTextWithArrow = (textEl, labelText, arrowDir) => {
+      if (!textEl) return;
+      textEl.innerHTML = '';
+      textEl.textContent = labelText;
+      if (arrowDir) {
+        const span = document.createElement('span');
+        span.className = `dir-arrow dir-${arrowDir}`;
+        textEl.appendChild(document.createTextNode(' '));
+        textEl.appendChild(span);
+      }
+    };
+
+    const startPercentTicker = (key, name, toPercent, textEl, arrowDir = null) => {
       const state = this.percentTicker.get(key) || { value: 0, rafId: null };
       if (state.rafId) cancelAnimationFrame(state.rafId);
       const from = Number(state.value) || 0;
@@ -146,14 +158,16 @@ class CWidgetHostOverview extends CWidget {
         const t = Math.min(1, (now - start) / dur);
         const ease = 1 - Math.pow(1 - t, 3);
         const cur = Math.round(from + (to - from) * ease);
-        if (textEl) textEl.innerHTML = name ? `${name} — ${cur}%${arrow}` : `${cur}%${arrow}`;
+        const text = name ? `${name} — ${cur}%` : `${cur}%`;
+        renderTextWithArrow(textEl, text, arrowDir);
         state.value = cur;
         if (t < 1) {
           state.rafId = requestAnimationFrame(step);
         } else {
           state.value = to;
           state.rafId = null;
-          if (textEl) textEl.innerHTML = name ? `${name} — ${to}%${arrow}` : `${to}%${arrow}`;
+          const finalText = name ? `${name} — ${to}%` : `${to}%`;
+          renderTextWithArrow(textEl, finalText, arrowDir);
         }
       };
       state.rafId = requestAnimationFrame(step);
@@ -333,8 +347,8 @@ class CWidgetHostOverview extends CWidget {
         setSingleMetricVisible(fill);
         const value = Number(response[responseKey]);
         this.updateFillWidth(fill, value, fields);
-        const arrow = this.getArrow(key, value);
-        if (text) startPercentTicker(key, null, value, text, arrow);
+        const arrowDir = this.getArrow(key, value);
+        if (text) startPercentTicker(key, null, value, text, arrowDir);
       }
     }
 
@@ -364,13 +378,13 @@ class CWidgetHostOverview extends CWidget {
         if (text) {
           const labelName = nameFormatter ? nameFormatter(row) : row.name;
           const arrowKey = `${keyPrefix}:${row.name}`;
-          const arrow = this.getArrow(arrowKey, Number(row.percent));
+          const arrowDir = this.getArrow(arrowKey, Number(row.percent));
           startPercentTicker(
             arrowKey,
             labelName,
             Number(row.percent),
             text,
-            arrow
+            arrowDir
           );
         }
       }
@@ -410,7 +424,7 @@ class CWidgetHostOverview extends CWidget {
         const to = Number(bps) || 0;
         const start = performance.now();
         const dur = 700;
-        const arrow = this.getArrow(`iface:${name}`, to);
+        const arrowDir = this.getArrow(`iface:${name}`, to);
 
         if (fill && Number.isFinite(Number(percent))) {
           this.updateFillWidth(fill, Number(percent), fields);
@@ -421,14 +435,14 @@ class CWidgetHostOverview extends CWidget {
           const t = Math.min(1, (now - start) / dur);
           const ease = 1 - Math.pow(1 - t, 3);
           const cur = from + (to - from) * ease;
-          if (text) text.innerHTML = `${label} — ${this._formatBps(cur)}${arrow}`;
+          renderTextWithArrow(text, `${label} — ${this._formatBps(cur)}`, arrowDir);
           state.value = cur;
           if (t < 1) {
             state.rafId = requestAnimationFrame(step);
           } else {
             state.value = to;
             state.rafId = null;
-            if (text) text.innerHTML = `${label} — ${this._formatBps(to)}${arrow}`;
+            renderTextWithArrow(text, `${label} — ${this._formatBps(to)}`, arrowDir);
           }
         };
         state.rafId = requestAnimationFrame(step);
