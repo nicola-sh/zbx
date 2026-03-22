@@ -51,6 +51,8 @@ class CWidgetFieldBadgesList extends CWidgetField {
 
     public const DEFAULT_ITEM_UPTIME = 'System uptime';
 
+    private const LINK_BADGE_ALLOWED_SCHEMES = ['http', 'https'];
+
     private const DEFAULT_BADGES = [
         ['type' => self::BADGE_HOSTNAME,   'text' => '', 'url' => '', 'link' => self::HOSTNAME_LINK_LATEST, 'side' => self::SIDE_LEFT],
         ['type' => self::BADGE_UPTIME,     'text' => '', 'url' => '', 'item_name' => self::DEFAULT_ITEM_UPTIME, 'side' => self::SIDE_LEFT],
@@ -84,8 +86,16 @@ class CWidgetFieldBadgesList extends CWidgetField {
                 if (trim($badge['text'] ?? '') === '') {
                     $errors[] = _s('Badge %1$s: Display text cannot be empty for a Link badge.', $pos);
                 }
+                $safe_url = self::sanitizeLinkUrl($badge['url'] ?? null);
+
                 if (trim($badge['url'] ?? '') === '') {
                     $errors[] = _s('Badge %1$s: URL cannot be empty for a Link badge.', $pos);
+                }
+                elseif ($safe_url === null) {
+                    $errors[] = _s(
+                        'Badge %1$s: URL must use http://, https://, or a relative path such as zabbix.php?action=...',
+                        $pos
+                    );
                 }
             }
 
@@ -97,6 +107,40 @@ class CWidgetFieldBadgesList extends CWidgetField {
         }
 
         return $errors;
+    }
+
+    public static function sanitizeLinkUrl(?string $url): ?string {
+        if (!is_string($url)) {
+            return null;
+        }
+
+        $url = trim($url);
+
+        if ($url === '' || preg_match('/[\x00-\x1F\x7F]/', $url) === 1) {
+            return null;
+        }
+
+        if (preg_match('/^(?:\/\/|\\\\\\\\)/', $url) === 1) {
+            return null;
+        }
+
+        $parts = parse_url($url);
+
+        if ($parts === false) {
+            return null;
+        }
+
+        if (array_key_exists('scheme', $parts)) {
+            $scheme = strtolower($parts['scheme']);
+
+            return in_array($scheme, self::LINK_BADGE_ALLOWED_SCHEMES, true) ? $url : null;
+        }
+
+        if (array_intersect_key($parts, array_flip(['host', 'port', 'user', 'pass'])) !== []) {
+            return null;
+        }
+
+        return $url;
     }
 
     /**
