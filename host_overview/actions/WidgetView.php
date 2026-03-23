@@ -430,10 +430,30 @@ class WidgetView extends CControllerDashboardWidgetView
     // Build interface bitrate rows
     private function buildInterfaces(array $metrics): array
     {
-        $rows = [];
-        $interface_rows = [];
-        $interface_names = [];
+        $interface_regex = $this->buildInterfaceRegex();
 
+        if ($interface_regex === null) {
+            return [];
+        }
+
+        $interface_rows = $this->parseInterfaceItems(
+            $metrics,
+            $interface_regex,
+            $this->calculateInterfaceCapacity()
+        );
+
+        if ($interface_rows === []) {
+            return [];
+        }
+
+        $ordered_names = $this->sortInterfaceNames(array_keys($interface_rows));
+        $interface_aliases = $this->generateInterfaceAliases($ordered_names);
+
+        return $this->buildInterfaceOutputRows($interface_rows, $ordered_names, $interface_aliases);
+    }
+
+    private function calculateInterfaceCapacity(): int
+    {
         $interfaces_high = (int) ($this->fields_values['interfaces_high'] ?? 0);
         $interfaces_unit = (int) ($this->fields_values['interfaces_unit'] ?? WidgetForm::INTERFACES_UNIT_KBPS);
 
@@ -443,74 +463,110 @@ class WidgetView extends CControllerDashboardWidgetView
             default                          => 1_000,
         };
 
-        // Compute capacity in bps based on configured high value and unit
-        $capacity = $interfaces_high > 0 ? $interfaces_high * $factor : 0;
+        return $interfaces_high > 0 ? $interfaces_high * $factor : 0;
+    }
 
-        // Build regex from wildcard pattern: "Interface *: Bits *"
-        // First * = interface name, second * = direction (received/sent)
-        $iface_pattern = $this->fields_values['item_name_interface'];
-        $parts = explode('*', $iface_pattern, 3);
+    private function buildInterfaceRegex(): ?string
+    {
+        $interface_pattern = $this->fields_values['item_name_interface'];
+        $parts = explode('*', $interface_pattern, 3);
+
         if (count($parts) < 3) {
-            return $rows;
+            return null;
         }
-        $iface_regex = '/^' . preg_quote($parts[0], '/') . '(.+?)'
+
+        return '/^' . preg_quote($parts[0], '/') . '(.+?)'
             . preg_quote($parts[1], '/') . '(\S+)'
             . preg_quote($parts[2], '/') . '$/';
+    }
 
-        foreach ($metrics as $key => $details) {
-            // Match against the wildcard pattern
-            if (!preg_match($iface_regex, $key, $match)) {
+    private function parseInterfaceItems(array $metrics, string $interface_regex, int $capacity): array
+    {
+        $interface_rows = [];
+        $exclude = $this->fields_values['interfaces_exclude'] ?? '';
+
+        foreach ($metrics as $name => $details) {
+            $parsed_metric = $this->parseInterfaceMetric($name, $details, $interface_regex, $exclude, $capacity);
+
+            if ($parsed_metric === null) {
                 continue;
             }
 
-            $interface_name = trim($match[1]);
-            $direction_raw  = $match[2];
-
-            // Determine direction from captured suffix
-            if (str_contains($direction_raw, 'received') || str_contains($direction_raw, 'in')) {
-                $direction = 'received';
-            } elseif (str_contains($direction_raw, 'sent') || str_contains($direction_raw, 'out')) {
-                $direction = 'sent';
-            } else {
-                continue;
-            }
-
-            // Skip excluded interfaces
-            $exclude = $this->fields_values['interfaces_exclude'] ?? '';
-            if ($this->matchesExcludePattern($interface_name, $exclude)) {
-                continue;
-            }
-
-            if ($interface_name === '') {
-                $interface_name = '?';
-            }
-
-            $bps = $details['value'];
-            $percent = $bps === null ? null : 0;
-
-            if ($capacity > 0 && is_numeric($bps)) {
-                $percent = $this->clampPercent(($bps / $capacity) * 100);
-            }
-
-            $stable_key = $interface_name . '|' . $direction;
-
-            $interface_names[$interface_name] = true;
-            $interface_rows[$interface_name][$direction] = [
-                'key' => $stable_key,
-                'bps'       => $bps,
-                'percent'   => $percent,
-                'item_ref'  => $this->toSparklineItemRef($details),
-            ];
+            $interface_rows[$parsed_metric['name']][$parsed_metric['direction']] = $parsed_metric['row'];
         }
 
-        if ($interface_rows === []) {
-            return $rows;
+        return $interface_rows;
+    }
+
+    private function parseInterfaceMetric(
+        string $metric_name,
+        array $details,
+        string $interface_regex,
+        string $exclude,
+        int $capacity
+    ): ?array {
+        if (!preg_match($interface_regex, $metric_name, $match)) {
+            return null;
         }
 
-        $ordered_names = array_keys($interface_names);
-        natcasesort($ordered_names);
-        $ordered_names = array_values($ordered_names);
+        $interface_name = trim($match[1]);
+        $direction = $this->parseInterfaceDirection($match[2]);
 
+        if ($direction === null || $this->matchesExcludePattern($interface_name, $exclude)) {
+            return null;
+        }
+
+        if ($interface_name === '') {
+            $interface_name = '?';
+        }
+
+        return [
+            'name' => $interface_name,
+            'direction' => $direction,
+            'row' => [
+                'key' => $interface_name . '|' . $direction,
+                'bps' => $details['value'],
+                'percent' => $this->calculateInterfacePercent($details['value'], $capacity),
+                'item_ref' => $this->toSparklineItemRef($details),
+            ],
+        ];
+    }
+
+    private function parseInterfaceDirection(string $direction_raw): ?string
+    {
+        if (str_contains($direction_raw, 'received') || str_contains($direction_raw, 'in')) {
+            return 'received';
+        }
+
+        if (str_contains($direction_raw, 'sent') || str_contains($direction_raw, 'out')) {
+            return 'sent';
+        }
+
+        return null;
+    }
+
+    private function calculateInterfacePercent(mixed $bps, int $capacity): ?int
+    {
+        if ($bps === null) {
+            return null;
+        }
+
+        if ($capacity > 0 && is_numeric($bps)) {
+            return $this->clampPercent(($bps / $capacity) * 100);
+        }
+
+        return 0;
+    }
+
+    private function sortInterfaceNames(array $interface_names): array
+    {
+        natcasesort($interface_names);
+
+        return array_values($interface_names);
+    }
+
+    private function generateInterfaceAliases(array $ordered_names): array
+    {
         $alias_counter = 1;
         $interface_aliases = [];
         $used_labels = [];
@@ -534,6 +590,13 @@ class WidgetView extends CControllerDashboardWidgetView
             $interface_aliases[$interface_name] = $alias;
             $used_labels[$alias] = true;
         }
+
+        return $interface_aliases;
+    }
+
+    private function buildInterfaceOutputRows(array $interface_rows, array $ordered_names, array $interface_aliases): array
+    {
+        $rows = [];
 
         foreach ($ordered_names as $interface_name) {
             $label = $interface_aliases[$interface_name];
