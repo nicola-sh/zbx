@@ -176,9 +176,6 @@ class WidgetView extends CControllerDashboardWidgetView
                     $badge_data[$index] = [
                         'type' => $type,
                         'status' => (int) ($host_details['maintenance_status'] ?? 0),
-                        'maintenance_type' => (int) ($host_details['maintenance_type'] ?? 0),
-                        'maintenance_from' => (int) ($host_details['maintenance_from'] ?? 0),
-                        'maintenanceid' => $host_details['maintenanceid'] ?? 0,
                     ];
                     break;
 
@@ -308,7 +305,7 @@ class WidgetView extends CControllerDashboardWidgetView
         $hosts = API::Host()->get([
             'output' => [
                 'name',
-                'maintenance_status', 'maintenance_type', 'maintenance_from', 'maintenanceid'
+                'maintenance_status'
             ],
             'selectTags' => ['tag', 'value'],
             'hostids' => [$hostid],
@@ -424,6 +421,8 @@ class WidgetView extends CControllerDashboardWidgetView
                 ];
             }
         }
+
+        usort($rows, static fn(array $left, array $right): int => strnatcasecmp($left['name'], $right['name']));
 
         return $rows;
     }
