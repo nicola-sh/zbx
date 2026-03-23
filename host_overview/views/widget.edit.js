@@ -9,6 +9,15 @@ window.form = new (class {
     this.badgeTypeOptions = Array.isArray(options?.badge_type_options)
       ? options.badge_type_options
       : [];
+    this.badgeMultipleTypes = Array.isArray(options?.badge_multiple_types)
+      ? options.badge_multiple_types.map(String)
+      : [];
+    this.badgeTypesWithText = Array.isArray(options?.badge_types_with_text)
+      ? options.badge_types_with_text.map(String)
+      : [];
+    this.badgeTypesWithUrl = Array.isArray(options?.badge_types_with_url)
+      ? options.badge_types_with_url.map(String)
+      : [];
 
     // Color pickers
     if (
@@ -93,23 +102,39 @@ window.form = new (class {
     this.initBadgesTable();
   }
 
-  // Badges table: add / remove / type-change
+  // Badge editor: add, remove, reorder, and keep the hidden JSON in sync.
   initBadgesTable() {
     const jsonInput = document.getElementById('badges-json');
     const container = jsonInput ? jsonInput.closest('fieldset') : null;
     const addButtons = container ? [...container.querySelectorAll('.js-badge-add')] : [];
-    if (!container || addButtons.length === 0 || !jsonInput) return;
+
+    if (!container || addButtons.length === 0 || !jsonInput) {
+      return;
+    }
+
     const leftLaneRows = container.querySelector('.js-badge-lane-rows[data-side="left"]');
     const rightLaneRows = container.querySelector('.js-badge-lane-rows[data-side="right"]');
     const badgeRowTemplate = container.querySelector('#badge-row-template');
-    if (!leftLaneRows || !rightLaneRows) return;
+
+    if (!leftLaneRows || !rightLaneRows) {
+      return;
+    }
+
     let draggingRow = null;
-    const allowsMultiple = (type) => ['4', '5'].includes(String(type));
-    const escapeHtml = (value) => String(value)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
+    const badgeTypeOptions = [...this.badgeTypeOptions];
+    const badgeTypeLabels = new Map(
+      badgeTypeOptions.map(({value, label}) => [String(value), label])
+    );
+    const multipleBadgeTypes = new Set(this.badgeMultipleTypes);
+    const badgeTypesWithText = new Set(this.badgeTypesWithText);
+    const badgeTypesWithUrl = new Set(this.badgeTypesWithUrl);
+    const defaultType = badgeTypeOptions.find(({value}) => String(value) === '4')?.value
+      ?? badgeTypeOptions[0]?.value
+      ?? '0';
+    const defaultLabel = badgeTypeLabels.get(String(defaultType)) ?? 'Hostname';
+    const allowsMultiple = (type) => multipleBadgeTypes.has(String(type));
+    const showsTextInput = (type) => badgeTypesWithText.has(String(type));
+    const showsUrlInput = (type) => badgeTypesWithUrl.has(String(type));
     const parseColor = (value) => {
       const match = String(value).match(/^rgba?\(([^)]+)\)$/i);
 
@@ -134,24 +159,14 @@ window.form = new (class {
 
       return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
     };
-    const badgeTypeOptions = this.badgeTypeOptions.length > 0
-      ? this.badgeTypeOptions
-      : [
-          {value: '0', label: 'Hostname'},
-          {value: '1', label: 'Uptime'},
-          {value: '2', label: 'Liveliness'},
-          {value: '3', label: 'Problems'},
-          {value: '4', label: 'Text'},
-          {value: '5', label: 'Link'},
-        ];
     const getBadgeTypeLabel = (type) => (
-      badgeTypeOptions.find((option) => String(option.value) === String(type))?.label ?? 'Hostname'
+      badgeTypeLabels.get(String(type)) ?? defaultLabel
     );
     const getUsedSingleTypes = () => {
       const usedSingleTypes = new Map();
 
       container.querySelectorAll('.badge-row').forEach((row) => {
-        const type = row.dataset.type ?? '0';
+        const type = row.dataset.type ?? defaultType;
 
         if (!allowsMultiple(type)) {
           usedSingleTypes.set(type, (usedSingleTypes.get(type) ?? 0) + 1);
@@ -207,11 +222,26 @@ window.form = new (class {
     const renderAddMenuOptions = (menu) => {
       const options = getMenuOptions();
 
-      menu.innerHTML = options.length > 0
-        ? options.map(({value, label}) => `
-            <button type="button" class="js-badge-add-option" data-type="${escapeHtml(value)}">${escapeHtml(label)}</button>
-          `).join('')
-        : '<span class="badge-add-empty">No badges available</span>';
+      menu.replaceChildren();
+
+      if (options.length === 0) {
+        const empty = document.createElement('span');
+
+        empty.className = 'badge-add-empty';
+        empty.textContent = 'No badges available';
+        menu.appendChild(empty);
+        return;
+      }
+
+      options.forEach(({value, label}) => {
+        const option = document.createElement('button');
+
+        option.type = 'button';
+        option.className = 'js-badge-add-option';
+        option.dataset.type = String(value);
+        option.textContent = label;
+        menu.appendChild(option);
+      });
     };
     const createAddMenu = () => {
       const menu = document.createElement('div');
@@ -240,6 +270,13 @@ window.form = new (class {
         button.setAttribute('aria-expanded', 'false');
       });
     };
+    const refreshAddButtons = () => {
+      const hasOptions = getMenuOptions().length > 0;
+
+      addButtons.forEach((button) => {
+        button.disabled = !hasOptions;
+      });
+    };
     const toggleAddMenu = (button) => {
       const wrap = button.closest('.badge-add-wrap');
       const menu = wrap ? wrap.querySelector('.js-badge-add-menu') : null;
@@ -265,14 +302,13 @@ window.form = new (class {
 
       row.dataset.type = String(type);
 
-      const numericType = parseInt(type ?? '0', 10);
       const typeBadge = row.querySelector('.badge-row-type');
       const textInput = row.querySelector('.js-badge-text');
       const urlInput = row.querySelector('.js-badge-url');
 
       if (typeBadge) typeBadge.textContent = getBadgeTypeLabel(type);
-      if (textInput) textInput.style.display = (numericType === 4 || numericType === 5) ? '' : 'none';
-      if (urlInput) urlInput.style.display = (numericType === 5) ? '' : 'none';
+      if (textInput) textInput.style.display = showsTextInput(type) ? '' : 'none';
+      if (urlInput) urlInput.style.display = showsUrlInput(type) ? '' : 'none';
     };
 
     const hydrateBadgeRow = (row, badge = {}) => {
@@ -290,7 +326,7 @@ window.form = new (class {
         urlInput.value = badge.url ?? '';
       }
 
-      applyBadgeRowType(row, badge.type ?? '0');
+      applyBadgeRowType(row, badge.type ?? defaultType);
 
       return row;
     };
@@ -301,17 +337,35 @@ window.form = new (class {
           renderAddMenuOptions(menu);
         }
       });
+      refreshAddButtons();
+    };
+    const serializeBadgeRow = (row, side) => {
+      const type = row.dataset.type ?? defaultType;
+      const parsedType = Number.parseInt(type, 10);
+      const badge = {
+        type: Number.isNaN(parsedType) ? Number.parseInt(defaultType, 10) : parsedType,
+        text: '',
+        url: '',
+        side,
+      };
+
+      if (showsTextInput(type)) {
+        badge.text = row.querySelector('.js-badge-text')?.value ?? '';
+      }
+
+      if (showsUrlInput(type)) {
+        badge.url = row.querySelector('.js-badge-url')?.value ?? '';
+      }
+
+      return badge;
     };
 
     const syncJson = () => {
       const badges = [];
       [leftLaneRows, rightLaneRows].forEach((lane) => {
         const side = lane.dataset.side || 'left';
-        lane.querySelectorAll('.badge-row').forEach(row => {
-          const type = row.dataset.type ?? '0';
-          const text = row.querySelector('.js-badge-text')?.value ?? '';
-          const url = row.querySelector('.js-badge-url')?.value ?? '';
-          badges.push({type: parseInt(type, 10), text, url, side});
+        lane.querySelectorAll('.badge-row').forEach((row) => {
+          badges.push(serializeBadgeRow(row, side));
         });
       });
       refreshBadgeTypeMenu();
@@ -333,7 +387,7 @@ window.form = new (class {
       }, {offset: Number.NEGATIVE_INFINITY, element: null}).element;
     };
 
-    const createBadgeRow = (initialType = '4') => {
+    const createBadgeRow = (initialType = defaultType) => {
       const templateRow = badgeRowTemplate?.content?.firstElementChild;
 
       if (!templateRow) {
@@ -405,7 +459,7 @@ window.form = new (class {
         const wrap = addOption.closest('.badge-add-wrap');
         const side = wrap ? wrap.querySelector('.js-badge-add')?.dataset.side ?? 'left' : 'left';
         const targetLane = side === 'right' ? rightLaneRows : leftLaneRows;
-        const row = createBadgeRow(addOption.dataset.type ?? '4');
+        const row = createBadgeRow(addOption.dataset.type ?? defaultType);
 
         if (!row) {
           return;
@@ -417,8 +471,9 @@ window.form = new (class {
         return;
       }
 
-      if (e.target.classList.contains('js-badge-remove')) {
-        const row = e.target.closest('.badge-row');
+      const removeButton = e.target.closest('.js-badge-remove');
+      if (removeButton) {
+        const row = removeButton.closest('.badge-row');
         if (row) {
           row.remove();
           syncJson();
@@ -429,7 +484,7 @@ window.form = new (class {
       closeAddMenus();
     });
 
-    // Sync on text/url/scope input changes
+    // Sync on text and URL changes.
     container.addEventListener('input', (e) => {
       if (e.target.classList.contains('js-badge-text') || e.target.classList.contains('js-badge-url')) {
         syncJson();
@@ -438,7 +493,7 @@ window.form = new (class {
 
     container.querySelectorAll('.badge-row').forEach((row) => {
       hydrateBadgeRow(row, {
-        type: row.dataset.type ?? '0',
+        type: row.dataset.type ?? defaultType,
         text: row.querySelector('.js-badge-text')?.value ?? '',
         url: row.querySelector('.js-badge-url')?.value ?? '',
       });

@@ -114,7 +114,10 @@ $form
     ->includeJsFile('widget.edit.js')
     ->addJavaScript('form.init(' . json_encode([
         'color_picker_class' => $color_picker_class,
-        'badge_type_options' => getBadgeTypeOptions(),
+        'badge_type_options' => CWidgetFieldBadgesList::getBadgeTypeOptions(),
+        'badge_multiple_types' => CWidgetFieldBadgesList::getMultipleBadgeTypes(),
+        'badge_types_with_text' => CWidgetFieldBadgesList::getTextFieldBadgeTypes(),
+        'badge_types_with_url' => CWidgetFieldBadgesList::getUrlFieldBadgeTypes(),
     ], JSON_THROW_ON_ERROR) . ');')
     ->addItem(new CTag('style', true,
         '.badge-lane { background: rgba(0, 0, 0, 0.15); border-radius: 4px; padding: 8px; min-height: 52px; }'
@@ -271,20 +274,6 @@ function getFreshnessThresholdViews(CWidgetFormView $form, array $fields): array
     ];
 }
 
-function getBadgeTypeOptions(): array
-{
-    $options = [];
-
-    foreach (CWidgetFieldBadgesList::BADGE_TYPE_LABELS as $value => $label) {
-        $options[] = [
-            'value' => (string) $value,
-            'label' => _($label),
-        ];
-    }
-
-    return $options;
-}
-
 function getBadgesListView(CWidgetFieldBadgesList $field): array
 {
     $badges = $field->getBadges();
@@ -320,9 +309,13 @@ function getBadgesListView(CWidgetFieldBadgesList $field): array
     );
     $right_lane = createBadgeLane(CWidgetFieldBadgesList::SIDE_RIGHT, $right_rows);
     $left_lane->addItem(createBadgeRowTemplate());
+    $left_label = new CLabel(_('Left'), 'badges-json');
+    $left_label->addItem(makeHelpIcon(
+        _('Link badges allow http://, https://, or relative URLs such as zabbix.php?action=...')
+    ));
 
     return [
-        [new CLabel(_('Left'), 'badges-json'), new CFormField($left_lane)],
+        [$left_label, new CFormField($left_lane)],
         [new CLabel(_('Right')), new CFormField($right_lane)],
     ];
 }
@@ -391,8 +384,8 @@ function createBadgeRow(array $badge): CDiv
     $type_badge = (new CSpan(_($type_label)))
         ->addClass('badge-row-type');
 
-    $show_text = in_array($type, [CWidgetFieldBadgesList::BADGE_TEXT, CWidgetFieldBadgesList::BADGE_LINK]);
-    $show_url = ($type === CWidgetFieldBadgesList::BADGE_LINK);
+    $show_text = CWidgetFieldBadgesList::badgeTypeUsesTextField($type);
+    $show_url = CWidgetFieldBadgesList::badgeTypeUsesUrlField($type);
     $text_input = (new CTextBox('', $badge['text'] ?? ''))
         ->setAttribute('placeholder', _('Display text'))
         ->addClass('js-badge-text');

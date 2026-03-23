@@ -64,20 +64,24 @@ class CWidgetFieldBadgesList extends CWidgetField {
             $type = (int) ($badge['type'] ?? self::BADGE_HOSTNAME);
             $pos = $index + 1;
 
+            if (!self::badgeTypeExists($type)) {
+                $errors[] = _s('Badge %1$s: Unsupported badge type.', $pos);
+                continue;
+            }
+
             if (!self::badgeTypeAllowsMultiple($type)) {
                 $single_badge_counts[$type] = ($single_badge_counts[$type] ?? 0) + 1;
             }
 
-            if ($type === self::BADGE_TEXT) {
-                if (trim($badge['text'] ?? '') === '') {
-                    $errors[] = _s('Badge %1$s: Display text cannot be empty for a Text badge.', $pos);
-                }
+            if (self::badgeTypeUsesTextField($type) && trim($badge['text'] ?? '') === '') {
+                $errors[] = _s(
+                    'Badge %1$s: Display text cannot be empty for a %2$s badge.',
+                    $pos,
+                    _(self::BADGE_TYPE_LABELS[$type])
+                );
             }
 
-            if ($type === self::BADGE_LINK) {
-                if (trim($badge['text'] ?? '') === '') {
-                    $errors[] = _s('Badge %1$s: Display text cannot be empty for a Link badge.', $pos);
-                }
+            if (self::badgeTypeUsesUrlField($type)) {
                 $safe_url = self::sanitizeLinkUrl($badge['url'] ?? null);
 
                 if (trim($badge['url'] ?? '') === '') {
@@ -104,6 +108,78 @@ class CWidgetFieldBadgesList extends CWidgetField {
 
     public static function badgeTypeAllowsMultiple(int $type): bool {
         return in_array($type, [self::BADGE_TEXT, self::BADGE_LINK], true);
+    }
+
+    public static function badgeTypeExists(int $type): bool {
+        return array_key_exists($type, self::BADGE_TYPE_LABELS);
+    }
+
+    public static function badgeTypeUsesTextField(int $type): bool {
+        return in_array($type, [self::BADGE_TEXT, self::BADGE_LINK], true);
+    }
+
+    public static function badgeTypeUsesUrlField(int $type): bool {
+        return $type === self::BADGE_LINK;
+    }
+
+    public static function getBadgeTypeOptions(): array {
+        $options = [];
+
+        foreach (self::BADGE_TYPE_LABELS as $value => $label) {
+            $options[] = [
+                'value' => (string) $value,
+                'label' => _($label),
+            ];
+        }
+
+        return $options;
+    }
+
+    public static function getMultipleBadgeTypes(): array {
+        return array_values(array_map(
+            'strval',
+            array_keys(array_filter(
+                self::BADGE_TYPE_LABELS,
+                static fn(string $_label, int $type): bool => self::badgeTypeAllowsMultiple($type),
+                ARRAY_FILTER_USE_BOTH
+            ))
+        ));
+    }
+
+    public static function getTextFieldBadgeTypes(): array {
+        return array_values(array_map(
+            'strval',
+            array_keys(array_filter(
+                self::BADGE_TYPE_LABELS,
+                static fn(string $_label, int $type): bool => self::badgeTypeUsesTextField($type),
+                ARRAY_FILTER_USE_BOTH
+            ))
+        ));
+    }
+
+    public static function getUrlFieldBadgeTypes(): array {
+        return array_values(array_map(
+            'strval',
+            array_keys(array_filter(
+                self::BADGE_TYPE_LABELS,
+                static fn(string $_label, int $type): bool => self::badgeTypeUsesUrlField($type),
+                ARRAY_FILTER_USE_BOTH
+            ))
+        ));
+    }
+
+    public static function normalizeBadge(array $badge): array {
+        $type = (int) ($badge['type'] ?? self::BADGE_HOSTNAME);
+        $side = ($badge['side'] ?? self::SIDE_LEFT) === self::SIDE_RIGHT
+            ? self::SIDE_RIGHT
+            : self::SIDE_LEFT;
+
+        return [
+            'type' => $type,
+            'text' => self::badgeTypeUsesTextField($type) ? (string) ($badge['text'] ?? '') : '',
+            'url' => self::badgeTypeUsesUrlField($type) ? (string) ($badge['url'] ?? '') : '',
+            'side' => $side,
+        ];
     }
 
     public static function sanitizeLinkUrl(?string $url): ?string {
@@ -148,7 +224,15 @@ class CWidgetFieldBadgesList extends CWidgetField {
 
         if (is_string($val)) {
             $decoded = json_decode($val, true);
-            return is_array($decoded) ? $decoded : self::DEFAULT_BADGES;
+
+            if (is_array($decoded)) {
+                return array_values(array_map(
+                    static fn(array $badge): array => self::normalizeBadge($badge),
+                    array_filter($decoded, 'is_array')
+                ));
+            }
+
+            return self::DEFAULT_BADGES;
         }
 
         return self::DEFAULT_BADGES;
@@ -158,7 +242,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
         $widget_fields[] = [
             'type'  => ZBX_WIDGET_FIELD_TYPE_STR,
             'name'  => $this->name,
-            'value' => $this->getValue(),
+            'value' => json_encode($this->getBadges()),
         ];
     }
 }
