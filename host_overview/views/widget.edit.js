@@ -30,6 +30,7 @@ window.form = new (class {
       this.initColorPickers(options.color_picker_class);
     }
     // Field toggles
+    this.initColorSchemeToggle();
     this.initFieldDependencies();
   }
 
@@ -55,6 +56,35 @@ window.form = new (class {
   }
 
   // Init checkbox / radio dependency groups
+  initColorSchemeToggle() {
+    const container = document.getElementById("color_scheme");
+    if (!container) return;
+
+    const thresholdRows = [...document.querySelectorAll(".js-threshold-color-row")];
+    const solidRows = [...document.querySelectorAll(".js-solid-color-row")];
+    const radios = container.querySelectorAll('input[type="radio"]');
+
+    const toggleRows = (rows, visible) => {
+      rows.forEach((row) => {
+        row.style.display = visible ? "" : "none";
+      });
+    };
+
+    const update = () => {
+      const selected = container.querySelector('input[type="radio"]:checked')?.value ?? "0";
+      const showSolid = selected === "1";
+
+      toggleRows(solidRows, showSolid);
+      toggleRows(thresholdRows, !showSolid);
+    };
+
+    radios.forEach((radio) => {
+      radio.addEventListener("change", update);
+    });
+
+    update();
+  }
+
   initFieldDependencies() {
     this.initCheckBoxListToggle({
       listId: "metrics_show",
@@ -74,11 +104,31 @@ window.form = new (class {
       optionValue: "0",
       textBoxName: "item_name_cpu",
     });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "0",
+      textBoxName: "th_cpu_1",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "0",
+      textBoxName: "th_cpu_2",
+    });
 
     this.initTextBoxToggle({
       listId: "metrics_show",
       optionValue: "1",
       textBoxName: "item_name_ram",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "1",
+      textBoxName: "th_ram_1",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "1",
+      textBoxName: "th_ram_2",
     });
 
     this.initTextBoxToggle({
@@ -86,11 +136,31 @@ window.form = new (class {
       optionValue: "2",
       textBoxName: "item_name_load",
     });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "2",
+      textBoxName: "th_load_1",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "2",
+      textBoxName: "th_load_2",
+    });
 
     this.initTextBoxToggle({
       listId: "metrics_show",
       optionValue: "3",
       textBoxName: "item_name_swap",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "3",
+      textBoxName: "th_swap_1",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "3",
+      textBoxName: "th_swap_2",
     });
 
     this.initCheckBoxListToggle({
@@ -100,6 +170,37 @@ window.form = new (class {
     });
 
     this.initBadgesTable();
+
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "4",
+      textBoxName: "th_iface_1",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "4",
+      textBoxName: "th_iface_2",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "5",
+      textBoxName: "th_disk_1",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "5",
+      textBoxName: "th_disk_2",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "6",
+      textBoxName: "th_partition_1",
+    });
+    this.initTextBoxToggle({
+      listId: "metrics_show",
+      optionValue: "6",
+      textBoxName: "th_partition_2",
+    });
   }
 
   // Badge editor: add, remove, reorder, and keep the hidden JSON in sync.

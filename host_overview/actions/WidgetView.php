@@ -32,7 +32,7 @@ class WidgetView extends CControllerDashboardWidgetView
         $cpu          = in_array(WidgetForm::METRIC_CPU, $enabled) ? $this->computePercent('item_name_cpu', $metrics) : 0;
         $ram          = in_array(WidgetForm::METRIC_RAM, $enabled) ? $this->computePercent('item_name_ram', $metrics) : 0;
         $swap         = in_array(WidgetForm::METRIC_SWAP, $enabled) ? $this->computeSwap($metrics) : 0;
-        $load_percent = in_array(WidgetForm::METRIC_LOAD, $enabled) ? $this->computeLoadPercent($metrics) : 0;
+        $load         = in_array(WidgetForm::METRIC_LOAD, $enabled) ? $this->computeLoad($metrics) : 0;
         $disks        = in_array(WidgetForm::METRIC_DISKS, $enabled) ? $this->buildWildcardRows('item_name_disk', 'disks_exclude', $metrics) : [];
         $interfaces   = in_array(WidgetForm::METRIC_INTERFACES, $enabled) ? $this->buildInterfaces($metrics) : [];
         $partitions   = in_array(WidgetForm::METRIC_PARTITIONS, $enabled) ? $this->buildWildcardRows('item_name_partition', 'partitions_exclude', $metrics) : [];
@@ -53,7 +53,7 @@ class WidgetView extends CControllerDashboardWidgetView
             'name'         => $this->getInput('name', $this->widget->getName()),
             'cpu'          => $cpu,
             'ram'          => $ram,
-            'load_percent' => $load_percent,
+            'load'         => $load,
             'swap'         => $swap,
             'badge_data'   => $badge_data,
             'interfaces'   => $interfaces,
@@ -352,8 +352,8 @@ class WidgetView extends CControllerDashboardWidgetView
         return max(0, time() - $this->latest_clock);
     }
 
-    // Compute load percent (relative to configured high)
-    private function computeLoadPercent(array $metrics): ?int
+    // Return the raw load value; the frontend uses the configured ceiling to scale the bar.
+    private function computeLoad(array $metrics): ?float
     {
         $item_name = $this->fields_values['item_name_load'];
         $metric = $this->findMetric($metrics, $item_name);
@@ -362,14 +362,7 @@ class WidgetView extends CControllerDashboardWidgetView
             return null;
         }
 
-        $load = (float) $metric['value'];
-        $load_high = (int) ($this->fields_values['load_high'] ?? 0);
-
-        if ($load_high <= 0) {
-            return 0;
-        }
-
-        return $this->clampPercent(($load / $load_high) * 100);
+        return (float) $metric['value'];
     }
 
     // Build rows for single-wildcard patterns (disks, partitions)

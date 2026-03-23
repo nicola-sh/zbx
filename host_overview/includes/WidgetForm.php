@@ -50,6 +50,8 @@ class WidgetForm extends CWidgetForm
 
     public const DEFAULT_THRESHOLD_HIGH   = 85;
     public const DEFAULT_THRESHOLD_MEDIUM = 70;
+    public const DEFAULT_THRESHOLD_SWAP_HIGH = 10;
+    public const DEFAULT_THRESHOLD_SWAP_MEDIUM = 5;
     public const DEFAULT_FRESHNESS_WARN   = 60;
     public const DEFAULT_FRESHNESS_STALE  = 300;
 
@@ -64,6 +66,16 @@ class WidgetForm extends CWidgetForm
     public const DEFAULT_ITEM_DISK        = '*:: Disk utilization by idle time';
     public const DEFAULT_ITEM_PARTITION   = 'FS [*]: Space: Used, in %';
     public const DEFAULT_ITEM_INTERFACE   = 'Interface *: Bits *';
+
+    private const THRESHOLD_METRIC_FIELDS = [
+        'cpu',
+        'ram',
+        'load',
+        'swap',
+        'iface',
+        'disk',
+        'partition',
+    ];
 
     public function addFields(): self
     {
@@ -109,6 +121,62 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
+                (new CWidgetFieldIntegerBox('th_cpu_1', _('Processor high'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_cpu_2', _('Processor medium'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_ram_1', _('Memory high'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_ram_2', _('Memory medium'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_load_1', _('Load high'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_load_2', _('Load medium'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_swap_1', _('Swap high'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_SWAP_HIGH)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_swap_2', _('Swap medium'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_SWAP_MEDIUM)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_iface_1', _('Interfaces high'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_iface_2', _('Interfaces medium'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_disk_1', _('Disk high'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_disk_2', _('Disk medium'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_partition_1', _('Partition high'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
+            )
+            ->addField(
+                (new CWidgetFieldIntegerBox('th_partition_2', _('Partition medium'), 1, 100))
+                    ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
+            )
+            ->addField(
                 (new CWidgetFieldCheckBoxList('metrics_show', _('Metrics'), [
                     self::METRIC_CPU        => _('Processor'),
                     self::METRIC_RAM        => _('Memory'),
@@ -129,11 +197,11 @@ class WidgetForm extends CWidgetForm
                     ])
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('load_high', _('Load High'), 1, 1000))
+                (new CWidgetFieldIntegerBox('load_high', _('Load ceiling'), 1, 1000))
                     ->setDefault(self::DEFAULT_LOAD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('interfaces_high', _('Interfaces High'), 1, 10000))
+                (new CWidgetFieldIntegerBox('interfaces_high', _('Interface ceiling'), 1, 10000))
                     ->setDefault(self::DEFAULT_INTERFACES_HIGH)
             )
             ->addField(
@@ -237,6 +305,24 @@ class WidgetForm extends CWidgetForm
                 (new CWidgetFieldTextBox('item_name_interface', _('Interface pattern')))
                     ->setDefault(self::DEFAULT_ITEM_INTERFACE)
             );
+    }
+
+    protected function normalizeValues(array $values): array
+    {
+        foreach (self::THRESHOLD_METRIC_FIELDS as $metric) {
+            $high_field = 'th_' . $metric . '_1';
+            $medium_field = 'th_' . $metric . '_2';
+
+            if (!array_key_exists($high_field, $values) && array_key_exists('th_num_1', $values)) {
+                $values[$high_field] = $values['th_num_1'];
+            }
+
+            if (!array_key_exists($medium_field, $values) && array_key_exists('th_num_2', $values)) {
+                $values[$medium_field] = $values['th_num_2'];
+            }
+        }
+
+        return parent::normalizeValues($values);
     }
 
     public function validate(bool $strict = false): array

@@ -19,7 +19,8 @@ $form
         new CWidgetFieldMultiSelectHostView($data['fields']['hostid'])
     )
     ->addField(
-        new CWidgetFieldCheckBoxListView($data['fields']['metrics_show'])
+        (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))
+            ->setColumns(3)
     )
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Badges')))
@@ -41,20 +42,42 @@ $form
             ->addItem(getItemNameView($form, $data['fields']['item_name_cpu'],
                 'Enter the exact CPU item name, for example "CPU utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
             ))
+            ->addItem(getMetricThresholdViews($form, $data['fields'],
+                _('Processor thresholds'),
+                'th_cpu_1',
+                'th_cpu_2',
+                _('Used for the processor utilization bar. High and Medium share the colors from the Style section.')
+            ))
             ->addItem(getItemNameView($form, $data['fields']['item_name_ram'],
                 'Enter the exact memory item name, for example "Memory utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
             ))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_load'],
-                'Enter the exact load item name, for example "Load average (5m avg)". The widget converts that value using the Load High setting below. Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+            ->addItem(getMetricThresholdViews($form, $data['fields'],
+                _('Memory thresholds'),
+                'th_ram_1',
+                'th_ram_2',
+                _('Used for the memory utilization bar. High and Medium share the colors from the Style section.')
             ))
-            ->addField(
-                new CWidgetFieldIntegerBoxView($data['fields']['load_high'])
-            )
+            ->addItem(getItemNameView($form, $data['fields']['item_name_load'],
+                'Enter the exact load item name, for example "Load average (5m avg)". The widget displays the raw load value and scales the bar using the Load ceiling setting below. Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+            ))
+            ->addItem(getMetricThresholdViews($form, $data['fields'],
+                _('Load thresholds'),
+                'th_load_1',
+                'th_load_2',
+                _('Applied to the load bar after it is scaled against the Load ceiling. The displayed value remains the raw load. High and Medium share the colors from the Style section.')
+            ))
+            ->addItem(getLoadCeilingViews($form, $data['fields']['load_high']))
     )
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Swap')))
             ->addItem(getItemNameView($form, $data['fields']['item_name_swap'],
                 'Enter the exact swap item name, for example "Free swap space in %". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+            ))
+            ->addItem(getMetricThresholdViews($form, $data['fields'],
+                _('Swap thresholds'),
+                'th_swap_1',
+                'th_swap_2',
+                _('Used for the swap utilization bar after any inversion setting is applied. High and Medium share the colors from the Style section.')
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['item_swap_invert'],
                 'Enable if the swap item reports free % instead of used %. The value will be inverted (100 − value).'
@@ -68,7 +91,13 @@ $form
             ->addItem(getPatternView($form, $data['fields']['interfaces_exclude'],
                 'Comma-separated list of interface names to hide. Wildcards * and ? are supported.'
             ))
-            ->addItem(getInterfaceHighViews($form, $data['fields']))
+            ->addItem(getInterfaceCeilingViews($form, $data['fields']))
+            ->addItem(getMetricThresholdViews($form, $data['fields'],
+                _('Interface thresholds'),
+                'th_iface_1',
+                'th_iface_2',
+                _('Used for interface bars after throughput is converted to a percentage of the Interface ceiling. High and Medium share the colors from the Style section.')
+            ))
     )
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Disk utilization')))
@@ -77,6 +106,12 @@ $form
             ))
             ->addItem(getPatternView($form, $data['fields']['disks_exclude'],
                 'Comma-separated list of disk names to hide. Wildcards * and ? are supported.'
+            ))
+            ->addItem(getMetricThresholdViews($form, $data['fields'],
+                _('Disk thresholds'),
+                'th_disk_1',
+                'th_disk_2',
+                _('Used for disk utilization rows. High and Medium share the colors from the Style section.')
             ))
     )
     ->addFieldset(
@@ -87,20 +122,22 @@ $form
             ->addItem(getPatternView($form, $data['fields']['partitions_exclude'],
                 'Comma-separated list of partition paths to hide. Wildcards * and ? are supported.'
             ))
+            ->addItem(getMetricThresholdViews($form, $data['fields'],
+                _('Partition thresholds'),
+                'th_partition_1',
+                'th_partition_2',
+                _('Used for partition utilization rows. High and Medium share the colors from the Style section.')
+            ))
     )
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Style')))
             ->addField(
                 new CWidgetFieldRadioButtonListView($data['fields']['color_scheme'])
             )
-            ->addItem(getThresholdHighViews($form, $data['fields']))
-            ->addItem(getThresholdMediumViews($form, $data['fields']))
-            ->addField(
-                new CWidgetFieldColorView($data['fields']['th_color_3'])
-            )
-            ->addField(
-                new CWidgetFieldColorView($data['fields']['fill_color'])
-            )
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], _('High color'), 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], _('Medium color'), 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], _('Regular color'), 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], _('Solid color'), 'js-solid-color-row'))
             ->addField(
                 new CWidgetFieldRadioButtonListView($data['fields']['corners'])
             )
@@ -167,55 +204,91 @@ function getCheckBoxView(CWidgetFormView $form, $field, string $hint = ''): arra
     ];
 }
 
-function getInterfaceHighViews(CWidgetFormView $form, array $fields): array
+function getLoadCeilingViews(CWidgetFormView $form, $field): array
+{
+    $view = $form->registerField(new CWidgetFieldIntegerBoxView($field));
+    $label = new CLabel(_('Load ceiling'), $field->getName());
+    $label->addItem(makeHelpIcon(
+        _('Maximum load value used to scale the load bar and sparkline. The displayed value remains the raw load.')
+    ));
+
+    return [
+        $label,
+        new CFormField($view->getView()),
+    ];
+}
+
+function getInterfaceCeilingViews(CWidgetFormView $form, array $fields): array
 {
     $interfaces_unit = $form->registerField(
         new CWidgetFieldRadioButtonListView($fields['interfaces_unit'])
     );
-    $interfaces_high = $form->registerField(new CWidgetFieldIntegerBoxView($fields['interfaces_high']));
+    $interface_ceiling = $form->registerField(new CWidgetFieldIntegerBoxView($fields['interfaces_high']));
+    $label = new CLabel(_('Interface ceiling'), 'interfaces_high');
+    $label->addItem(makeHelpIcon(
+        _('Maximum expected interface throughput used to scale interface bars and sparklines. The value uses the selected unit.')
+    ));
 
     return [
-        new CLabel(_('Interfaces High'), 'interfaces_unit'),
+        $label,
         new CFormField(new CHorList([
-            $interfaces_high->getView(),
+            $interface_ceiling->getView(),
             $interfaces_unit->getView(),
         ])),
     ];
 }
 
-function getThresholdHighViews(CWidgetFormView $form, array $fields): array
-{
-    $th_num_1 = $form->registerField(
-        new CWidgetFieldIntegerBoxView($fields['th_num_1'])
+function getMetricThresholdViews(
+    CWidgetFormView $form,
+    array $fields,
+    string $label_text,
+    string $high_field_name,
+    string $medium_field_name,
+    string $hint = ''
+): array {
+    $high = $form->registerField(
+        new CWidgetFieldIntegerBoxView($fields[$high_field_name])
     );
-    $th_color_1 = $form->registerField(
-        new CWidgetFieldColorView($fields['th_color_1'])
+    $medium = $form->registerField(
+        new CWidgetFieldIntegerBoxView($fields[$medium_field_name])
     );
 
+    $label = new CLabel($label_text, $medium_field_name);
+
+    if ($hint !== '') {
+        $label->addItem(makeHelpIcon($hint));
+    }
+
     return [
-        new CLabel(_('High'), 'th_num_1'),
+        $label,
         new CFormField(new CHorList([
-            $th_num_1->getView(),
-            $th_color_1->getView(),
+            new CSpan(_('Medium')),
+            $medium->getView(),
+            new CSpan(_('High')),
+            $high->getView(),
         ])),
     ];
 }
 
-function getThresholdMediumViews(CWidgetFormView $form, array $fields): array
+function getThresholdColorView(
+    CWidgetFormView $form,
+    $field,
+    string $label_text,
+    string $row_class = ''
+): array
 {
-    $th_num_2 = $form->registerField(
-        new CWidgetFieldIntegerBoxView($fields['th_num_2'])
-    );
-    $th_color_2 = $form->registerField(
-        new CWidgetFieldColorView($fields['th_color_2'])
-    );
+    $view = $form->registerField(new CWidgetFieldColorView($field));
+    $label = new CLabel($label_text, $field->getName());
+    $form_field = new CFormField($view->getView());
+
+    if ($row_class !== '') {
+        $label->addClass($row_class);
+        $form_field->addClass($row_class);
+    }
 
     return [
-        new CLabel(_('Medium'), 'th_num_2'),
-        new CFormField(new CHorList([
-            $th_num_2->getView(),
-            $th_color_2->getView(),
-        ])),
+        $label,
+        $form_field,
     ];
 }
 
@@ -289,9 +362,6 @@ function getBadgesListView(CWidgetFieldBadgesList $field): array
     $right_lane = createBadgeLane(CWidgetFieldBadgesList::SIDE_RIGHT, $right_rows);
     $left_lane->addItem(createBadgeRowTemplate());
     $left_label = new CLabel(_('Left'), 'badges-json');
-    $left_label->addItem(makeHelpIcon(
-        _('Link badges allow http://, https://, or relative URLs such as zabbix.php?action=...')
-    ));
 
     return [
         [$left_label, new CFormField($left_lane)],
