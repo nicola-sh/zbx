@@ -180,121 +180,13 @@ window.form = new (class {
 
       return badgeTypeOptions.filter(({value}) => allowsMultiple(value) || !usedSingleTypes.has(String(value)));
     };
-    const resolveMenuSurface = (element) => {
-      let current = element;
 
-      while (current) {
-        const styles = getComputedStyle(current);
-        const backgroundColor = styles.backgroundColor;
-        const color = parseColor(backgroundColor);
-
-        if (
-          backgroundColor
-          && backgroundColor !== 'rgba(0, 0, 0, 0)'
-          && backgroundColor !== 'transparent'
-          && color
-          && color.alpha >= 1
-        ) {
-          return {
-            backgroundColor,
-            color: styles.color || getComputedStyle(document.body).color,
-          };
-        }
-
-        current = current.parentElement;
-      }
-
-      const bodyStyles = getComputedStyle(document.body);
-      return {
-        backgroundColor: bodyStyles.backgroundColor || 'Canvas',
-        color: bodyStyles.color || 'CanvasText',
-      };
-    };
-    const applyMenuTheme = (menu, anchor) => {
-      const surface = resolveMenuSurface(anchor);
-
-      menu.style.setProperty('--badge-add-menu-bg', surface.backgroundColor);
-      menu.style.setProperty('--badge-add-menu-fg', surface.color);
-      menu.style.setProperty('--badge-add-menu-border', withAlpha(surface.color, 0.22, 'rgba(127, 127, 127, 0.35)'));
-      menu.style.setProperty('--badge-add-menu-hover', withAlpha(surface.color, 0.1, 'rgba(127, 127, 127, 0.12)'));
-      menu.style.setProperty('--badge-add-menu-shadow', 'rgba(0, 0, 0, 0.18)');
-    };
-    const renderAddMenuOptions = (menu) => {
-      const options = getMenuOptions();
-
-      menu.replaceChildren();
-
-      if (options.length === 0) {
-        const empty = document.createElement('span');
-
-        empty.className = 'badge-add-empty';
-        empty.textContent = 'No badges available';
-        menu.appendChild(empty);
-        return;
-      }
-
-      options.forEach(({value, label}) => {
-        const option = document.createElement('button');
-
-        option.type = 'button';
-        option.className = 'js-badge-add-option';
-        option.dataset.type = String(value);
-        option.textContent = label;
-        menu.appendChild(option);
-      });
-    };
-    const createAddMenu = () => {
-      const menu = document.createElement('div');
-
-      menu.className = 'badge-add-menu js-badge-add-menu';
-      menu.hidden = true;
-      renderAddMenuOptions(menu);
-
-      return menu;
-    };
-
-    addButtons.forEach((addButton) => {
-      const wrap = addButton.closest('.badge-add-wrap');
-
-      if (wrap && !wrap.querySelector('.js-badge-add-menu')) {
-        wrap.appendChild(createAddMenu());
-      }
-    });
-
-    const addMenus = [...container.querySelectorAll('.js-badge-add-menu')];
-    const closeAddMenus = () => {
-      addMenus.forEach((menu) => {
-        menu.hidden = true;
-      });
-      addButtons.forEach((button) => {
-        button.setAttribute('aria-expanded', 'false');
-      });
-    };
     const refreshAddButtons = () => {
       const hasOptions = getMenuOptions().length > 0;
 
       addButtons.forEach((button) => {
         button.disabled = !hasOptions;
       });
-    };
-    const toggleAddMenu = (button) => {
-      const wrap = button.closest('.badge-add-wrap');
-      const menu = wrap ? wrap.querySelector('.js-badge-add-menu') : null;
-
-      if (!menu) {
-        return;
-      }
-
-      const shouldOpen = menu.hidden;
-
-      closeAddMenus();
-
-      if (shouldOpen) {
-        renderAddMenuOptions(menu);
-        applyMenuTheme(menu, button);
-        menu.hidden = false;
-        button.setAttribute('aria-expanded', 'true');
-      }
     };
 
     const applyBadgeRowType = (row, type) => {
@@ -332,11 +224,6 @@ window.form = new (class {
     };
 
     const refreshBadgeTypeMenu = () => {
-      addMenus.forEach((menu) => {
-        if (!menu.hidden) {
-          renderAddMenuOptions(menu);
-        }
-      });
       refreshAddButtons();
     };
     const serializeBadgeRow = (row, side) => {
@@ -449,25 +336,33 @@ window.form = new (class {
       const addButton = e.target.closest('.js-badge-add');
       if (addButton) {
         e.preventDefault();
-        toggleAddMenu(addButton);
-        return;
-      }
+        
+        const options = getMenuOptions();
+        if (options.length === 0) return;
 
-      const addOption = e.target.closest('.js-badge-add-option');
-      if (addOption) {
-        e.preventDefault();
-        const wrap = addOption.closest('.badge-add-wrap');
-        const side = wrap ? wrap.querySelector('.js-badge-add')?.dataset.side ?? 'left' : 'left';
-        const targetLane = side === 'right' ? rightLaneRows : leftLaneRows;
-        const row = createBadgeRow(addOption.dataset.type ?? defaultType);
+        const menu_data = [{
+          items: options.map(opt => ({
+            label: opt.label,
+            clickCallback: () => {
+              const side = addButton.dataset.side ?? 'left';
+              const targetLane = side === 'right' ? rightLaneRows : leftLaneRows;
+              const row = createBadgeRow(opt.value ?? defaultType);
 
-        if (!row) {
-          return;
-        }
+              if (row) {
+                targetLane.appendChild(row);
+                syncJson();
+              }
+            }
+          }))
+        }];
 
-        targetLane.appendChild(row);
-        closeAddMenus();
-        syncJson();
+        jQuery(addButton).menuPopup(menu_data, new jQuery.Event(e), {
+          position: {
+            of: addButton,
+            my: 'left top',
+            at: 'left bottom'
+          }
+        });
         return;
       }
 
@@ -480,8 +375,6 @@ window.form = new (class {
         }
         return;
       }
-
-      closeAddMenus();
     });
 
     // Sync on text and URL changes.
@@ -499,18 +392,6 @@ window.form = new (class {
       });
     });
     syncJson();
-
-    if (this._badgeMenuDocumentClickHandler) {
-      document.removeEventListener('click', this._badgeMenuDocumentClickHandler);
-    }
-
-    this._badgeMenuDocumentClickHandler = (e) => {
-      if (!container.contains(e.target)) {
-        closeAddMenus();
-      }
-    };
-
-    document.addEventListener('click', this._badgeMenuDocumentClickHandler);
   }
 
   // Link a checkbox within a CheckBoxList to dependent fields
