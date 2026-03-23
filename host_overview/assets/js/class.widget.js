@@ -133,9 +133,11 @@ class CWidgetHostOverview extends CWidget {
         if (row.item_name) this.itemMap[`partition:${row.name}`] = row.item_name;
       }
     }
-    if (response.interfaces) {
-      for (const [name, vals] of Object.entries(response.interfaces)) {
-        if (vals.item_name) this.itemMap[`iface:${name}`] = vals.item_name;
+    if (Array.isArray(response.interfaces)) {
+      for (const row of response.interfaces) {
+        if (row.key && row.item_ref) {
+          this.itemMap[`iface:${row.key}`] = row.item_ref;
+        }
       }
     }
 
@@ -483,7 +485,15 @@ class CWidgetHostOverview extends CWidget {
       const container = this._body.querySelector(".interfaces-data");
       if (!container) return;
       const naIndicator = container.querySelector('.na-indicator');
-      if (!interfaces || Object.keys(interfaces).length === 0) {
+      const rows = Array.isArray(interfaces)
+        ? interfaces
+        : Object.entries(interfaces || {}).map(([key, item]) => ({
+            ...item,
+            key,
+            label: key,
+          }));
+
+      if (rows.length === 0) {
         if (!naIndicator) {
           const na = document.createElement('span');
           na.className = 'na-indicator';
@@ -494,15 +504,18 @@ class CWidgetHostOverview extends CWidget {
       }
       if (naIndicator) naIndicator.remove();
 
-      const startTicker = (name, bps, percent) => {
-        const key = name;
+      const startTicker = (row) => {
+        const key = row.key ?? '';
+        const label = row.label ?? key;
+        const bps = row.bps ?? null;
+        const percent = row.percent ?? null;
         const sub = container.querySelector(`[data-key="${CSS.escape(key)}"]`);
         if (!sub) return;
         const text = sub.querySelector(".text");
         const fill = sub.querySelector(".fill");
 
         if (bps === null || bps === undefined) {
-          setMultiMetricNoData(sub, String(name));
+          setMultiMetricNoData(sub, String(label));
           return;
         }
 
@@ -517,14 +530,13 @@ class CWidgetHostOverview extends CWidget {
         const to = Number(bps) || 0;
         const start = performance.now();
         const dur = 700;
-        const arrowDir = this.getArrow(`iface:${name}`, to);
+        const arrowDir = this.getArrow(`iface:${key}`, to);
 
         setMultiMetricVisible(sub);
         if (fill && Number.isFinite(Number(percent))) {
           this.updateFillWidth(fill, Number(percent), fields);
         }
 
-        const label = String(name);
         const step = (now) => {
           const t = Math.min(1, (now - start) / dur);
           const ease = 1 - Math.pow(1 - t, 3);
@@ -543,9 +555,8 @@ class CWidgetHostOverview extends CWidget {
         this.interfaceTicker.set(key, state);
       };
 
-      for (const name in interfaces) {
-        const item = interfaces[name] || {};
-        startTicker(name, item.bps ?? null, item.percent ?? null);
+      for (const row of rows) {
+        startTicker(row);
       }
     };
 
@@ -832,12 +843,13 @@ class CWidgetHostOverview extends CWidget {
     const cell = bar.closest('.cell[data-key]');
     if (cell) {
       const name = cell.getAttribute('data-key');
+      const label = cell.getAttribute('data-label') || name;
       if (!name) {
         return null;
       }
 
       if (cell.closest('.interfaces-data')) {
-        return { key: `iface:${name}`, title: name };
+        return { key: `iface:${name}`, title: label };
       }
       if (cell.closest('.disks-data')) {
         return { key: `disk:${name}`, title: name };

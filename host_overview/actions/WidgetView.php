@@ -431,9 +431,9 @@ class WidgetView extends CControllerDashboardWidgetView
     // Build interface bitrate rows
     private function buildInterfaces(array $metrics): array
     {
-        $rows              = [];
-        $alias_counter     = 1;
-        $interface_aliases = [];
+        $rows = [];
+        $interface_rows = [];
+        $interface_names = [];
 
         $interfaces_high = (int) ($this->fields_values['interfaces_high'] ?? 0);
         $interfaces_unit = (int) ($this->fields_values['interfaces_unit'] ?? WidgetForm::INTERFACES_UNIT_KBPS);
@@ -464,7 +464,7 @@ class WidgetView extends CControllerDashboardWidgetView
                 continue;
             }
 
-            $interface_name = $match[1];
+            $interface_name = trim($match[1]);
             $direction_raw  = $match[2];
 
             // Determine direction from captured suffix
@@ -482,11 +482,8 @@ class WidgetView extends CControllerDashboardWidgetView
                 continue;
             }
 
-            // Apply short alias for long interface names
-            if (strlen($interface_name) > 4) {
-                $label = $interface_aliases[$interface_name] ??= 'IF' . $alias_counter++;
-            } else {
-                $label = $interface_name;
+            if ($interface_name === '') {
+                $interface_name = '?';
             }
 
             $bps = $details['value'];
@@ -496,15 +493,61 @@ class WidgetView extends CControllerDashboardWidgetView
                 $percent = $this->clampPercent(($bps / $capacity) * 100);
             }
 
-            // Build the final display name
-            $suffix       = $direction === 'sent' ? 'TX' : 'RX';
-            $display_name = strtoupper($label . ' ' . $suffix);
+            $stable_key = $interface_name . '|' . $direction;
 
-            $rows[$display_name] = [
+            $interface_names[$interface_name] = true;
+            $interface_rows[$interface_name][$direction] = [
+                'key' => $stable_key,
                 'bps'       => $bps,
                 'percent'   => $percent,
-                'item_name' => $key,
+                'item_ref'  => $this->toSparklineItemRef($details),
             ];
+        }
+
+        if ($interface_rows === []) {
+            return $rows;
+        }
+
+        $ordered_names = array_keys($interface_names);
+        natcasesort($ordered_names);
+        $ordered_names = array_values($ordered_names);
+
+        $alias_counter = 1;
+        $interface_aliases = [];
+        $used_labels = [];
+
+        foreach ($ordered_names as $interface_name) {
+            if (strlen($interface_name) <= 4) {
+                $interface_aliases[$interface_name] = $interface_name;
+                $used_labels[strtoupper($interface_name)] = true;
+            }
+        }
+
+        foreach ($ordered_names as $interface_name) {
+            if (isset($interface_aliases[$interface_name])) {
+                continue;
+            }
+
+            do {
+                $alias = 'IF' . $alias_counter++;
+            } while (isset($used_labels[$alias]));
+
+            $interface_aliases[$interface_name] = $alias;
+            $used_labels[$alias] = true;
+        }
+
+        foreach ($ordered_names as $interface_name) {
+            $label = $interface_aliases[$interface_name];
+
+            foreach (['received' => 'RX', 'sent' => 'TX'] as $direction => $suffix) {
+                if (!isset($interface_rows[$interface_name][$direction])) {
+                    continue;
+                }
+
+                $row = $interface_rows[$interface_name][$direction];
+                $row['label'] = strtoupper($label . ' ' . $suffix);
+                $rows[] = $row;
+            }
         }
 
         return $rows;
