@@ -233,6 +233,111 @@ class CWidgetHostOverview extends CWidget {
       subcell.classList.remove('no-bar');
       if (bar) bar.style.display = '';
     };
+    const cancelTickerState = (map, key) => {
+      const state = map.get(key);
+
+      if (state?.rafId) {
+        cancelAnimationFrame(state.rafId);
+      }
+
+      map.delete(key);
+    };
+    const createMultiMetricCell = (key, label) => {
+      const cell = document.createElement('div');
+      const bar = document.createElement('div');
+      const fill = document.createElement('div');
+      const text = document.createElement('span');
+
+      cell.className = 'cell';
+      cell.setAttribute('data-key', key);
+      cell.setAttribute('data-label', label);
+
+      bar.className = 'bar';
+      fill.className = 'fill';
+      text.className = 'text';
+
+      bar.appendChild(fill);
+      cell.appendChild(bar);
+      cell.appendChild(text);
+
+      return cell;
+    };
+    const reconcileMultiMetricRows = (container, rows, {
+      getKey,
+      getLabel,
+      onRemoveKey = () => {},
+    }) => {
+      const normalizedRows = [];
+      const seenKeys = new Set();
+
+      for (const row of rows ?? []) {
+        const key = String(getKey(row) ?? '').trim();
+
+        if (key === '' || seenKeys.has(key)) {
+          continue;
+        }
+
+        seenKeys.add(key);
+        normalizedRows.push({
+          ...row,
+          key,
+          label: String(getLabel(row, key) ?? key),
+        });
+      }
+
+      const naIndicator = container.querySelector('.na-indicator');
+      const existingCells = new Map();
+
+      container.querySelectorAll('.cell[data-key]').forEach((cell) => {
+        const key = cell.getAttribute('data-key');
+
+        if (key !== null) {
+          existingCells.set(key, cell);
+        }
+      });
+
+      if (normalizedRows.length === 0) {
+        existingCells.forEach((cell, key) => {
+          onRemoveKey(key);
+          cell.remove();
+        });
+
+        if (!naIndicator) {
+          const na = document.createElement('span');
+          na.className = 'na-indicator';
+          na.textContent = 'No data';
+          container.appendChild(na);
+        }
+
+        return [];
+      }
+
+      if (naIndicator) {
+        naIndicator.remove();
+      }
+
+      const desiredKeys = new Set(normalizedRows.map((row) => row.key));
+      existingCells.forEach((cell, key) => {
+        if (!desiredKeys.has(key)) {
+          onRemoveKey(key);
+          cell.remove();
+          existingCells.delete(key);
+        }
+      });
+
+      return normalizedRows.map((row) => {
+        const cell = existingCells.get(row.key) ?? createMultiMetricCell(row.key, row.label);
+
+        cell.setAttribute('data-key', row.key);
+        cell.setAttribute('data-label', row.label);
+        container.appendChild(cell);
+
+        return {
+          ...row,
+          cell,
+        };
+      });
+    };
 
     const metrics = fields["metrics_show"] || [];
     const hasMetric = (id) => metrics.includes(id);
@@ -435,28 +540,27 @@ class CWidgetHostOverview extends CWidget {
     }
 
     // Helper to update a list of rows within a container
-    const updateRows = (containerSelector, rows, keyPrefix, nameFormatter) => {
+    const updateRows = (containerSelector, rows, keyPrefix, {
+      getKey = (row) => row.key ?? row.name,
+      getLabel = (row, key) => row.label ?? row.name ?? key,
+    } = {}) => {
       const container = this._body.querySelector(containerSelector);
       if (!container) return;
-      const naIndicator = container.querySelector('.na-indicator');
-      if (!rows || rows.length === 0) {
-        if (!naIndicator) {
-          const na = document.createElement('span');
-          na.className = 'na-indicator';
-          na.textContent = 'No data';
-          container.appendChild(na);
-        }
-        return;
-      }
-      if (naIndicator) naIndicator.remove();
-      for (const row of rows) {
-        const subcell = container.querySelector(
-          `[data-key="${CSS.escape(row.name)}"]`
-        );
-        if (!subcell) continue;
+      const boundRows = reconcileMultiMetricRows(container, rows, {
+        getKey,
+        getLabel,
+        onRemoveKey: (key) => {
+          const stateKey = `${keyPrefix}:${key}`;
+          cancelTickerState(this.percentTicker, stateKey);
+          this.prevValues.delete(stateKey);
+        },
+      });
+
+      for (const row of boundRows) {
+        const subcell = row.cell;
         const text = subcell.querySelector(".text");
         const fill = subcell.querySelector(".fill");
-        const labelName = nameFormatter ? nameFormatter(row) : row.name;
+        const labelName = row.label;
         const percent = row.percent === null ? null : Number(row.percent);
 
         if (percent === null || Number.isNaN(percent)) {
@@ -467,7 +571,7 @@ class CWidgetHostOverview extends CWidget {
         setMultiMetricVisible(subcell);
         if (fill) this.updateFillWidth(fill, Number(row.percent), fields);
         if (text) {
-          const arrowKey = `${keyPrefix}:${row.name}`;
+          const arrowKey = `${keyPrefix}:${row.key}`;
           const arrowDir = this.getArrow(arrowKey, percent);
           startPercentTicker(
             arrowKey,
@@ -484,7 +588,6 @@ class CWidgetHostOverview extends CWidget {
     const updateInterfaces = (interfaces) => {
       const container = this._body.querySelector(".interfaces-data");
       if (!container) return;
-      const naIndicator = container.querySelector('.na-indicator');
       const rows = Array.isArray(interfaces)
         ? interfaces
         : Object.entries(interfaces || {}).map(([key, item]) => ({
@@ -492,25 +595,21 @@ class CWidgetHostOverview extends CWidget {
             key,
             label: key,
           }));
-
-      if (rows.length === 0) {
-        if (!naIndicator) {
-          const na = document.createElement('span');
-          na.className = 'na-indicator';
-          na.textContent = 'No data';
-          container.appendChild(na);
-        }
-        return;
-      }
-      if (naIndicator) naIndicator.remove();
+      const boundRows = reconcileMultiMetricRows(container, rows, {
+        getKey: (row) => row.key,
+        getLabel: (row, key) => row.label ?? key,
+        onRemoveKey: (key) => {
+          cancelTickerState(this.interfaceTicker, key);
+          this.prevValues.delete(`iface:${key}`);
+        },
+      });
 
       const startTicker = (row) => {
         const key = row.key ?? '';
         const label = row.label ?? key;
         const bps = row.bps ?? null;
         const percent = row.percent ?? null;
-        const sub = container.querySelector(`[data-key="${CSS.escape(key)}"]`);
-        if (!sub) return;
+        const sub = row.cell;
         const text = sub.querySelector(".text");
         const fill = sub.querySelector(".fill");
 
@@ -555,7 +654,7 @@ class CWidgetHostOverview extends CWidget {
         this.interfaceTicker.set(key, state);
       };
 
-      for (const row of rows) {
+      for (const row of boundRows) {
         startTicker(row);
       }
     };
@@ -567,17 +666,12 @@ class CWidgetHostOverview extends CWidget {
 
     // Disks
     if (hasMetric(5)) {
-      updateRows(".disks-data", response.disks, "disks", (row) => row.name);
+      updateRows(".disks-data", response.disks, "disks");
     }
 
     // Partitions
     if (hasMetric(6)) {
-      updateRows(
-        ".partitions-data",
-        response.partitions,
-        "partitions",
-        (row) => row.name
-      );
+      updateRows(".partitions-data", response.partitions, "partitions");
     }
   }
 
@@ -852,10 +946,10 @@ class CWidgetHostOverview extends CWidget {
         return { key: `iface:${name}`, title: label };
       }
       if (cell.closest('.disks-data')) {
-        return { key: `disk:${name}`, title: name };
+        return { key: `disk:${name}`, title: label };
       }
       if (cell.closest('.partitions-data')) {
-        return { key: `partition:${name}`, title: name };
+        return { key: `partition:${name}`, title: label };
       }
 
       return null;
