@@ -5,6 +5,16 @@
  */
 
 class CWidgetHostOverview extends CWidget {
+
+  // Metric IDs — must match WidgetForm::METRIC_* constants in PHP
+  static METRIC_CPU        = 0;
+  static METRIC_RAM        = 1;
+  static METRIC_LOAD       = 2;
+  static METRIC_SWAP       = 3;
+  static METRIC_INTERFACES = 4;
+  static METRIC_DISKS      = 5;
+  static METRIC_PARTITIONS = 6;
+
   onInitialize() {
     this.rendered = false;
     // State for interface tickers
@@ -517,11 +527,13 @@ class CWidgetHostOverview extends CWidget {
     }
 
     // Single-metric bars: [metricId, key, responseKey, fillSelector, textSelector]
+    const {METRIC_CPU, METRIC_RAM, METRIC_LOAD, METRIC_SWAP,
+           METRIC_INTERFACES, METRIC_DISKS, METRIC_PARTITIONS} = CWidgetHostOverview;
     const singleMetrics = [
-      [0, 'cpu',  'cpu',          '.cpu',  '.cpu-text'],
-      [1, 'ram',  'ram',          '.ram',  '.ram-text'],
-      [2, 'load', 'load_percent', '.load', '.load-text'],
-      [3, 'swap', 'swap',         '.swap', '.swap-text'],
+      [METRIC_CPU,  'cpu',  'cpu',          '.cpu',  '.cpu-text'],
+      [METRIC_RAM,  'ram',  'ram',          '.ram',  '.ram-text'],
+      [METRIC_LOAD, 'load', 'load_percent', '.load', '.load-text'],
+      [METRIC_SWAP, 'swap', 'swap',         '.swap', '.swap-text'],
     ];
 
     for (const [metricId, key, responseKey, fillSel, textSel] of singleMetrics) {
@@ -660,17 +672,17 @@ class CWidgetHostOverview extends CWidget {
     };
 
     // Interfaces (ticker)
-    if (hasMetric(4)) {
+    if (hasMetric(METRIC_INTERFACES)) {
       updateInterfaces(response.interfaces);
     }
 
     // Disks
-    if (hasMetric(5)) {
+    if (hasMetric(METRIC_DISKS)) {
       updateRows(".disks-data", response.disks, "disks");
     }
 
     // Partitions
-    if (hasMetric(6)) {
+    if (hasMetric(METRIC_PARTITIONS)) {
       updateRows(".partitions-data", response.partitions, "partitions");
     }
   }

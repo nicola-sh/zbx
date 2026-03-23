@@ -119,27 +119,6 @@ $form
         'badge_types_with_text' => CWidgetFieldBadgesList::getTextFieldBadgeTypes(),
         'badge_types_with_url' => CWidgetFieldBadgesList::getUrlFieldBadgeTypes(),
     ], JSON_THROW_ON_ERROR) . ');')
-    ->addItem(new CTag('style', true,
-        '.badge-lane { background: rgba(0, 0, 0, 0.15); border-radius: 4px; padding: 8px; min-height: 52px; }'
-        . '.badge-lane-rows { min-height: 28px; }'
-        . '.badge-add-wrap { position: relative; display: inline-block; margin-top: 4px; }'
-        . '.badge-lane .js-badge-add { margin-top: 0; }'
-        . '.badge-add-wrap .js-badge-add[aria-expanded="true"] { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }'
-        . '.badge-add-menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 10; display: flex; min-width: 160px; flex-direction: column; padding: 4px 0; color: var(--badge-add-menu-fg, CanvasText); background: var(--badge-add-menu-bg, Canvas); border: 1px solid var(--badge-add-menu-border, rgba(127, 127, 127, 0.35)); border-radius: 4px; box-shadow: 0 10px 24px var(--badge-add-menu-shadow, rgba(0, 0, 0, 0.18)); }'
-        . '.badge-add-menu[hidden] { display: none; }'
-        . '.badge-add-menu .js-badge-add-option { display: flex; align-items: center; box-sizing: border-box; width: 100%; min-height: 30px; padding: 6px 10px; color: inherit; font: inherit; line-height: 1.2; text-align: left; text-decoration: none; white-space: nowrap; background: transparent; border: 0; border-radius: 0; appearance: none; cursor: pointer; }'
-        . '.badge-add-menu .js-badge-add-option:hover { background: var(--badge-add-menu-hover, rgba(127, 127, 127, 0.12)); }'
-        . '.badge-add-menu .badge-add-empty { display: block; padding: 5px 10px; opacity: 0.7; white-space: nowrap; }'
-        . '.badge-row { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }'
-        . '.badge-row:last-child { margin-bottom: 0; }'
-        . '.badge-row.is-dragging { opacity: 0.55; }'
-        . '.badge-row .badge-row-type { min-width: 110px; font-weight: 600; }'
-        . '.badge-row input[type="text"] { min-width: 120px; }'
-        . '.badge-row .js-badge-drag { cursor: grab; user-select: none; color: #768d99; font-weight: bold; padding: 0 4px; }'
-        . '.badge-row .js-badge-drag:active { cursor: grabbing; }'
-        . '.badge-row .js-badge-drag svg { display: block; width: 16px; height: 16px; }'
-        . '.badge-row .js-badge-remove { flex-shrink: 0; }'
-    ))
     ->show();
 
 function getItemNameView(CWidgetFormView $form, $field, string $hint = ''): array
