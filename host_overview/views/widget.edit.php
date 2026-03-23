@@ -24,19 +24,40 @@ $form
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Badges')))
             ->addItem(getBadgesListView($data['fields']['badges']))
+            ->addItem(getBadgeHostnameLinkViews($form, $data['fields']['badge_hostname_link']))
+            ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
+            ->addItem(getBadgeProblemsScopeViews($form, $data['fields']['badge_problems_scope']))
+            ->addField(
+                new CWidgetFieldRadioButtonListView($data['fields']['badge_size'])
+            )
+            ->addItem(getFreshnessThresholdViews($form, $data['fields']))
+            ->addItem(getCheckBoxView($form, $data['fields']['problems_show_zero'],
+                'Keep the Problems badge visible even when the selected host has zero active problems.'
+            ))
+            ->addItem(getCheckBoxView($form, $data['fields']['problems_pulse'],
+                'Animate the problems badge with a pulsing effect when there are active problems.'
+            ))
     )
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Processor, Memory and Load')))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_cpu']))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_ram']))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_load']))
+            ->addItem(getItemNameView($form, $data['fields']['item_name_cpu'],
+                'Enter the exact CPU item name, for example "CPU utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+            ))
+            ->addItem(getItemNameView($form, $data['fields']['item_name_ram'],
+                'Enter the exact memory item name, for example "Memory utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+            ))
+            ->addItem(getItemNameView($form, $data['fields']['item_name_load'],
+                'Enter the exact load item name, for example "Load average (5m avg)". The widget converts that value using the Load High setting below. Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+            ))
             ->addField(
                 new CWidgetFieldIntegerBoxView($data['fields']['load_high'])
             )
     )
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Swap')))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_swap']))
+            ->addItem(getItemNameView($form, $data['fields']['item_name_swap'],
+                'Enter the exact swap item name, for example "Free swap space in %". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+            ))
             ->addItem(getCheckBoxView($form, $data['fields']['item_swap_invert'],
                 'Enable if the swap item reports free % instead of used %. The value will be inverted (100 − value).'
             ))
@@ -89,28 +110,29 @@ $form
                 new CWidgetFieldRadioButtonListView($data['fields']['label_length'])
             )
             ->addField(
-                new CWidgetFieldRadioButtonListView($data['fields']['badge_size'])
-            )
-            ->addField(
                 new CWidgetFieldSelectView($data['fields']['bar_height'])
             )
-            ->addItem(getCheckBoxView($form, $data['fields']['problems_pulse'],
-                'Animate the problems badge with a pulsing effect when there are active problems.'
-            ))
     )
     ->includeJsFile('widget.edit.js')
     ->addJavaScript('form.init(' . json_encode([
         'color_picker_class' => $color_picker_class,
+        'badge_type_options' => getBadgeTypeOptions(),
     ], JSON_THROW_ON_ERROR) . ');')
     ->addItem(new CTag('style', true,
-        '.badge-lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin-bottom: 6px; }'
-        . '.badge-lane { background: rgba(0, 0, 0, 0.15); border-radius: 4px; padding: 8px; min-height: 52px; }'
-        . '.badge-lane-title { font-weight: bold; margin-bottom: 6px; padding-left:5px; }'
+        '.badge-lane { background: rgba(0, 0, 0, 0.15); border-radius: 4px; padding: 8px; min-height: 52px; }'
         . '.badge-lane-rows { min-height: 28px; }'
-        . '.badge-lane .js-badge-add { margin-top: 4px; }'
+        . '.badge-add-wrap { position: relative; display: inline-block; margin-top: 4px; }'
+        . '.badge-lane .js-badge-add { margin-top: 0; }'
+        . '.badge-add-wrap .js-badge-add[aria-expanded="true"] { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }'
+        . '.badge-add-menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 10; display: flex; min-width: 160px; flex-direction: column; padding: 4px 0; color: var(--badge-add-menu-fg, CanvasText); background: var(--badge-add-menu-bg, Canvas); border: 1px solid var(--badge-add-menu-border, rgba(127, 127, 127, 0.35)); border-radius: 4px; box-shadow: 0 10px 24px var(--badge-add-menu-shadow, rgba(0, 0, 0, 0.18)); }'
+        . '.badge-add-menu[hidden] { display: none; }'
+        . '.badge-add-menu .js-badge-add-option { display: flex; align-items: center; box-sizing: border-box; width: 100%; min-height: 30px; padding: 6px 10px; color: inherit; font: inherit; line-height: 1.2; text-align: left; text-decoration: none; white-space: nowrap; background: transparent; border: 0; border-radius: 0; appearance: none; cursor: pointer; }'
+        . '.badge-add-menu .js-badge-add-option:hover { background: var(--badge-add-menu-hover, rgba(127, 127, 127, 0.12)); }'
+        . '.badge-add-menu .badge-add-empty { display: block; padding: 5px 10px; opacity: 0.7; white-space: nowrap; }'
         . '.badge-row { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }'
+        . '.badge-row:last-child { margin-bottom: 0; }'
         . '.badge-row.is-dragging { opacity: 0.55; }'
-        . '.badge-row select { min-width: 110px; }'
+        . '.badge-row .badge-row-type { min-width: 110px; font-weight: 600; }'
         . '.badge-row input[type="text"] { min-width: 120px; }'
         . '.badge-row .js-badge-drag { cursor: grab; user-select: none; color: #768d99; font-weight: bold; padding: 0 4px; }'
         . '.badge-row .js-badge-drag:active { cursor: grabbing; }'
@@ -125,17 +147,13 @@ function getItemNameView(CWidgetFormView $form, $field, string $hint = ''): arra
     $label = new CLabel($field->getLabel(), $field->getName());
 
     if ($hint === '') {
-        $hint = 'Matches any item name containing this text (substring search).';
+        $hint = 'Prefer the exact item name. Partial names are only used when they match one item uniquely; otherwise the widget shows No data.';
     }
     $label->addItem(makeHelpIcon($hint));
 
     return [
         $label,
-        new CFormField(new CHorList([
-            new CSpan('%'),
-            $view->getView(),
-            new CSpan('%'),
-        ])),
+        new CFormField($view->getView()),
     ];
 }
 
@@ -157,6 +175,21 @@ function getPatternView(CWidgetFormView $form, $field, string $hint = ''): array
 function getCheckBoxView(CWidgetFormView $form, $field, string $hint = ''): array
 {
     $view = $form->registerField(new CWidgetFieldCheckBoxView($field));
+    $label = new CLabel($field->getLabel(), $field->getName());
+
+    if ($hint !== '') {
+        $label->addItem(makeHelpIcon($hint));
+    }
+
+    return [
+        $label,
+        new CFormField($view->getView()),
+    ];
+}
+
+function getSelectView(CWidgetFormView $form, $field, string $hint = ''): array
+{
+    $view = $form->registerField(new CWidgetFieldSelectView($field));
     $label = new CLabel($field->getLabel(), $field->getName());
 
     if ($hint !== '') {
@@ -221,12 +254,75 @@ function getThresholdMediumViews(CWidgetFormView $form, array $fields): array
     ];
 }
 
+function getBadgeHostnameLinkViews(CWidgetFormView $form, $field): array
+{
+    return getSelectView(
+        $form,
+        $field,
+        _('Choose where the Hostname badge should open when clicked.')
+    );
+}
+
+function getBadgeUptimeItemViews(CWidgetFormView $form, $field): array
+{
+    return getItemNameView(
+        $form,
+        $field,
+        _('Enter the exact uptime item name, for example "System uptime". Partial names are only used when they match one item uniquely; otherwise the badge shows —.')
+    );
+}
+
+function getBadgeProblemsScopeViews(CWidgetFormView $form, $field): array
+{
+    return getSelectView(
+        $form,
+        $field,
+        _('Choose whether the Problems badge counts any active problems or only unacknowledged ones.')
+    );
+}
+
+function getFreshnessThresholdViews(CWidgetFormView $form, array $fields): array
+{
+    $freshness_warn = $form->registerField(
+        new CWidgetFieldIntegerBoxView($fields['freshness_warn'])
+    );
+    $freshness_stale = $form->registerField(
+        new CWidgetFieldIntegerBoxView($fields['freshness_stale'])
+    );
+
+    $label = new CLabel(_('Liveliness thresholds'), 'freshness_warn');
+    $label->addItem(makeHelpIcon(
+        _('Age in seconds since the host last reported data. Warn applies first, then Stale.')
+    ));
+
+    return [
+        $label,
+        new CFormField(new CHorList([
+            new CSpan(_('Warn')),
+            $freshness_warn->getView(),
+            new CSpan(_('Stale')),
+            $freshness_stale->getView(),
+        ])),
+    ];
+}
+
+function getBadgeTypeOptions(): array
+{
+    $options = [];
+
+    foreach (CWidgetFieldBadgesList::BADGE_TYPE_LABELS as $value => $label) {
+        $options[] = [
+            'value' => (string) $value,
+            'label' => _($label),
+        ];
+    }
+
+    return $options;
+}
+
 function getBadgesListView(CWidgetFieldBadgesList $field): array
 {
     $badges = $field->getBadges();
-
-    $container = (new CDiv())->setId('badges-list');
-    $lanes = (new CDiv())->addClass('badge-lanes');
     $left_rows = (new CDiv())
         ->addClass('badge-lane-rows')
         ->addClass('js-badge-lane-rows')
@@ -235,15 +331,6 @@ function getBadgesListView(CWidgetFieldBadgesList $field): array
         ->addClass('badge-lane-rows')
         ->addClass('js-badge-lane-rows')
         ->setAttribute('data-side', CWidgetFieldBadgesList::SIDE_RIGHT);
-
-    // Hidden input carries the JSON for form submission
-    $container->addItem(
-        (new CTag('input'))
-            ->setAttribute('type', 'hidden')
-            ->setAttribute('name', 'badges')
-            ->setAttribute('id', 'badges-json')
-            ->setAttribute('value', json_encode($badges))
-    );
 
     foreach ($badges as $badge) {
         $side = $badge['side'] ?? CWidgetFieldBadgesList::SIDE_LEFT;
@@ -257,47 +344,62 @@ function getBadgesListView(CWidgetFieldBadgesList $field): array
         }
     }
 
-    $lanes->addItem(
-        (new CDiv())
-            ->addClass('badge-lane')
-            ->setAttribute('data-side', CWidgetFieldBadgesList::SIDE_LEFT)
-            ->addItem((new CDiv('Left'))->addClass('badge-lane-title'))
-            ->addItem($left_rows)
-            ->addItem(
-                (new CButton('badge_add_left', _('Add')))
-                    ->addClass('btn-link')
-                    ->addClass('js-badge-add')
-                    ->setAttribute('data-side', CWidgetFieldBadgesList::SIDE_LEFT)
-            )
+    $left_lane = createBadgeLane(
+        CWidgetFieldBadgesList::SIDE_LEFT,
+        $left_rows,
+        (new CTag('input'))
+            ->setAttribute('type', 'hidden')
+            ->setAttribute('name', 'badges')
+            ->setAttribute('id', 'badges-json')
+            ->setAttribute('value', json_encode($badges))
     );
-    $lanes->addItem(
-        (new CDiv())
-            ->addClass('badge-lane')
-            ->setAttribute('data-side', CWidgetFieldBadgesList::SIDE_RIGHT)
-            ->addItem((new CDiv('Right'))->addClass('badge-lane-title'))
-            ->addItem($right_rows)
-            ->addItem(
-                (new CButton('badge_add_right', _('Add')))
-                    ->addClass('btn-link')
-                    ->addClass('js-badge-add')
-                    ->setAttribute('data-side', CWidgetFieldBadgesList::SIDE_RIGHT)
-            )
-    );
-
-    $container->addItem($lanes);
-
-    $label = new CLabel($field->getLabel(), 'badges-list');
-    $label->addItem(makeHelpIcon(_('Link badges allow http://, https://, or relative URLs such as zabbix.php?action=...')));
+    $right_lane = createBadgeLane(CWidgetFieldBadgesList::SIDE_RIGHT, $right_rows);
+    $left_lane->addItem(createBadgeRowTemplate());
 
     return [
-        $label,
-        new CFormField($container),
+        [new CLabel(_('Left'), 'badges-json'), new CFormField($left_lane)],
+        [new CLabel(_('Right')), new CFormField($right_lane)],
     ];
+}
+
+function createBadgeRowTemplate(): CTag
+{
+    return (new CTag('template', true))
+        ->setAttribute('id', 'badge-row-template')
+        ->addItem(createBadgeRow([
+            'type' => CWidgetFieldBadgesList::BADGE_TEXT,
+            'text' => '',
+            'url' => '',
+        ]));
+}
+
+function createBadgeLane(string $side, CDiv $rows, ?CTag $hidden_input = null): CDiv
+{
+    $add_name = $side === CWidgetFieldBadgesList::SIDE_RIGHT ? 'badge_add_right' : 'badge_add_left';
+
+    return (new CDiv())
+        ->addClass('badge-lane')
+        ->setAttribute('data-side', $side)
+        ->addItem($hidden_input)
+        ->addItem($rows)
+        ->addItem(
+            (new CDiv())
+                ->addClass('badge-add-wrap')
+                ->addItem(
+                    (new CButton($add_name, _('Add')))
+                        ->addClass('btn-link')
+                        ->addClass('js-badge-add')
+                        ->setAttribute('data-side', $side)
+                        ->setAttribute('aria-haspopup', 'true')
+                        ->setAttribute('aria-expanded', 'false')
+                )
+        );
 }
 
 function createBadgeRow(array $badge): CDiv
 {
     $type = (int) ($badge['type'] ?? CWidgetFieldBadgesList::BADGE_HOSTNAME);
+    $type_label = CWidgetFieldBadgesList::BADGE_TYPE_LABELS[$type] ?? CWidgetFieldBadgesList::BADGE_TYPE_LABELS[CWidgetFieldBadgesList::BADGE_HOSTNAME];
     $drag_handle = (new CSpan())
         ->addClass('js-badge-drag')
         ->setAttribute('draggable', 'true')
@@ -321,80 +423,11 @@ function createBadgeRow(array $badge): CDiv
             ->addItem((new CTag('circle', true))->setAttribute('cx', '15')->setAttribute('cy', '5')->setAttribute('r', '1'))
             ->addItem((new CTag('circle', true))->setAttribute('cx', '15')->setAttribute('cy', '19')->setAttribute('r', '1'))
     );
-
-    $type_select = new CTag('select', true);
-    $type_select->addClass('js-badge-type');
-
-    foreach (CWidgetFieldBadgesList::BADGE_TYPE_LABELS as $val => $label) {
-        $option = (new CTag('option', true, _($label)))->setAttribute('value', $val);
-
-        if ((int) $val === $type) {
-            $option->setAttribute('selected', 'selected');
-        }
-
-        $type_select->addItem($option);
-    }
+    $type_badge = (new CSpan(_($type_label)))
+        ->addClass('badge-row-type');
 
     $show_text = in_array($type, [CWidgetFieldBadgesList::BADGE_TEXT, CWidgetFieldBadgesList::BADGE_LINK]);
     $show_url = ($type === CWidgetFieldBadgesList::BADGE_LINK);
-    $show_scope = ($type === CWidgetFieldBadgesList::BADGE_PROBLEMS);
-    $show_item_name = ($type === CWidgetFieldBadgesList::BADGE_UPTIME);
-    $show_hostname_link = ($type === CWidgetFieldBadgesList::BADGE_HOSTNAME);
-    $show_text_label = ($type === CWidgetFieldBadgesList::BADGE_TEXT);
-    $hostname_link_label = (new CSpan('...links to..'))->addClass('js-badge-hostname-link-label');
-    $scope_label = (new CSpan('...with a status of...'))->addClass('js-badge-scope-label');
-    $uptime_item_label = (new CSpan('...taken from item...'))->addClass('js-badge-item-name-label');
-    $text_label = (new CSpan('...with value...'))->addClass('js-badge-text-label');
-
-    $hostname_link_select = new CTag('select', true);
-    $hostname_link_select->addClass('js-badge-hostname-link');
-    $cur_hostname_link = (int) ($badge['link'] ?? CWidgetFieldBadgesList::HOSTNAME_LINK_LATEST);
-    foreach (CWidgetFieldBadgesList::HOSTNAME_LINK_LABELS as $val => $label) {
-        $opt = (new CTag('option', true, _($label)))->setAttribute('value', $val);
-        if ((int) $val === $cur_hostname_link) {
-            $opt->setAttribute('selected', 'selected');
-        }
-        $hostname_link_select->addItem($opt);
-    }
-    if (!$show_hostname_link) {
-        $hostname_link_label->setAttribute('style', 'display: none');
-        $hostname_link_select->setAttribute('style', 'display: none');
-    }
-
-    if (!$show_item_name) {
-        $uptime_item_label->setAttribute('style', 'display: none');
-    }
-
-    if (!$show_scope) {
-        $scope_label->setAttribute('style', 'display: none');
-    }
-
-    if (!$show_text_label) {
-        $text_label->setAttribute('style', 'display: none');
-    }
-
-    $scope_select = new CTag('select', true);
-    $scope_select->addClass('js-badge-scope');
-    $cur_scope = (int) ($badge['scope'] ?? CWidgetFieldBadgesList::SCOPE_ALL);
-    foreach (CWidgetFieldBadgesList::SCOPE_LABELS as $val => $label) {
-        $opt = (new CTag('option', true, _($label)))->setAttribute('value', $val);
-        if ((int) $val === $cur_scope) {
-            $opt->setAttribute('selected', 'selected');
-        }
-        $scope_select->addItem($opt);
-    }
-    if (!$show_scope) {
-        $scope_select->setAttribute('style', 'display: none');
-    }
-
-    $item_name_input = (new CTextBox('', $badge['item_name'] ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME))
-        ->setAttribute('placeholder', _('Uptime item name'))
-        ->addClass('js-badge-item-name');
-
-    if (!$show_item_name) {
-        $item_name_input->setAttribute('style', 'display: none');
-    }
-
     $text_input = (new CTextBox('', $badge['text'] ?? ''))
         ->setAttribute('placeholder', _('Display text'))
         ->addClass('js-badge-text');
@@ -417,15 +450,9 @@ function createBadgeRow(array $badge): CDiv
 
     return (new CDiv())
         ->addClass('badge-row')
+        ->setAttribute('data-type', (string) $type)
         ->addItem($drag_handle)
-        ->addItem($type_select)
-        ->addItem($hostname_link_label)
-        ->addItem($hostname_link_select)
-        ->addItem($scope_label)
-        ->addItem($scope_select)
-        ->addItem($uptime_item_label)
-        ->addItem($item_name_input)
-        ->addItem($text_label)
+        ->addItem($type_badge)
         ->addItem($text_input)
         ->addItem($url_input)
         ->addItem($remove_btn);

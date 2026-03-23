@@ -6,6 +6,10 @@
 
 window.form = new (class {
   init(options) {
+    this.badgeTypeOptions = Array.isArray(options?.badge_type_options)
+      ? options.badge_type_options
+      : [];
+
     // Color pickers
     if (
       options &&
@@ -91,36 +95,226 @@ window.form = new (class {
 
   // Badges table: add / remove / type-change
   initBadgesTable() {
-    const container = document.getElementById('badges-list');
-    const addButtons = container ? [...container.querySelectorAll('.js-badge-add')] : [];
     const jsonInput = document.getElementById('badges-json');
+    const container = jsonInput ? jsonInput.closest('fieldset') : null;
+    const addButtons = container ? [...container.querySelectorAll('.js-badge-add')] : [];
     if (!container || addButtons.length === 0 || !jsonInput) return;
     const leftLaneRows = container.querySelector('.js-badge-lane-rows[data-side="left"]');
     const rightLaneRows = container.querySelector('.js-badge-lane-rows[data-side="right"]');
+    const badgeRowTemplate = container.querySelector('#badge-row-template');
     if (!leftLaneRows || !rightLaneRows) return;
     let draggingRow = null;
+    const allowsMultiple = (type) => ['4', '5'].includes(String(type));
+    const escapeHtml = (value) => String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
+    const parseColor = (value) => {
+      const match = String(value).match(/^rgba?\(([^)]+)\)$/i);
+
+      if (!match) {
+        return null;
+      }
+
+      const parts = match[1].split(',').map((part) => part.trim());
+      const [r = 0, g = 0, b = 0] = parts
+        .slice(0, 3)
+        .map((part) => Math.max(0, Math.min(255, parseInt(part, 10) || 0)));
+      const alpha = parts[3] !== undefined ? Math.max(0, Math.min(1, parseFloat(parts[3]) || 0)) : 1;
+
+      return {r, g, b, alpha};
+    };
+    const withAlpha = (value, alpha, fallback) => {
+      const rgb = parseColor(value);
+
+      if (!rgb) {
+        return fallback;
+      }
+
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+    };
+    const badgeTypeOptions = this.badgeTypeOptions.length > 0
+      ? this.badgeTypeOptions
+      : [
+          {value: '0', label: 'Hostname'},
+          {value: '1', label: 'Uptime'},
+          {value: '2', label: 'Liveliness'},
+          {value: '3', label: 'Problems'},
+          {value: '4', label: 'Text'},
+          {value: '5', label: 'Link'},
+        ];
+    const getBadgeTypeLabel = (type) => (
+      badgeTypeOptions.find((option) => String(option.value) === String(type))?.label ?? 'Hostname'
+    );
+    const getUsedSingleTypes = () => {
+      const usedSingleTypes = new Map();
+
+      container.querySelectorAll('.badge-row').forEach((row) => {
+        const type = row.dataset.type ?? '0';
+
+        if (!allowsMultiple(type)) {
+          usedSingleTypes.set(type, (usedSingleTypes.get(type) ?? 0) + 1);
+        }
+      });
+
+      return usedSingleTypes;
+    };
+    const getMenuOptions = () => {
+      const usedSingleTypes = getUsedSingleTypes();
+
+      return badgeTypeOptions.filter(({value}) => allowsMultiple(value) || !usedSingleTypes.has(String(value)));
+    };
+    const resolveMenuSurface = (element) => {
+      let current = element;
+
+      while (current) {
+        const styles = getComputedStyle(current);
+        const backgroundColor = styles.backgroundColor;
+        const color = parseColor(backgroundColor);
+
+        if (
+          backgroundColor
+          && backgroundColor !== 'rgba(0, 0, 0, 0)'
+          && backgroundColor !== 'transparent'
+          && color
+          && color.alpha >= 1
+        ) {
+          return {
+            backgroundColor,
+            color: styles.color || getComputedStyle(document.body).color,
+          };
+        }
+
+        current = current.parentElement;
+      }
+
+      const bodyStyles = getComputedStyle(document.body);
+      return {
+        backgroundColor: bodyStyles.backgroundColor || 'Canvas',
+        color: bodyStyles.color || 'CanvasText',
+      };
+    };
+    const applyMenuTheme = (menu, anchor) => {
+      const surface = resolveMenuSurface(anchor);
+
+      menu.style.setProperty('--badge-add-menu-bg', surface.backgroundColor);
+      menu.style.setProperty('--badge-add-menu-fg', surface.color);
+      menu.style.setProperty('--badge-add-menu-border', withAlpha(surface.color, 0.22, 'rgba(127, 127, 127, 0.35)'));
+      menu.style.setProperty('--badge-add-menu-hover', withAlpha(surface.color, 0.1, 'rgba(127, 127, 127, 0.12)'));
+      menu.style.setProperty('--badge-add-menu-shadow', 'rgba(0, 0, 0, 0.18)');
+    };
+    const renderAddMenuOptions = (menu) => {
+      const options = getMenuOptions();
+
+      menu.innerHTML = options.length > 0
+        ? options.map(({value, label}) => `
+            <button type="button" class="js-badge-add-option" data-type="${escapeHtml(value)}">${escapeHtml(label)}</button>
+          `).join('')
+        : '<span class="badge-add-empty">No badges available</span>';
+    };
+    const createAddMenu = () => {
+      const menu = document.createElement('div');
+
+      menu.className = 'badge-add-menu js-badge-add-menu';
+      menu.hidden = true;
+      renderAddMenuOptions(menu);
+
+      return menu;
+    };
+
+    addButtons.forEach((addButton) => {
+      const wrap = addButton.closest('.badge-add-wrap');
+
+      if (wrap && !wrap.querySelector('.js-badge-add-menu')) {
+        wrap.appendChild(createAddMenu());
+      }
+    });
+
+    const addMenus = [...container.querySelectorAll('.js-badge-add-menu')];
+    const closeAddMenus = () => {
+      addMenus.forEach((menu) => {
+        menu.hidden = true;
+      });
+      addButtons.forEach((button) => {
+        button.setAttribute('aria-expanded', 'false');
+      });
+    };
+    const toggleAddMenu = (button) => {
+      const wrap = button.closest('.badge-add-wrap');
+      const menu = wrap ? wrap.querySelector('.js-badge-add-menu') : null;
+
+      if (!menu) {
+        return;
+      }
+
+      const shouldOpen = menu.hidden;
+
+      closeAddMenus();
+
+      if (shouldOpen) {
+        renderAddMenuOptions(menu);
+        applyMenuTheme(menu, button);
+        menu.hidden = false;
+        button.setAttribute('aria-expanded', 'true');
+      }
+    };
+
+    const applyBadgeRowType = (row, type) => {
+      if (!row) return;
+
+      row.dataset.type = String(type);
+
+      const numericType = parseInt(type ?? '0', 10);
+      const typeBadge = row.querySelector('.badge-row-type');
+      const textInput = row.querySelector('.js-badge-text');
+      const urlInput = row.querySelector('.js-badge-url');
+
+      if (typeBadge) typeBadge.textContent = getBadgeTypeLabel(type);
+      if (textInput) textInput.style.display = (numericType === 4 || numericType === 5) ? '' : 'none';
+      if (urlInput) urlInput.style.display = (numericType === 5) ? '' : 'none';
+    };
+
+    const hydrateBadgeRow = (row, badge = {}) => {
+      if (!row) {
+        return null;
+      }
+
+      const textInput = row.querySelector('.js-badge-text');
+      const urlInput = row.querySelector('.js-badge-url');
+
+      if (textInput) {
+        textInput.value = badge.text ?? '';
+      }
+      if (urlInput) {
+        urlInput.value = badge.url ?? '';
+      }
+
+      applyBadgeRowType(row, badge.type ?? '0');
+
+      return row;
+    };
+
+    const updateBadgeTypeAvailability = () => {
+      addMenus.forEach((menu) => {
+        if (!menu.hidden) {
+          renderAddMenuOptions(menu);
+        }
+      });
+    };
 
     const syncJson = () => {
       const badges = [];
       [leftLaneRows, rightLaneRows].forEach((lane) => {
         const side = lane.dataset.side || 'left';
         lane.querySelectorAll('.badge-row').forEach(row => {
-          const type = row.querySelector('.js-badge-type')?.value ?? '0';
+          const type = row.dataset.type ?? '0';
           const text = row.querySelector('.js-badge-text')?.value ?? '';
           const url = row.querySelector('.js-badge-url')?.value ?? '';
-          const badge = {type: parseInt(type), text, url, side};
-          if (badge.type === 0) {
-            badge.link = parseInt(row.querySelector('.js-badge-hostname-link')?.value ?? '1');
-          }
-          if (badge.type === 1) {
-            badge.item_name = row.querySelector('.js-badge-item-name')?.value ?? 'System uptime';
-          }
-          if (badge.type === 3) {
-            badge.scope = parseInt(row.querySelector('.js-badge-scope')?.value ?? '0');
-          }
-          badges.push(badge);
+          badges.push({type: parseInt(type, 10), text, url, side});
         });
       });
+      updateBadgeTypeAvailability();
       jsonInput.value = JSON.stringify(badges);
     };
 
@@ -139,49 +333,19 @@ window.form = new (class {
       }, {offset: Number.NEGATIVE_INFINITY, element: null}).element;
     };
 
-    const createBadgeRow = () => {
-      const row = document.createElement('div');
-      row.className = 'badge-row';
-      row.innerHTML = `
-        <span class="js-badge-drag" draggable="true" title="Drag to reorder">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical-icon lucide-grip-vertical"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
-        </span>
-        <select class="js-badge-type">
-          <option value="0">Hostname</option>
-          <option value="1">Uptime</option>
-          <option value="2">Liveliness</option>
-          <option value="3">Problems</option>
-          <option value="4">Text</option>
-          <option value="5">Link</option>
-        </select>
-        <span class="js-badge-hostname-link-label">...links to..</span>
-        <select class="js-badge-hostname-link">
-          <option value="0">Nothing</option>
-          <option value="1" selected>Latest data</option>
-          <option value="2">Problems</option>
-        </select>
-        <span class="js-badge-scope-label" style="display:none">...with a status of...</span>
-        <select class="js-badge-scope" style="display:none">
-          <option value="1">Unacknowledged</option>
-          <option value="0" selected>Any</option>
-        </select>
-        <span class="js-badge-item-name-label" style="display:none">...taken from item...</span>
-        <input type="text" class="js-badge-item-name" placeholder="Uptime item name" value="System uptime" style="display:none">
-        <input type="text" class="js-badge-text" placeholder="Text" style="display:none">
-        <input type="text" class="js-badge-url" placeholder="URL" style="display:none">
-        <button type="button" class="btn-link js-badge-remove">Remove</button>
-      `;
-      return row;
-    };
+    const createBadgeRow = (initialType = '4') => {
+      const templateRow = badgeRowTemplate?.content?.firstElementChild;
 
-    addButtons.forEach((addButton) => {
-      addButton.addEventListener('click', () => {
-        const side = addButton.dataset.side || 'left';
-        const targetLane = side === 'right' ? rightLaneRows : leftLaneRows;
-        targetLane.appendChild(createBadgeRow());
-        syncJson();
+      if (!templateRow) {
+        return null;
+      }
+
+      return hydrateBadgeRow(templateRow.cloneNode(true), {
+        type: initialType,
+        text: '',
+        url: '',
       });
-    });
+    };
 
     container.addEventListener('dragstart', (e) => {
       const handle = e.target.closest('.js-badge-drag');
@@ -227,51 +391,71 @@ window.form = new (class {
       syncJson();
     });
 
-    // Remove badge row (delegated)
     container.addEventListener('click', (e) => {
+      const addButton = e.target.closest('.js-badge-add');
+      if (addButton) {
+        e.preventDefault();
+        toggleAddMenu(addButton);
+        return;
+      }
+
+      const addOption = e.target.closest('.js-badge-add-option');
+      if (addOption) {
+        e.preventDefault();
+        const wrap = addOption.closest('.badge-add-wrap');
+        const side = wrap ? wrap.querySelector('.js-badge-add')?.dataset.side ?? 'left' : 'left';
+        const targetLane = side === 'right' ? rightLaneRows : leftLaneRows;
+        const row = createBadgeRow(addOption.dataset.type ?? '4');
+
+        if (!row) {
+          return;
+        }
+
+        targetLane.appendChild(row);
+        closeAddMenus();
+        syncJson();
+        return;
+      }
+
       if (e.target.classList.contains('js-badge-remove')) {
         const row = e.target.closest('.badge-row');
         if (row) {
           row.remove();
           syncJson();
         }
+        return;
       }
-    });
 
-    // Type change: show/hide text & url inputs (delegated)
-    container.addEventListener('change', (e) => {
-      if (e.target.classList.contains('js-badge-type')) {
-        const row = e.target.closest('.badge-row');
-        if (!row) return;
-        const type = parseInt(e.target.value);
-        const textInput = row.querySelector('.js-badge-text');
-        const urlInput = row.querySelector('.js-badge-url');
-        const scopeLabel = row.querySelector('.js-badge-scope-label');
-        const scopeSelect = row.querySelector('.js-badge-scope');
-        const itemNameLabel = row.querySelector('.js-badge-item-name-label');
-        const itemNameInput = row.querySelector('.js-badge-item-name');
-        const textLabel = row.querySelector('.js-badge-text-label');
-        const hostnameLinkLabel = row.querySelector('.js-badge-hostname-link-label');
-        const hostnameLinkSelect = row.querySelector('.js-badge-hostname-link');
-        if (hostnameLinkLabel) hostnameLinkLabel.style.display = (type === 0) ? '' : 'none';
-        if (hostnameLinkSelect) hostnameLinkSelect.style.display = (type === 0) ? '' : 'none';
-        if (scopeLabel) scopeLabel.style.display = (type === 3) ? '' : 'none';
-        if (scopeSelect) scopeSelect.style.display = (type === 3) ? '' : 'none';
-        if (itemNameLabel) itemNameLabel.style.display = (type === 1) ? '' : 'none';
-        if (itemNameInput) itemNameInput.style.display = (type === 1) ? '' : 'none';
-        if (textLabel) textLabel.style.display = (type === 4) ? '' : 'none';
-        if (textInput) textInput.style.display = (type === 4 || type === 5) ? '' : 'none';
-        if (urlInput) urlInput.style.display = (type === 5) ? '' : 'none';
-      }
-      syncJson();
+      closeAddMenus();
     });
 
     // Sync on text/url/scope input changes
     container.addEventListener('input', (e) => {
-      if (e.target.classList.contains('js-badge-text') || e.target.classList.contains('js-badge-url') || e.target.classList.contains('js-badge-item-name')) {
+      if (e.target.classList.contains('js-badge-text') || e.target.classList.contains('js-badge-url')) {
         syncJson();
       }
     });
+
+    container.querySelectorAll('.badge-row').forEach((row) => {
+      hydrateBadgeRow(row, {
+        type: row.dataset.type ?? '0',
+        text: row.querySelector('.js-badge-text')?.value ?? '',
+        url: row.querySelector('.js-badge-url')?.value ?? '',
+      });
+    });
+    syncJson();
+
+    if (this._badgeMenuDocumentClickHandler) {
+      document.removeEventListener('click', this._badgeMenuDocumentClickHandler);
+    }
+
+    this._badgeMenuDocumentClickHandler = (e) => {
+      if (!container.contains(e.target)) {
+        closeAddMenus();
+      }
+    };
+
+    document.addEventListener('click', this._badgeMenuDocumentClickHandler);
   }
 
   // Link a checkbox within a CheckBoxList to dependent fields

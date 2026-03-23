@@ -88,12 +88,16 @@
   vertical-align: middle;
 }
 .dashboard-widget-host_overview #container .info-bar .badge.freshness-warn {
-  background: rgba(255, 133, 27, 0.25);
+  background: rgba(255, 133, 27, 0.4);
 }
 .dashboard-widget-host_overview #container .info-bar .badge.freshness-stale {
-  background: rgba(255, 65, 54, 0.25);
+  background: rgba(230, 80, 40, 0.4);
 }
-.dashboard-widget-host_overview #container .info-bar .badge[class*="problems-"] {
+.dashboard-widget-host_overview #container .info-bar .badge.problems-info,
+.dashboard-widget-host_overview #container .info-bar .badge.problems-warning,
+.dashboard-widget-host_overview #container .info-bar .badge.problems-average,
+.dashboard-widget-host_overview #container .info-bar .badge.problems-high,
+.dashboard-widget-host_overview #container .info-bar .badge.problems-disaster {
   background-color: var(--problems-badge-bg);
 }
 .dashboard-widget-host_overview #container .info-bar .badge.problems-info {
@@ -125,7 +129,11 @@
     background-color: var(--problems-badge-bg-pulse, var(--problems-badge-bg));
   }
 }
-.dashboard-widget-host_overview #container.problems-pulse-enabled .info-bar .badge[class*="problems-"] {
+.dashboard-widget-host_overview #container.problems-pulse-enabled .info-bar .badge.problems-info,
+.dashboard-widget-host_overview #container.problems-pulse-enabled .info-bar .badge.problems-warning,
+.dashboard-widget-host_overview #container.problems-pulse-enabled .info-bar .badge.problems-average,
+.dashboard-widget-host_overview #container.problems-pulse-enabled .info-bar .badge.problems-high,
+.dashboard-widget-host_overview #container.problems-pulse-enabled .info-bar .badge.problems-disaster {
   animation: problems-pulse 1.5s ease-in-out infinite;
 }
 
@@ -290,6 +298,7 @@
 .dashboard-widget-host_overview .sparkline-title {
   min-width: 0;
   opacity: 0.7;
+  text-transform: uppercase;
 }
 .dashboard-widget-host_overview .sparkline-header-actions {
   display: flex;

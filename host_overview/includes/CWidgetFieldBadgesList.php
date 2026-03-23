@@ -54,10 +54,10 @@ class CWidgetFieldBadgesList extends CWidgetField {
     private const LINK_BADGE_ALLOWED_SCHEMES = ['http', 'https'];
 
     private const DEFAULT_BADGES = [
-        ['type' => self::BADGE_HOSTNAME,   'text' => '', 'url' => '', 'link' => self::HOSTNAME_LINK_LATEST, 'side' => self::SIDE_LEFT],
-        ['type' => self::BADGE_UPTIME,     'text' => '', 'url' => '', 'item_name' => self::DEFAULT_ITEM_UPTIME, 'side' => self::SIDE_LEFT],
+        ['type' => self::BADGE_HOSTNAME,   'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
+        ['type' => self::BADGE_UPTIME,     'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
         ['type' => self::BADGE_LIVELINESS, 'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
-        ['type' => self::BADGE_PROBLEMS,   'text' => '', 'url' => '', 'scope' => self::SCOPE_ALL, 'side' => self::SIDE_RIGHT],
+        ['type' => self::BADGE_PROBLEMS,   'text' => '', 'url' => '', 'side' => self::SIDE_RIGHT],
     ];
 
     public function __construct(string $name, ?string $label = null) {
@@ -71,10 +71,15 @@ class CWidgetFieldBadgesList extends CWidgetField {
         $errors = parent::validate($strict);
 
         $badges = $this->getBadges();
+        $single_badge_counts = [];
 
         foreach ($badges as $index => $badge) {
             $type = (int) ($badge['type'] ?? self::BADGE_HOSTNAME);
             $pos = $index + 1;
+
+            if (!self::badgeTypeAllowsMultiple($type)) {
+                $single_badge_counts[$type] = ($single_badge_counts[$type] ?? 0) + 1;
+            }
 
             if ($type === self::BADGE_TEXT) {
                 if (trim($badge['text'] ?? '') === '') {
@@ -98,15 +103,20 @@ class CWidgetFieldBadgesList extends CWidgetField {
                     );
                 }
             }
+        }
 
-            if ($type === self::BADGE_UPTIME) {
-                if (trim($badge['item_name'] ?? '') === '') {
-                    $errors[] = _s('Badge %1$s: Item name cannot be empty for an Uptime badge.', $pos);
-                }
+        foreach ($single_badge_counts as $type => $count) {
+            if ($count > 1) {
+                $label = self::BADGE_TYPE_LABELS[$type] ?? _('This');
+                $errors[] = _s('%1$s badge can only be added once.', _($label));
             }
         }
 
         return $errors;
+    }
+
+    public static function badgeTypeAllowsMultiple(int $type): bool {
+        return in_array($type, [self::BADGE_TEXT, self::BADGE_LINK], true);
     }
 
     public static function sanitizeLinkUrl(?string $url): ?string {
