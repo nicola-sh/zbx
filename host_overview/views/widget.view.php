@@ -34,10 +34,50 @@ if ($problems_pulse === 1) {
     $container->addClass('problems-pulse-enabled');
 }
 
+$metric_hostid = isset($data['config']['hostid'][0]) ? (string) $data['config']['hostid'][0] : null;
+
+$makeLatestDataUrl = static function (?array $item_ref) use ($metric_hostid): ?string {
+    if ($metric_hostid === null || $metric_hostid === '') {
+        return null;
+    }
+
+    $item_name = is_array($item_ref) && array_key_exists('name', $item_ref)
+        ? trim((string) $item_ref['name'])
+        : '';
+
+    if ($item_name === '') {
+        return null;
+    }
+
+    return 'zabbix.php?action=latest.view&hostids%5B%5D=' . urlencode($metric_hostid)
+        . '&name=' . urlencode($item_name)
+        . '&filter_set=1';
+};
+
 // --- Helper: create a single-metric bar row ---
-$makeBarRow = static function (string $label, string $fillClass, string $textClass): CDiv {
-    return (new CDiv())->addClass('row')->addItem([
-        (new CTag('aside', true))->addClass('label')->addItem($label),
+$makeBarRow = static function (
+    string $label,
+    string $metric_key,
+    string $fillClass,
+    string $textClass,
+    ?array $item_ref = null
+) use ($makeLatestDataUrl): CDiv {
+    $label_link = (new CTag('a', true))
+        ->addClass('metric-link')
+        ->addClass('metric-label-link')
+        ->addClass('js-metric-link')
+        ->setAttribute('data-metric-key', $metric_key)
+        ->addItem($label);
+
+    if (($latest_data_url = $makeLatestDataUrl($item_ref)) !== null) {
+        $label_link->setAttribute('href', $latest_data_url);
+    }
+
+    return (new CDiv())
+        ->addClass('row')
+        ->setAttribute('data-metric-key', $metric_key)
+        ->addItem([
+        (new CTag('aside', true))->addClass('label')->addItem($label_link),
         (new CDiv())->addClass('data')->addItem([
             (new CDiv())->addClass('bar')->addItem(
                 (new CDiv())->addClass('fill ' . $fillClass)
@@ -48,7 +88,13 @@ $makeBarRow = static function (string $label, string $fillClass, string $textCla
 };
 
 // --- Helper: create a multi-row section (disks, partitions, interfaces) ---
-$makeMultiRow = static function (string $label, string $dataClass, array $items, bool $useKeys = false): CDiv {
+$makeMultiRow = static function (
+    string $label,
+    string $dataClass,
+    array $items,
+    string $metric_prefix = '',
+    bool $useKeys = false
+) use ($makeLatestDataUrl): CDiv {
     $row       = (new CDiv())->addClass('row');
     $labelEl   = (new CTag('aside', true))->addClass('label')->addItem($label);
     $data_cell = (new CDiv())->addClass('data ' . $dataClass . ' multi');
@@ -56,21 +102,37 @@ $makeMultiRow = static function (string $label, string $dataClass, array $items,
     foreach ($items as $key => $item) {
         $item_key = $item['key'] ?? ($useKeys ? $key : ($item['name'] ?? $key));
         $item_label = $item['label'] ?? ($item['name'] ?? $item_key);
-        $textEl = (new CTag('span'))->addClass('text');
+        $metric_key = $metric_prefix !== '' ? $metric_prefix . ':' . $item_key : null;
+        $textEl = (new CTag('a', true))
+            ->addClass('text')
+            ->addClass('metric-link')
+            ->addClass('metric-value-link')
+            ->addClass('js-metric-link');
+
+        if ($metric_key !== null) {
+            $textEl->setAttribute('data-metric-key', $metric_key);
+        }
+        if (($latest_data_url = $makeLatestDataUrl($item['item_ref'] ?? null)) !== null) {
+            $textEl->setAttribute('href', $latest_data_url);
+        }
 
         // For interfaces, pre-fill text with name placeholder
         if ($useKeys) {
             $textEl->addItem($item_label . ' -');
         }
 
-        $data_cell->addItem(
-            (new CDiv())
-                ->addClass('cell')
-                ->setAttribute('data-key', $item_key)
-                ->setAttribute('data-label', $item_label)
-                ->addItem((new CDiv())->addClass('bar')->addItem((new CDiv())->addClass('fill')))
-                ->addItem($textEl)
-        );
+        $cell = (new CDiv())
+            ->addClass('cell')
+            ->setAttribute('data-key', $item_key)
+            ->setAttribute('data-label', $item_label)
+            ->addItem((new CDiv())->addClass('bar')->addItem((new CDiv())->addClass('fill')))
+            ->addItem($textEl);
+
+        if ($metric_key !== null) {
+            $cell->setAttribute('data-metric-key', $metric_key);
+        }
+
+        $data_cell->addItem($cell);
     }
 
     $row->addItem($labelEl)->addItem($data_cell);
@@ -299,17 +361,23 @@ if (!empty($badges)) {
     );
 }
 
-// Single-metric bars: [metric_id, full_label, short_label, fill_class, text_class]
+// Single-metric bars: [metric_id, metric_key, full_label, short_label, fill_class, text_class]
 $single_metrics = [
-    [WidgetForm::METRIC_CPU,  'Processor', 'CPU',  'cpu',  'cpu-text'],
-    [WidgetForm::METRIC_RAM,  'Memory',    'RAM',  'ram',  'ram-text'],
-    [WidgetForm::METRIC_LOAD, 'Load',      'Load', 'load', 'load-text'],
-    [WidgetForm::METRIC_SWAP, 'Swap',      'Swap', 'swap', 'swap-text'],
+    [WidgetForm::METRIC_CPU,  'cpu',  'Processor', 'CPU',  'cpu',  'cpu-text'],
+    [WidgetForm::METRIC_RAM,  'ram',  'Memory',    'RAM',  'ram',  'ram-text'],
+    [WidgetForm::METRIC_LOAD, 'load', 'Load',      'Load', 'load', 'load-text'],
+    [WidgetForm::METRIC_SWAP, 'swap', 'Swap',      'Swap', 'swap', 'swap-text'],
 ];
 
-foreach ($single_metrics as [$metric_id, $full_label, $short_label, $fillClass, $textClass]) {
+foreach ($single_metrics as [$metric_id, $metric_key, $full_label, $short_label, $fillClass, $textClass]) {
     if (in_array($metric_id, $enabled)) {
-        $container->addItem($makeBarRow($short ? $short_label : $full_label, $fillClass, $textClass));
+        $container->addItem($makeBarRow(
+            $short ? $short_label : $full_label,
+            $metric_key,
+            $fillClass,
+            $textClass,
+            $data['item_map'][$metric_key] ?? null
+        ));
     }
 }
 
@@ -319,6 +387,7 @@ if (in_array(WidgetForm::METRIC_INTERFACES, $enabled)) {
         $short ? 'NICs' : 'Interfaces',
         'interfaces-data',
         $data['interfaces'] ?? [],
+        'iface',
         true
     ));
 }
@@ -328,7 +397,8 @@ if (in_array(WidgetForm::METRIC_DISKS, $enabled)) {
     $container->addItem($makeMultiRow(
         $short ? 'Disks' : 'Disk util.',
         'disks-data',
-        $data['disks'] ?? []
+        $data['disks'] ?? [],
+        'disk'
     ));
 }
 
@@ -337,7 +407,8 @@ if (in_array(WidgetForm::METRIC_PARTITIONS, $enabled)) {
     $container->addItem($makeMultiRow(
         $short ? 'Parts' : 'Partitions',
         'partitions-data',
-        $data['partitions'] ?? []
+        $data['partitions'] ?? [],
+        'partition'
     ));
 }
 
