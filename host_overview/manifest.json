@@ -21,6 +21,6 @@
   },
   "assets": {
     "css": ["widget.css"],
-    "js": ["class.widget.js"]
+    "js": ["class.sparkline.js", "class.widget.js"]
   }
 }
