@@ -2,7 +2,7 @@
 
 /*
  * MIT License
- * Copyright (c) 2025 ObviousAIChicken
+ * Copyright (c) 2026 ObviousAIChicken
  * github.com/obviousaichicken/zabbix_widgets
  */
 
