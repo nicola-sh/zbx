@@ -187,10 +187,11 @@ $freshness_icon = fn() => $makeSvg([
 $maintenance_icon = fn() => $makeSvg([
     'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'
 ], 'badge-leading-icon');
-$menu_icon = fn() => (new CSpan())
-    ->addClass('badge-trailing-icon')
-    ->addClass('badge-menu-icon')
-    ->addClass(defined('ZBX_ICON_MORE') ? ZBX_ICON_MORE : 'zi-more');
+$menu_icon = fn() => $makeSvg([], 'badge-trailing-icon', [
+    ['12', '12', '1'],
+    ['19', '12', '1'],
+    ['5', '12', '1'],
+])->addClass('badge-menu-icon');
 
 // Host info badges — driven by badges config
 $badges_raw = $data['config']['badges'] ?? '[]';

@@ -60,6 +60,95 @@
   flex-shrink: 0;
 }
 
+/* ===== Item match assistant (widget.edit.php) ===== */
+.item-match-assistant {
+  display: grid;
+  gap: 6px;
+}
+.item-match-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.item-match-controls input[type="text"] {
+  flex: 1 1 260px;
+  min-width: 180px;
+}
+.item-match-preview {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  background: rgba(0, 0, 0, 0.06);
+}
+.item-match-preview[data-state="success"] {
+  background: rgba(76, 159, 56, 0.12);
+}
+.item-match-preview[data-state="warning"] {
+  background: rgba(255, 133, 27, 0.12);
+}
+.item-match-preview[data-state="error"] {
+  background: rgba(255, 65, 54, 0.12);
+}
+.item-match-preview-actions {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  margin-top: 6px;
+}
+.item-match-apply {
+  margin-left: 0;
+  margin-inline-start: 0;
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+.item-match-preview-actions > .item-match-apply:not(:first-child) {
+  margin-left: 0 !important;
+  margin-inline-start: 0 !important;
+  padding-left: 0 !important;
+  padding-inline-start: 0 !important;
+}
+.item-match-preview-note {
+  width: 100%;
+  opacity: 0.75;
+}
+.item-match-preview-section + .item-match-preview-section {
+  margin-top: 10px;
+}
+.item-match-preview-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.item-match-preview-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.item-match-preview-row {
+  display: grid;
+  gap: 2px;
+}
+.item-match-preview-row[data-filtered="true"] {
+  opacity: 0.7;
+}
+.item-match-preview-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.item-match-preview-arrow {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  opacity: 0.8;
+}
+
 .dashboard-widget-host_overview {
   --gap-1: 4px;
   --gap-2: 6px;
@@ -202,10 +291,8 @@
 }
 
 .host-overview-container .info-bar .badge-menu-icon {
-  width: auto;
-  height: auto;
-  font-size: var(--badge-menu-icon-size);
-  line-height: 1;
+  width: var(--badge-icon-size);
+  height: var(--badge-icon-size);
 }
 
 .host-overview-container .info-bar .badge-text:empty + .badge-trailing-icon {

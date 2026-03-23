@@ -18,6 +18,9 @@ window.form = new (class {
     this.badgeTypesWithUrl = Array.isArray(options?.badge_types_with_url)
       ? options.badge_types_with_url.map(String)
       : [];
+    this.metricLookupAction = typeof options?.item_lookup_action === "string"
+      ? options.item_lookup_action
+      : "";
 
     // Color pickers
     if (
@@ -32,6 +35,7 @@ window.form = new (class {
     // Field toggles
     this.initColorSchemeToggle();
     this.initFieldDependencies();
+    this.initMetricLookupAssistants();
   }
 
   initColorPickers(colorPickerClass) {
@@ -201,6 +205,588 @@ window.form = new (class {
       optionValue: "6",
       textBoxName: "th_partition_2",
     });
+  }
+
+  initMetricLookupAssistants() {
+    if (!this.metricLookupAction) {
+      return;
+    }
+
+    const metricList = document.getElementById("metrics_show");
+
+    document.querySelectorAll(".js-item-match-assistant").forEach((assistant) => {
+      const fieldName = assistant.dataset.fieldName ?? "";
+      const metricValue = assistant.dataset.metricValue ?? "";
+      const mode = assistant.dataset.lookupMode ?? "single";
+      const metricType = assistant.dataset.metricType ?? "";
+      const excludeFieldName = assistant.dataset.excludeFieldName ?? "";
+      const input = document.querySelector(`input[name="${fieldName}"]`);
+      const excludeInput = excludeFieldName !== ""
+        ? document.querySelector(`input[name="${excludeFieldName}"]`)
+        : null;
+      const relatedInputs = this.getMetricLookupRelatedInputs(metricType);
+      const button = assistant.querySelector(".js-item-match-test");
+      const preview = assistant.querySelector(".js-item-match-preview");
+      const metricToggle = metricList?.querySelector(
+        `input[type="checkbox"][value="${metricValue}"]`
+      ) ?? null;
+      const state = {abortController: null, updateEnabled: null};
+
+      if (!fieldName || !input || !button || !preview) {
+        return;
+      }
+
+      const updateEnabled = () => {
+        const enabled = !input.disabled && (metricToggle ? metricToggle.checked : true);
+
+        button.disabled = !enabled;
+
+        if (!enabled) {
+          this.abortMetricLookupRequest(state);
+          this.hideMetricLookupPreview(preview);
+        }
+      };
+      state.updateEnabled = updateEnabled;
+
+      button.addEventListener("click", () => {
+        this.lookupMetricMatch({input, excludeInput, button, preview, state, mode, metricType});
+      });
+
+      const markPreviewStale = () => {
+        this.abortMetricLookupRequest(state);
+
+        if (!preview.hidden) {
+          this.renderMetricLookupNotice(
+            preview,
+            "muted",
+            this.getMetricLookupStaleText(mode)
+          );
+        }
+      };
+
+      input.addEventListener("input", markPreviewStale);
+      excludeInput?.addEventListener("input", markPreviewStale);
+      relatedInputs.forEach(({element, eventName}) => {
+        element.addEventListener(eventName, markPreviewStale);
+      });
+
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !button.disabled) {
+          event.preventDefault();
+          button.click();
+        }
+      });
+
+      if (metricToggle) {
+        metricToggle.addEventListener("change", updateEnabled);
+      }
+
+      updateEnabled();
+    });
+  }
+
+  getMetricLookupRelatedInputs(metricType) {
+    if (metricType !== "interface") {
+      return [];
+    }
+
+    const related = [];
+    const interfaceHigh = document.querySelector('input[name="interfaces_high"]');
+
+    if (interfaceHigh) {
+      related.push({element: interfaceHigh, eventName: "input"});
+    }
+
+    document.querySelectorAll('input[name="interfaces_unit"]').forEach((radio) => {
+      related.push({element: radio, eventName: "change"});
+    });
+
+    return related;
+  }
+
+  getMetricLookupStaleText(mode) {
+    return mode === "wildcard"
+      ? "Pattern or excludes changed. Test again to refresh the preview."
+      : "Input changed. Test again to refresh the preview.";
+  }
+
+  getMetricLookupEmptyText(mode, metricType) {
+    if (mode !== "wildcard") {
+      return "Enter an item name to preview.";
+    }
+
+    const [, plural] = this.getMetricTypeLabels(metricType);
+
+    return `Enter a wildcard pattern to preview matching ${plural}.`;
+  }
+
+  async lookupMetricMatch({input, excludeInput, button, preview, state, mode = "single", metricType = ""}) {
+    const hostid = this.getSelectedHostId();
+    const search = input.value.trim();
+    const exclude = excludeInput?.value.trim() ?? "";
+
+    if (!hostid) {
+      this.renderMetricLookupNotice(preview, "warning", "Pick a host first.");
+      return;
+    }
+
+    if (search === "") {
+      this.renderMetricLookupNotice(preview, "warning", this.getMetricLookupEmptyText(mode, metricType));
+      return;
+    }
+
+    this.abortMetricLookupRequest(state);
+    this.renderMetricLookupNotice(preview, "muted", "Checking for matches...");
+
+    const curl = new Curl("zabbix.php");
+    curl.setArgument("action", this.metricLookupAction);
+
+    const abortController = new AbortController();
+    state.abortController = abortController;
+    button.disabled = true;
+
+    try {
+      const requestBody = {hostid, search, mode};
+
+      if (mode === "wildcard") {
+        requestBody.metric_type = metricType;
+        requestBody.exclude = exclude;
+
+        if (metricType === "interface") {
+          requestBody.interfaces_high = this.getNamedInputValue("interfaces_high");
+          requestBody.interfaces_unit = this.getCheckedRadioValue("interfaces_unit");
+        }
+      }
+
+      const response = await fetch(curl.getUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        credentials: "same-origin",
+        body: JSON.stringify(requestBody),
+        signal: abortController.signal,
+      });
+      const result = await this.parseMetricLookupResponse(response);
+
+      if ("error" in result) {
+        const messages = Array.isArray(result.error?.messages)
+          ? result.error.messages.filter(Boolean)
+          : [];
+
+        throw new Error(messages[0] ?? "Could not check item matches right now.");
+      }
+
+      this.renderMetricLookupResult(preview, input, result, {mode, metricType});
+    }
+    catch (error) {
+      if (error?.name === "AbortError") {
+        return;
+      }
+
+      console.log("Could not check item matches", error);
+      this.renderMetricLookupNotice(
+        preview,
+        "error",
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not check item matches right now."
+      );
+    }
+    finally {
+      if (state.abortController === abortController) {
+        state.abortController = null;
+        if (typeof state.updateEnabled === "function") {
+          state.updateEnabled();
+        }
+        else {
+          button.disabled = input.disabled;
+        }
+      }
+    }
+  }
+
+  async parseMetricLookupResponse(response) {
+    const raw = await response.text();
+
+    if (raw === "") {
+      throw new Error("The lookup endpoint returned an empty response.");
+    }
+
+    try {
+      return JSON.parse(raw);
+    }
+    catch (error) {
+      const contentType = response.headers.get("content-type") ?? "";
+
+      console.log("Unexpected metric lookup response", {
+        status: response.status,
+        contentType,
+        body: raw.slice(0, 200),
+      });
+
+      if (contentType.includes("text/html") || this.looksLikeHtmlDocument(raw)) {
+        throw new Error("The lookup endpoint returned an HTML page instead of JSON.");
+      }
+
+      throw new Error("Could not read the lookup response.");
+    }
+  }
+
+  looksLikeHtmlDocument(text) {
+    return /^\s*<!DOCTYPE html/i.test(text) || /^\s*<html[\s>]/i.test(text);
+  }
+
+  renderMetricLookupResult(preview, input, result, options = {}) {
+    const mode = typeof result?.mode === "string" ? result.mode : (options.mode ?? "single");
+
+    if (mode === "wildcard") {
+      this.renderWildcardMetricLookupResult(preview, result, options.metricType ?? "");
+      return;
+    }
+
+    const status = typeof result?.status === "string" ? result.status : "none";
+    const matchName = typeof result?.match?.name === "string" ? result.match.name : "";
+    const candidateCount = Number.parseInt(result?.candidate_count ?? 0, 10) || 0;
+    const candidates = Array.isArray(result?.candidates)
+      ? result.candidates.filter((candidate) => typeof candidate?.name === "string" && candidate.name !== "")
+      : [];
+    const hasMoreCandidates = Boolean(result?.has_more_candidates);
+    const fragment = document.createDocumentFragment();
+    const summary = document.createElement("div");
+
+    summary.className = "item-match-preview-text";
+
+    switch (status) {
+      case "exact":
+        summary.textContent = `Exact match: ${matchName}.`;
+        fragment.append(summary);
+        this.showMetricLookupPreview(preview, "success", fragment);
+        return;
+
+      case "unique_partial":
+        summary.textContent = `Unique partial match: ${matchName}.`;
+        fragment.append(summary);
+        fragment.append(this.createMetricCandidateList([{name: matchName}], input, preview));
+        this.showMetricLookupPreview(preview, "success", fragment);
+        return;
+
+      case "ambiguous":
+        summary.textContent = `${candidateCount} matching item names found. Choose one exact name:`;
+        fragment.append(summary);
+        fragment.append(this.createMetricCandidateList(candidates, input, preview, hasMoreCandidates));
+        this.showMetricLookupPreview(preview, "warning", fragment);
+        return;
+
+      case "none":
+        if (candidateCount > 0) {
+          summary.textContent = "No exact or unique partial match yet. Choose an exact item name:";
+          fragment.append(summary);
+          fragment.append(this.createMetricCandidateList(candidates, input, preview, hasMoreCandidates));
+          this.showMetricLookupPreview(preview, "warning", fragment);
+          return;
+        }
+
+        summary.textContent = "No matching item names found.";
+        fragment.append(summary);
+        this.showMetricLookupPreview(preview, "error", fragment);
+        return;
+
+      default:
+        summary.textContent = "Enter an item name to preview.";
+        fragment.append(summary);
+        this.showMetricLookupPreview(preview, "muted", fragment);
+    }
+  }
+
+  renderWildcardMetricLookupResult(preview, result, fallbackMetricType = "") {
+    const metricType = typeof result?.metric_type === "string" && result.metric_type !== ""
+      ? result.metric_type
+      : fallbackMetricType;
+    const [singular, plural] = this.getMetricTypeLabels(metricType);
+    const status = typeof result?.status === "string" ? result.status : "none";
+    const rowCount = Number.parseInt(result?.row_count ?? 0, 10) || 0;
+    const rows = Array.isArray(result?.rows)
+      ? result.rows.filter((row) => typeof row?.name === "string" && row.name !== "")
+      : [];
+    const excludedRows = Array.isArray(result?.excluded_rows)
+      ? result.excluded_rows.filter((row) => typeof row?.name === "string" && row.name !== "")
+      : [];
+    const hasMoreRows = Boolean(result?.has_more_rows);
+    const hasMoreExcludedRows = Boolean(result?.has_more_excluded_rows);
+    const fragment = document.createDocumentFragment();
+
+    switch (status) {
+      case "matches":
+        fragment.append(this.createMetricPreviewSection(`MATCHES (${rowCount})`, rows, {
+          hasMoreRows,
+        }));
+
+        if (excludedRows.length > 0) {
+          fragment.append(this.createMetricPreviewSection("FILTERED OUT", excludedRows, {
+            hasMoreRows: hasMoreExcludedRows,
+            filtered: true,
+          }));
+        }
+
+        this.showMetricLookupPreview(preview, "success", fragment);
+        return;
+
+      case "none":
+        if (excludedRows.length > 0) {
+          fragment.append(this.createMetricPreviewSection("FILTERED OUT", excludedRows, {
+            hasMoreRows: hasMoreExcludedRows,
+            filtered: true,
+          }));
+          this.showMetricLookupPreview(preview, "warning", fragment);
+          return;
+        }
+
+        this.renderMetricLookupNotice(preview, "error", `No matching ${plural} found.`);
+        return;
+
+      case "invalid_pattern":
+        this.renderMetricLookupNotice(preview, "warning", metricType === "interface"
+          ? "Use at least two * wildcards to preview matching interfaces."
+          : `Use at least one * wildcard to preview matching ${plural}.`);
+        return;
+
+      case "too_broad":
+        this.renderMetricLookupNotice(
+          preview,
+          "warning",
+          `Include some fixed text around * so the preview can narrow matching ${plural}.`
+        );
+        return;
+
+      case "empty":
+        this.renderMetricLookupNotice(preview, "muted", `Enter a wildcard pattern to preview matching ${plural}.`);
+        return;
+
+      default:
+        this.renderMetricLookupNotice(preview, "error", `No matching ${plural} found.`);
+    }
+  }
+
+  createMetricPreviewSection(title, rows, options = {}) {
+    const section = document.createElement("div");
+    const heading = document.createElement("div");
+
+    section.className = "item-match-preview-section";
+    heading.className = "item-match-preview-heading";
+    heading.textContent = title;
+    section.append(heading);
+    section.append(this.createMetricPreviewRowList(rows, Boolean(options.hasMoreRows), Boolean(options.filtered)));
+
+    return section;
+  }
+
+  createMetricCandidateList(candidates, input, preview, hasMoreCandidates = false) {
+    const container = document.createElement("div");
+
+    container.className = "item-match-preview-actions";
+
+    candidates.forEach((candidate) => {
+      container.append(this.createMetricApplyButton(candidate.name, input, preview));
+    });
+
+    if (hasMoreCandidates) {
+      const note = document.createElement("div");
+
+      note.className = "item-match-preview-note";
+      note.textContent = "Refine the search to narrow the list.";
+      container.append(note);
+    }
+
+    return container;
+  }
+
+  createMetricPreviewRowList(rows, hasMoreRows = false, filtered = false) {
+    const container = document.createElement("div");
+
+    container.className = "item-match-preview-list";
+
+    rows.forEach((row) => {
+      container.append(this.createMetricPreviewRow(row, filtered));
+    });
+
+    if (hasMoreRows) {
+      container.append(this.createMetricPreviewNote(
+        "Only the first few rows are shown. Refine the pattern to narrow the list."
+      ));
+    }
+
+    return container;
+  }
+
+  createMetricPreviewRow(row, filtered = false) {
+    const container = document.createElement("div");
+    const main = document.createElement("div");
+    const matchName = typeof row?.match_name === "string" ? row.match_name : "";
+    const itemName = typeof row?.item_name === "string" ? row.item_name : "";
+    const isExcluded = filtered || Boolean(row?.excluded);
+    const primaryText = itemName !== ""
+      ? itemName
+      : (matchName !== "" ? matchName : row.name);
+
+    container.className = "item-match-preview-row";
+    if (isExcluded) {
+      container.dataset.filtered = "true";
+    }
+
+    main.className = "item-match-preview-main";
+    main.append(this.createMetricPreviewTextNode(primaryText, isExcluded));
+
+    if (!isExcluded && row.name !== "" && primaryText !== row.name) {
+      main.append(this.createMetricPreviewArrowIcon());
+      main.append(this.createMetricPreviewTextNode(row.name, isExcluded));
+    }
+
+    container.append(main);
+
+    return container;
+  }
+
+  createMetricPreviewArrowIcon() {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    const pathHead = document.createElementNS(ns, "path");
+    const pathLine = document.createElementNS(ns, "path");
+
+    svg.classList.add("item-match-preview-arrow");
+    svg.setAttribute("xmlns", ns);
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+
+    pathHead.setAttribute("d", "M18 8L22 12L18 16");
+    pathLine.setAttribute("d", "M2 12H22");
+    svg.append(pathHead, pathLine);
+
+    return svg;
+  }
+
+  createMetricPreviewTextNode(text, strike = false) {
+    if (!strike) {
+      return document.createTextNode(text);
+    }
+
+    const element = document.createElement("s");
+
+    element.textContent = text;
+
+    return element;
+  }
+
+  createMetricPreviewNote(text) {
+    const note = document.createElement("div");
+
+    note.className = "item-match-preview-note";
+    note.textContent = text;
+
+    return note;
+  }
+
+  createMetricApplyButton(name, input, preview) {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "btn-link item-match-apply";
+    button.textContent = name;
+    button.addEventListener("click", () => {
+      input.value = name;
+      input.dispatchEvent(new Event("input", {bubbles: true}));
+      this.renderMetricLookupNotice(preview, "success", `Exact item name applied: ${name}.`);
+      input.focus();
+    });
+
+    return button;
+  }
+
+  getMetricTypeLabels(metricType) {
+    switch (metricType) {
+      case "disk":
+        return ["disk", "disks"];
+
+      case "partition":
+        return ["partition", "partitions"];
+
+      case "interface":
+        return ["interface", "interfaces"];
+
+      default:
+        return ["row", "rows"];
+    }
+  }
+
+  getNamedInputValue(name) {
+    const input = document.querySelector(`input[name="${name}"]`);
+
+    return input?.value ?? "";
+  }
+
+  getCheckedRadioValue(name) {
+    const input = document.querySelector(`input[name="${name}"]:checked`);
+
+    return input?.value ?? "";
+  }
+
+  getSelectedHostId() {
+    const hostField = document.getElementById("hostid");
+
+    if (!hostField) {
+      return "";
+    }
+
+    for (const selector of [
+      'input[name="hostid"]',
+      'input[name="hostid[]"]',
+      'input[type="hidden"][name^="hostid"]',
+    ]) {
+      const input = hostField.querySelector(selector);
+
+      if (input?.value) {
+        return input.value;
+      }
+    }
+
+    return "";
+  }
+
+  abortMetricLookupRequest(state) {
+    if (state.abortController !== null) {
+      state.abortController.abort();
+      state.abortController = null;
+    }
+  }
+
+  hideMetricLookupPreview(preview) {
+    preview.hidden = true;
+    delete preview.dataset.state;
+    preview.replaceChildren();
+  }
+
+  renderMetricLookupNotice(preview, state, text) {
+    const fragment = document.createDocumentFragment();
+    const message = document.createElement("div");
+
+    message.className = "item-match-preview-text";
+    message.textContent = text;
+    fragment.append(message);
+
+    this.showMetricLookupPreview(preview, state, fragment);
+  }
+
+  showMetricLookupPreview(preview, state, content) {
+    preview.hidden = false;
+    preview.dataset.state = state;
+    preview.replaceChildren(content);
   }
 
   // Badge editor: add, remove, reorder, and keep the hidden JSON in sync.
