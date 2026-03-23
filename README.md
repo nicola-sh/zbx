@@ -1,4 +1,4 @@
-These widgets have been tested on Zabbix 7.0.21, 7.2.14 and 7.4.5.
+These widgets have been tested on Zabbix 7.0.24, 7.2.15 and 7.4.8.
 
 ## Host overview
 
