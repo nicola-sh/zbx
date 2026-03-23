@@ -153,23 +153,40 @@ class WidgetView extends CControllerDashboardWidgetView
     private function buildBadgeData(array $metrics, array $badges): array
     {
         $badge_data = [];
-        $hostname = null;
+        $host_details = null;
         $freshness = null;
-        $problems_cache = [];
+        $problems = null;
         $uptime_item_name = trim((string) ($this->fields_values['badge_uptime_item_name']
             ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME));
-        $problems_scope = (int) ($this->fields_values['badge_problems_scope']
-            ?? CWidgetFieldBadgesList::SCOPE_ALL);
 
         foreach ($badges as $index => $badge) {
             $type = (int) ($badge['type'] ?? CWidgetFieldBadgesList::BADGE_HOSTNAME);
 
             switch ($type) {
                 case CWidgetFieldBadgesList::BADGE_HOSTNAME:
-                    $hostname ??= $this->fetchHostname();
+                    $host_details ??= $this->fetchHostDetails();
                     $badge_data[$index] = [
                         'type' => $type,
-                        'hostname' => $hostname,
+                        'hostname' => $host_details['name'] ?? null,
+                    ];
+                    break;
+
+                case CWidgetFieldBadgesList::BADGE_MAINTENANCE:
+                    $host_details ??= $this->fetchHostDetails();
+                    $badge_data[$index] = [
+                        'type' => $type,
+                        'status' => (int) ($host_details['maintenance_status'] ?? 0),
+                        'maintenance_type' => (int) ($host_details['maintenance_type'] ?? 0),
+                        'maintenance_from' => (int) ($host_details['maintenance_from'] ?? 0),
+                        'maintenanceid' => $host_details['maintenanceid'] ?? 0,
+                    ];
+                    break;
+
+                case CWidgetFieldBadgesList::BADGE_TAGS:
+                    $host_details ??= $this->fetchHostDetails();
+                    $badge_data[$index] = [
+                        'type' => $type,
+                        'tags' => $host_details['tags'] ?? [],
                     ];
                     break;
 
@@ -189,14 +206,11 @@ class WidgetView extends CControllerDashboardWidgetView
                     break;
 
                 case CWidgetFieldBadgesList::BADGE_PROBLEMS:
-                    if (!array_key_exists($problems_scope, $problems_cache)) {
-                        $problems_cache[$problems_scope] = $this->fetchProblems($problems_scope);
-                    }
+                    $problems ??= $this->fetchProblems();
 
                     $badge_data[$index] = [
                         'type' => $type,
-                        'problems' => $problems_cache[$problems_scope],
-                        'scope' => $problems_scope,
+                        'problems' => $problems,
                     ];
                     break;
             }
@@ -234,7 +248,7 @@ class WidgetView extends CControllerDashboardWidgetView
     }
 
     // Fetch active problems grouped by severity
-    private function fetchProblems(int $scope = CWidgetFieldBadgesList::SCOPE_ALL): array
+    private function fetchProblems(): array
     {
         $params = [
             'output'       => ['eventid', 'severity'],
@@ -244,7 +258,11 @@ class WidgetView extends CControllerDashboardWidgetView
             'sortorder'    => 'DESC',
         ];
 
-        if ($scope === CWidgetFieldBadgesList::SCOPE_UNACK) {
+        if ((int) ($this->fields_values['problems_hide_suppressed'] ?? 0) === 1) {
+            $params['suppressed'] = false;
+        }
+
+        if ((int) ($this->fields_values['problems_hide_acknowledged'] ?? 0) === 1) {
             $params['acknowledged'] = false;
         }
 
@@ -278,8 +296,8 @@ class WidgetView extends CControllerDashboardWidgetView
         return $counts;
     }
 
-    // Fetch hostname from the Zabbix host record
-    private function fetchHostname(): ?string
+    // Fetch host details (name, maintenance, tags)
+    private function fetchHostDetails(): ?array
     {
         $hostid = $this->fields_values['hostid'][0] ?? null;
 
@@ -288,12 +306,16 @@ class WidgetView extends CControllerDashboardWidgetView
         }
 
         $hosts = API::Host()->get([
-            'output' => ['name'],
+            'output' => [
+                'name',
+                'maintenance_status', 'maintenance_type', 'maintenance_from', 'maintenanceid'
+            ],
+            'selectTags' => ['tag', 'value'],
             'hostids' => [$hostid],
             'limit' => 1,
         ]);
 
-        return $hosts[0]['name'] ?? null;
+        return $hosts[0] ?? null;
     }
 
     // Compute formatted uptime string

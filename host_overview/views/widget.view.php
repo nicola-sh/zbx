@@ -12,7 +12,7 @@ use Modules\HostOverview\Includes\WidgetForm;
 $view = new CWidgetView($data);
 
 // Container
-$container = (new CDiv())->setId('container');
+$container = (new CDiv())->setId('container')->addClass('host-overview-container');
 $enabled = $data['config']['metrics_show'] ?? [];
 $bar_height = (int) ($data['config']['bar_height'] ?? WidgetForm::DEFAULT_BAR_HEIGHT);
 $corners = (int) ($data['config']['corners'] ?? WidgetForm::CORNERS_ROUNDED);
@@ -20,25 +20,10 @@ $problems_pulse = (int) ($data['config']['problems_pulse'] ?? 0);
 $label_length = (int) ($data['config']['label_length'] ?? WidgetForm::LABELS_FULL);
 $short = $label_length === WidgetForm::LABELS_SHORT;
 $label_width = $short ? 50 : 90;
-$badge_size = (int) ($data['config']['badge_size'] ?? WidgetForm::BADGES_REGULAR);
-
-// Badge size presets: [padding_y, padding_x, font_size, icon_size, icon_margin]
-$badge_presets = [
-    WidgetForm::BADGES_TINY    => [4, 8, 9, 9, 4],
-    WidgetForm::BADGES_SMALL   => [4, 10, 11, 11, 6],
-    WidgetForm::BADGES_REGULAR => [6, 11, 12, 14, 8],
-];
-[$badge_padding_y, $badge_padding_x, $badge_font_size, $badge_icon_size, $badge_icon_margin]
-    = $badge_presets[$badge_size] ?? $badge_presets[WidgetForm::BADGES_REGULAR];
 
 $container->setAttribute('style',
     '--bar-height: ' . $bar_height . 'px; '
-    . '--label-width: ' . $label_width . 'px; '
-    . '--badge-padding-y: ' . $badge_padding_y . 'px; '
-    . '--badge-padding-x: ' . $badge_padding_x . 'px; '
-    . '--badge-font-size: ' . $badge_font_size . 'px; '
-    . '--badge-icon-size: ' . $badge_icon_size . 'px; '
-    . '--badge-icon-margin: ' . $badge_icon_margin . 'px;'
+    . '--label-width: ' . $label_width . 'px;'
 );
 
 if ($corners === WidgetForm::CORNERS_SQUARE) {
@@ -121,7 +106,7 @@ $makeSvg = static function (array $paths, string $class = '', array $circles = [
     return $svg;
 };
 
-$link_icon = fn() => $makeSvg(['M13 5H19V11', 'M19 5L5 19']);
+$link_icon = fn() => $makeSvg(['M13 5H19V11', 'M19 5L5 19'], 'badge-trailing-icon');
 $uptime_icon = fn() => $makeSvg([
     'M12 6v6l1.56.78',
     'M13.227 21.925a10 10 0 1 1 8.767-9.588',
@@ -135,11 +120,18 @@ $freshness_icon = fn() => $makeSvg([
     'M7.753 16.239a6 6 0 0 1 0-8.478',
 ], 'badge-leading-icon', [['12', '12', '2']]);
 
+$maintenance_icon = fn() => $makeSvg([
+    'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'
+], 'badge-leading-icon');
+$menu_icon = fn() => (new CSpan())
+    ->addClass('badge-trailing-icon')
+    ->addClass('badge-menu-icon')
+    ->addClass(defined('ZBX_ICON_MORE') ? ZBX_ICON_MORE : 'zi-more');
+
 // Host info badges — driven by badges config
 $badges_raw = $data['config']['badges'] ?? '[]';
 $badges = is_string($badges_raw) ? (json_decode($badges_raw, true) ?: []) : [];
 $hostid = $data['config']['hostid'][0] ?? null;
-$hostname_link = (int) ($data['config']['badge_hostname_link'] ?? CWidgetFieldBadgesList::HOSTNAME_LINK_LATEST);
 
 if (!empty($badges)) {
     $info_bar = (new CDiv())->addClass('info-bar');
@@ -150,29 +142,19 @@ if (!empty($badges)) {
 
     foreach ($badges as $index => $badge) {
         $type = (int) ($badge['type'] ?? CWidgetFieldBadgesList::BADGE_HOSTNAME);
+        $badge_payload = $data['badge_data'][$index] ?? [];
 
         switch ($type) {
             case CWidgetFieldBadgesList::BADGE_HOSTNAME:
-                $hostname_href = null;
-
                 if ($hostid !== null) {
-                    if ($hostname_link === CWidgetFieldBadgesList::HOSTNAME_LINK_LATEST) {
-                        $hostname_href = 'zabbix.php?action=latest.view&hostids%5B%5D=' . urlencode($hostid);
-                    }
-                    elseif ($hostname_link === CWidgetFieldBadgesList::HOSTNAME_LINK_PROBLEMS) {
-                        $hostname_href = 'zabbix.php?action=problem.view&hostids%5B%5D=' . urlencode($hostid);
-                    }
-                }
-
-                if ($hostname_href !== null) {
-                    $el = (new CTag('a', true))
+                    $el = (new CLinkAction([
+                        (new CTag('span', true))->addClass('badge-text'),
+                        $menu_icon(),
+                    ]))
                         ->addClass('badge host-badge')
-                        ->setAttribute('href', $hostname_href)
-                        ->setAttribute('target', '_blank')
-                        ->setAttribute('rel', 'noopener')
-                        ->addItem((new CTag('span', true))->addClass('badge-text'))
-                        ->addItem($link_icon());
-                } else {
+                        ->setMenuPopup(CMenuPopupHelper::getHost($hostid));
+                }
+                else {
                     $el = (new CTag('span', true))
                         ->addClass('badge host-badge')
                         ->addItem((new CTag('span', true))->addClass('badge-text'));
@@ -189,6 +171,49 @@ if (!empty($badges)) {
                 $el = (new CTag('span', true))->addClass('badge freshness-badge')
                     ->addItem($freshness_icon())
                     ->addItem((new CTag('span', true))->addClass('badge-text'));
+                break;
+
+            case CWidgetFieldBadgesList::BADGE_MAINTENANCE:
+                $status = (int) ($badge_payload['status'] ?? 0);
+
+                $el = (new CTag('span', true))->addClass('badge maintenance-badge')
+                    ->addItem($maintenance_icon())
+                    ->addItem(
+                        (new CTag('span', true))
+                            ->addClass('badge-text')
+                            ->addItem($status === 1 ? _('Maintenance') : '')
+                    );
+
+                if ($status === 1) {
+                    $el->addClass('maintenance-active');
+                } else {
+                    $el->addClass('is-hidden');
+                }
+                break;
+
+            case CWidgetFieldBadgesList::BADGE_TAGS:
+                $tags = $badge_payload['tags'] ?? [];
+                $tag_text = (new CTag('span', true))->addClass('badge-text')->addClass('badge-parts');
+
+                foreach ($tags as $tag_index => $tag) {
+                    $tag_str = $tag['tag'];
+                    if ($tag['value'] !== '') {
+                        $tag_str .= ': ' . $tag['value'];
+                    }
+
+                    if ($tag_index > 0) {
+                        $tag_text->addItem((new CTag('span', true))->addClass('badge-dot-separator'));
+                    }
+
+                    $tag_text->addItem((new CTag('span', true))->addItem($tag_str));
+                }
+
+                $el = (new CTag('span', true))->addClass('badge tags-badge')
+                    ->addItem($makeSvg([
+                        'M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z',
+                        'M7 7h.01'
+                    ], 'badge-leading-icon'))
+                    ->addItem($tag_text);
                 break;
 
             case CWidgetFieldBadgesList::BADGE_PROBLEMS:
@@ -315,9 +340,13 @@ if (in_array(WidgetForm::METRIC_PARTITIONS, $enabled)) {
 }
 
 // Sparkline overlay (hidden by default)
-$sparkline_backdrop = (new CDiv())->addClass('sparkline-backdrop');
+$sparkline_backdrop = (new CDiv())
+    ->addClass('host-overview-backdrop')
+    ->addClass('sparkline-backdrop');
 
-$sparkline_overlay = (new CDiv())->addClass('sparkline-overlay');
+$sparkline_overlay = (new CDiv())
+    ->addClass('host-overview-overlay')
+    ->addClass('sparkline-overlay');
 if ($corners === WidgetForm::CORNERS_SQUARE) {
     $sparkline_overlay->addClass('square-corners');
 }
@@ -333,6 +362,7 @@ foreach (['1h', '3h', '6h', '12h', '1d', '3d', '1w', '2w'] as $p) {
     $btn = (new CTag('button', true))
         ->setAttribute('type', 'button')
         ->setAttribute('data-period', $p)
+        ->addClass('sparkline-control')
         ->addItem($p);
     if ($p === '1h') {
         $btn->addClass('active');
@@ -344,6 +374,7 @@ $sparkline_actions->addItem(
     (new CTag('button', true))
         ->setAttribute('type', 'button')
         ->setAttribute('aria-label', _('Close sparkline dialog'))
+        ->addClass('sparkline-control')
         ->addClass('sparkline-close')
         ->addClass('js-sparkline-close')
         ->addItem(_('Close'))

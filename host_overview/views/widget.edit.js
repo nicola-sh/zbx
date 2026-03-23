@@ -295,7 +295,7 @@ window.form = new (class {
       return row;
     };
 
-    const updateBadgeTypeAvailability = () => {
+    const refreshBadgeTypeMenu = () => {
       addMenus.forEach((menu) => {
         if (!menu.hidden) {
           renderAddMenuOptions(menu);
@@ -314,7 +314,7 @@ window.form = new (class {
           badges.push({type: parseInt(type, 10), text, url, side});
         });
       });
-      updateBadgeTypeAvailability();
+      refreshBadgeTypeMenu();
       jsonInput.value = JSON.stringify(badges);
     };
 

@@ -16,7 +16,6 @@ use Zabbix\Widgets\Fields\CWidgetFieldIntegerBox;
 use Zabbix\Widgets\Fields\CWidgetFieldCheckBox;
 use Zabbix\Widgets\Fields\CWidgetFieldMultiSelectHost;
 use Zabbix\Widgets\Fields\CWidgetFieldRadioButtonList;
-use Zabbix\Widgets\Fields\CWidgetFieldSelect;
 use Zabbix\Widgets\Fields\CWidgetFieldTextBox;
 
 class WidgetForm extends CWidgetForm
@@ -29,10 +28,6 @@ class WidgetForm extends CWidgetForm
 
     public const LABELS_FULL  = 0;
     public const LABELS_SHORT = 1;
-
-    public const BADGES_TINY    = 0;
-    public const BADGES_SMALL   = 1;
-    public const BADGES_REGULAR = 2;
 
     public const DEFAULT_BAR_HEIGHT = 8;
 
@@ -82,23 +77,12 @@ class WidgetForm extends CWidgetForm
                 (new CWidgetFieldBadgesList('badges'))
             )
             ->addField(
-                (new CWidgetFieldSelect('badge_hostname_link', _('Hostname link'), [
-                    CWidgetFieldBadgesList::HOSTNAME_LINK_DISABLED => _('Nothing'),
-                    CWidgetFieldBadgesList::HOSTNAME_LINK_LATEST   => _('Latest data'),
-                    CWidgetFieldBadgesList::HOSTNAME_LINK_PROBLEMS => _('Problems'),
-                ]))
-                    ->setDefault(CWidgetFieldBadgesList::HOSTNAME_LINK_LATEST)
-            )
-            ->addField(
                 (new CWidgetFieldTextBox('badge_uptime_item_name', _('Uptime item')))
                     ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME)
             )
             ->addField(
-                (new CWidgetFieldSelect('badge_problems_scope', _('Problems scope'), [
-                    CWidgetFieldBadgesList::SCOPE_UNACK => _('Unacknowledged'),
-                    CWidgetFieldBadgesList::SCOPE_ALL   => _('Any'),
-                ]))
-                    ->setDefault(CWidgetFieldBadgesList::SCOPE_ALL)
+                (new CWidgetFieldCheckBox('problems_hide_acknowledged', _('Hide acknowledged problems')))
+                    ->setDefault(0)
             )
             ->addField(
                 (new CWidgetFieldColor('fill_color', _('Solid')))
@@ -182,15 +166,7 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::LABELS_FULL)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('badge_size', _('Badge style'), [
-                    self::BADGES_REGULAR => _('Regular'),
-                    self::BADGES_SMALL   => _('Small'),
-                    self::BADGES_TINY    => _('Tiny'),
-                ]))
-                    ->setDefault(self::BADGES_REGULAR)
-            )
-            ->addField(
-                (new CWidgetFieldSelect('bar_height', _('Bar height'), [
+                (new CWidgetFieldRadioButtonList('bar_height', _('Bar height'), [
                     4  => '4px',
                     5  => '5px',
                     6  => '6px',
@@ -214,7 +190,7 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_FRESHNESS_STALE)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('problems_show_zero', _('Show no problems badge')))
+                (new CWidgetFieldCheckBox('problems_hide_suppressed', _('Hide suppressed problems')))
                     ->setDefault(0)
             )
             ->addField(

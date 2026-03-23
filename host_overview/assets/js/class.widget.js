@@ -244,6 +244,29 @@ class CWidgetHostOverview extends CWidget {
 
       return badgeData[index] ?? null;
     };
+    const setBadgeText = (badgeText, text) => {
+      if (!badgeText) return;
+      badgeText.classList.remove("badge-parts");
+      badgeText.textContent = text;
+    };
+    const setBadgeParts = (badgeText, parts) => {
+      if (!badgeText) return;
+
+      badgeText.classList.add("badge-parts");
+      badgeText.innerHTML = "";
+
+      parts.forEach((part, index) => {
+        if (index > 0) {
+          const separator = document.createElement("span");
+          separator.className = "badge-dot-separator";
+          badgeText.appendChild(separator);
+        }
+
+        const partSpan = document.createElement("span");
+        partSpan.textContent = part;
+        badgeText.appendChild(partSpan);
+      });
+    };
 
     // Host info badges
     for (const badge of this._body.querySelectorAll(".host-badge")) {
@@ -317,18 +340,31 @@ class CWidgetHostOverview extends CWidget {
       }
     }
 
+    for (const badge of this._body.querySelectorAll(".maintenance-badge")) {
+      const badgeText = badge.querySelector(".badge-text");
+      if (!badgeText) continue;
+
+      const payload = getBadgePayload(badge);
+      const status =
+        payload && Object.prototype.hasOwnProperty.call(payload, "status")
+          ? Number(payload.status)
+          : 0;
+
+      badge.classList.remove("maintenance-active", "is-hidden");
+
+      if (status === 1) {
+        badge.classList.add("maintenance-active");
+        badge.style.display = "";
+        badgeText.textContent = "Maintenance";
+      } else {
+        badge.classList.add("is-hidden");
+        badge.style.display = "none";
+        badgeText.textContent = "";
+      }
+    }
+
     const problemBadges = this._body.querySelectorAll(".problems-badge");
     if (problemBadges.length > 0) {
-      const sevLabels = [
-        [5, 'disaster', 'Disaster'],
-        [4, 'high', 'High'],
-        [3, 'average', 'Average'],
-        [2, 'warning', 'Warning'],
-        [1, 'information', 'Info'],
-        [0, 'not_classified', 'N/C'],
-      ];
-
-      const showZeroProblems = fields["problems_show_zero"] == 1;
       const colorClasses = ['problems-info', 'problems-warning',
         'problems-average', 'problems-high', 'problems-disaster'];
       const sevClassMap = {
@@ -350,7 +386,7 @@ class CWidgetHostOverview extends CWidget {
         if (!p) {
           badge.style.display = '';
           if (badgeText) {
-            badgeText.textContent = 'Problems —';
+            setBadgeText(badgeText, 'Problems —');
           }
           continue;
         }
@@ -358,26 +394,15 @@ class CWidgetHostOverview extends CWidget {
         const total = Number(p.total) || 0;
 
         if (total === 0) {
-          badge.style.display = showZeroProblems ? '' : 'none';
-          if (showZeroProblems) {
-            if (badgeText) {
-              badgeText.textContent = 'No problems';
-            }
-          }
+          badge.style.display = 'none';
           continue;
         }
 
         const maxSev = Number(p.max_severity);
-        const parts = [];
-
-        for (const [, key, label] of sevLabels) {
-          const cnt = Number(p[key]) || 0;
-          if (cnt > 0) parts.push(`${cnt} ${label}`);
-        }
 
         badge.style.display = '';
         if (badgeText) {
-          badgeText.textContent = parts.join(' \u00B7 ');
+          setBadgeText(badgeText, `${total} problems`);
         }
 
         badge.classList.add(sevClassMap[maxSev] || 'problems-info');
