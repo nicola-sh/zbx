@@ -54,18 +54,20 @@ $makeMultiRow = static function (string $label, string $dataClass, array $items,
     $data_cell = (new CDiv())->addClass('data ' . $dataClass . ' multi');
 
     foreach ($items as $key => $item) {
-        $name = $useKeys ? $key : ($item['name'] ?? $key);
+        $item_key = $item['key'] ?? ($useKeys ? $key : ($item['name'] ?? $key));
+        $item_label = $item['label'] ?? ($item['name'] ?? $item_key);
         $textEl = (new CTag('span'))->addClass('text');
 
         // For interfaces, pre-fill text with name placeholder
         if ($useKeys) {
-            $textEl->addItem($name . ' -');
+            $textEl->addItem($item_label . ' -');
         }
 
         $data_cell->addItem(
             (new CDiv())
                 ->addClass('cell')
-                ->setAttribute('data-key', $name)
+                ->setAttribute('data-key', $item_key)
+                ->setAttribute('data-label', $item_label)
                 ->addItem((new CDiv())->addClass('bar')->addItem((new CDiv())->addClass('fill')))
                 ->addItem($textEl)
         );
