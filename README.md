@@ -2,39 +2,34 @@ These widgets have been tested on Zabbix 7.0.21, 7.2.14 and 7.4.5.
 
 ## Host overview
 
-A widget for showing host metrics in a clean, compact way. You choose which metrics appear, set your own thresholds and adjust colors. Multi-item metrics are grouped neatly and values update live.
+A compact but highly configurable host summary widget for Zabbix dashboards. It turns the default Linux and Windows template items into a clean overview with badges, single-metric bars, grouped multi-row metrics, sparkline history, and direct drill-down links into Latest data. It is designed for quick at-a-glance monitoring, but the configuration dialog also includes built-in testing and preview tools so item mapping is much easier to validate.
 
 **Features**
 
-- Choose which metrics are shown.
-- Fields to define custom maximum load and interface values.
-- Three levels of configurable threshold colors.
-- Live updates for percentage and bitrate changes with tickers and horizontal animation.
-- Multi-item metrics are laid out in uniform columns across the widget.
-- Assigns shorthand labels for long interface names.
+- Show any mix of Processor, Memory, Load, Swap, Interfaces, Disk utilization, and Partitions.
+- Sensible default item names and wildcard patterns for standard Zabbix Linux and Windows templates, with easy per-widget remapping in the config dialog.
+- Configurable host badges on the left and right sides: Hostname, Uptime, Liveliness, Problems, Maintenance, Tags, free text, and custom links.
+- Per-metric Medium and High thresholds for CPU, Memory, Load, Swap, Interfaces, Disks, and Partitions.
+- Threshold or solid color schemes, configurable colors, adjustable bar height, full or short labels, and rounded or square corners.
+- Load is displayed as a raw value with a configurable Load ceiling for bar and sparkline scaling.
+- Interfaces use a configurable ceiling and unit (Kbps, Mbps, or Gbps), and long interface names are shortened automatically in the widget.
+- Swap can be inverted for hosts that report free % instead of used %.
+- Sparkline overlays for quick historical context directly from the widget.
+- Direct links from metric labels and values into Zabbix Latest data for drill-down.
+- Live frontend updates for percentage and bitrate changes with animated tickers.
+- Multi-item metrics are grouped into clean, uniform layouts for interfaces, disks, and partitions.
+- Built-in config dialog test tools for CPU, Memory, Load, Swap, and Uptime exact-name matching.
+- Wildcard preview tools for Interfaces, Disks, and Partitions, including previews of filtered-out matches.
+- Problems badge options to hide acknowledged or suppressed problems and optionally pulse when active.
 - Supports all Zabbix themes.
-
-**Limitations**
-
-This widget relies on predefined item-name patterns to detect which metrics to display. These patterns are based on the default item names in the official Windows and Linux templates that ship with Zabbix. The item names must match the schema below. If you are using the standard Linux and Windows templates version 7.0-2 or higher and have not renamed any items, you are compatible.
-
-- "Load average (5m avg)"
-- "Memory utilization"
-- "CPU utilization"
-- "**XXX**: Disk utilization"
-- "FS [**XXX**]: Space: Used, in %"
-- "Interface **XXX**: Bits received"
-- "Interface **XXX**: Bits sent"
 
 **Screenshots**
 
-![](https://i.imgur.com/GspJmQF.gif)
+![](https://i.imgur.com/EFkPox8.png)
 
-![](https://i.imgur.com/znqWvZT.png)
+![](https://i.imgur.com/JOHq1fB.png)
 
-![](https://i.imgur.com/sjFQwc6.png)
-
-![](https://i.imgur.com/Py6JNi0.png)
+![](https://i.imgur.com/phu19Br.png)
 
 ## Banner
 
