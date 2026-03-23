@@ -19,7 +19,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
     public const BADGE_TEXT       = 4;
     public const BADGE_LINK       = 5;
     public const BADGE_MAINTENANCE = 6;
-    public const BADGE_TAGS       = 8;
+    public const BADGE_TAGS        = 7;
 
     public const BADGE_TYPE_LABELS = [
         self::BADGE_HOSTNAME   => 'Hostname',

@@ -382,7 +382,8 @@ class WidgetView extends CControllerDashboardWidgetView
         if (count($parts) < 2) {
             return $rows;
         }
-        $regex = '/^' . preg_quote($parts[0], '/') . '(.+?)' . preg_quote($parts[1], '/') . '$/';
+        $regex   = '/^' . preg_quote($parts[0], '/') . '(.+?)' . preg_quote($parts[1], '/') . '$/';
+        $exclude = $this->fields_values[$exclude_field] ?? '';
 
         foreach ($metrics as $key => $details) {
             if (!preg_match($regex, $key, $match)) {
@@ -395,8 +396,6 @@ class WidgetView extends CControllerDashboardWidgetView
                 $name = '?';
             }
 
-            // Skip excluded entries
-            $exclude = $this->fields_values[$exclude_field] ?? '';
             if ($this->matchesExcludePattern($name, $exclude)) {
                 continue;
             }
