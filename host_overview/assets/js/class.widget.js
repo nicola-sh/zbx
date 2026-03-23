@@ -1456,6 +1456,8 @@ class CWidgetHostOverview extends CWidget {
       if (dist < minDist) {
         minDist = dist;
         nearest = i;
+      } else if (state.coords[i].x > mouseX) {
+        break;
       }
     }
 

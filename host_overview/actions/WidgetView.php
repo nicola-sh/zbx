@@ -253,6 +253,7 @@ class WidgetView extends CControllerDashboardWidgetView
             'recent'       => true,
             'sortfield'    => 'eventid',
             'sortorder'    => 'DESC',
+            'limit'        => 1000,
         ];
 
         if ((int) ($this->fields_values['problems_hide_suppressed'] ?? 0) === 1) {
