@@ -15,6 +15,10 @@
     "js_class": "CWidgetHostOverview"
   },
   "actions": {
+    "widget.host_overview.lookup": {
+      "class": "MetricLookup",
+      "layout": "layout.json"
+    },
     "widget.host_overview.view": {
       "class": "WidgetView"
     }

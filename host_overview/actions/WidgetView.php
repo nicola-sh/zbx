@@ -12,11 +12,15 @@ use API;
 use CControllerDashboardWidgetView;
 use CControllerResponseData;
 use Modules\HostOverview\Includes\CWidgetFieldBadgesList;
+use Modules\HostOverview\Includes\MetricMatcher;
+use Modules\HostOverview\Includes\WildcardMetricResolver;
 use Modules\HostOverview\Includes\WidgetForm;
 
 class WidgetView extends CControllerDashboardWidgetView
 {
     private int $latest_clock = 0;
+    private ?MetricMatcher $metric_matcher = null;
+    private ?WildcardMetricResolver $wildcard_metric_resolver = null;
 
     protected function doAction(): void
     {
@@ -96,8 +100,7 @@ class WidgetView extends CControllerDashboardWidgetView
         // Wildcard patterns — extract literal segments for API search
         $wildcard_fields = ['item_name_disk', 'item_name_partition', 'item_name_interface'];
         foreach ($wildcard_fields as $field) {
-            $parts = array_filter(explode('*', $this->fields_values[$field]), fn($s) => trim($s) !== '');
-            foreach ($parts as $part) {
+            foreach ($this->getWildcardMetricResolver()->extractSearchTerms($this->fields_values[$field] ?? '') as $part) {
                 $name_filters[] = trim($part);
             }
         }
@@ -107,46 +110,10 @@ class WidgetView extends CControllerDashboardWidgetView
             static fn(string $value): bool => $value !== ''
         )));
 
-        if ($name_filters === []) {
-            $this->latest_clock = 0;
+        $collection = $this->getMetricMatcher()->collect($this->fields_values['hostid'], $name_filters);
+        $this->latest_clock = $collection['latest_clock'];
 
-            return [];
-        }
-
-        // Retrieve from API
-        $items = API::Item()->get([
-            'output'      => ['itemid', 'name', 'lastvalue', 'lastclock', 'value_type'],
-            'hostids'     => $this->fields_values['hostid'],
-            'search'      => ['name' => $name_filters],
-            'searchByAny' => true,
-        ]);
-
-        // Build metrics so downstream builders can filter by key
-        $metrics = [];
-        $latest_clock = 0;
-        foreach ($items as $item) {
-            $name  = $item['name'];
-            $clock = (int) ($item['lastclock'] ?? 0);
-            $val   = $item['lastvalue'] ?? null;
-            // lastclock = 0 means the item has never collected data;
-            // treat its lastvalue (typically "0") as absent.
-            $num            = ($clock > 0 && is_numeric($val)) ? (float) $val : null;
-            $metrics[$name] = [
-                'itemid'     => $item['itemid'],
-                'name'       => $name,
-                'value_type' => (int) ($item['value_type'] ?? 0),
-                'value'      => $num,
-                'raw'        => $val,
-            ];
-
-            if ($clock > $latest_clock) {
-                $latest_clock = $clock;
-            }
-        }
-
-        $this->latest_clock = $latest_clock;
-
-        return $metrics;
+        return $collection['metrics'];
     }
 
     // Build dynamic badge data keyed by badge index so duplicate badge types remain independent
@@ -368,83 +335,22 @@ class WidgetView extends CControllerDashboardWidgetView
     // Build rows for single-wildcard patterns (disks, partitions)
     private function buildWildcardRows(string $pattern_field, string $exclude_field, array $metrics): array
     {
-        $rows  = [];
-        $index = [];
-
-        $pattern = $this->fields_values[$pattern_field];
-        $parts = explode('*', $pattern, 2);
-        if (count($parts) < 2) {
-            return $rows;
-        }
-        $regex   = '/^' . preg_quote($parts[0], '/') . '(.+?)' . preg_quote($parts[1], '/') . '$/';
-        $exclude = $this->fields_values[$exclude_field] ?? '';
-
-        foreach ($metrics as $key => $details) {
-            if (!preg_match($regex, $key, $match)) {
-                continue;
-            }
-
-            $name = trim($match[1]);
-
-            if (empty($name)) {
-                $name = '?';
-            }
-
-            if ($this->matchesExcludePattern($name, $exclude)) {
-                continue;
-            }
-
-            $percent = $details['value'] === null
-                ? null
-                : $this->clampPercent($details['value']);
-
-            if (array_key_exists($name, $index)) {
-                $row_index = $index[$name];
-
-                if ($percent !== null || $rows[$row_index]['percent'] === null) {
-                    $rows[$row_index]['percent'] = $percent;
-                    $rows[$row_index]['item_name'] = $key;
-                    $rows[$row_index]['item_ref'] = $this->toSparklineItemRef($details);
-                }
-            } else {
-                $index[$name] = count($rows);
-                $rows[]       = [
-                    'name'      => $name,
-                    'percent'   => $percent,
-                    'item_name' => $key,
-                    'item_ref'  => $this->toSparklineItemRef($details),
-                ];
-            }
-        }
-
-        usort($rows, static fn(array $left, array $right): int => strnatcasecmp($left['name'], $right['name']));
-
-        return $rows;
+        return $this->getWildcardMetricResolver()->buildSingleWildcardRows(
+            $metrics,
+            $this->fields_values[$pattern_field] ?? '',
+            $this->fields_values[$exclude_field] ?? ''
+        );
     }
 
     // Build interface bitrate rows
     private function buildInterfaces(array $metrics): array
     {
-        $interface_regex = $this->buildInterfaceRegex();
-
-        if ($interface_regex === null) {
-            return [];
-        }
-
-        $interface_rows = $this->parseInterfaceItems(
+        return $this->getWildcardMetricResolver()->buildInterfaceRows(
             $metrics,
-            $interface_regex,
+            $this->fields_values['item_name_interface'] ?? '',
+            $this->fields_values['interfaces_exclude'] ?? '',
             $this->calculateInterfaceCapacity()
         );
-
-        if ($interface_rows === []) {
-            return [];
-        }
-
-        $ordered_names = $this->sortInterfaceNames(array_keys($interface_rows));
-        $interface_aliases = $this->generateInterfaceAliases($ordered_names);
-
-        return $this->buildInterfaceOutputRows($interface_rows, $ordered_names, $interface_aliases);
     }
 
     private function calculateInterfaceCapacity(): int
@@ -459,155 +365,6 @@ class WidgetView extends CControllerDashboardWidgetView
         };
 
         return $interfaces_high > 0 ? $interfaces_high * $factor : 0;
-    }
-
-    private function buildInterfaceRegex(): ?string
-    {
-        $interface_pattern = $this->fields_values['item_name_interface'];
-        $parts = explode('*', $interface_pattern, 3);
-
-        if (count($parts) < 3) {
-            return null;
-        }
-
-        return '/^' . preg_quote($parts[0], '/') . '(.+?)'
-            . preg_quote($parts[1], '/') . '(\S+)'
-            . preg_quote($parts[2], '/') . '$/';
-    }
-
-    private function parseInterfaceItems(array $metrics, string $interface_regex, int $capacity): array
-    {
-        $interface_rows = [];
-        $exclude = $this->fields_values['interfaces_exclude'] ?? '';
-
-        foreach ($metrics as $name => $details) {
-            $parsed_metric = $this->parseInterfaceMetric($name, $details, $interface_regex, $exclude, $capacity);
-
-            if ($parsed_metric === null) {
-                continue;
-            }
-
-            $interface_rows[$parsed_metric['name']][$parsed_metric['direction']] = $parsed_metric['row'];
-        }
-
-        return $interface_rows;
-    }
-
-    private function parseInterfaceMetric(
-        string $metric_name,
-        array $details,
-        string $interface_regex,
-        string $exclude,
-        int $capacity
-    ): ?array {
-        if (!preg_match($interface_regex, $metric_name, $match)) {
-            return null;
-        }
-
-        $interface_name = trim($match[1]);
-        $direction = $this->parseInterfaceDirection($match[2]);
-
-        if ($direction === null || $this->matchesExcludePattern($interface_name, $exclude)) {
-            return null;
-        }
-
-        if ($interface_name === '') {
-            $interface_name = '?';
-        }
-
-        return [
-            'name' => $interface_name,
-            'direction' => $direction,
-            'row' => [
-                'key' => $interface_name . '|' . $direction,
-                'bps' => $details['value'],
-                'percent' => $this->calculateInterfacePercent($details['value'], $capacity),
-                'item_ref' => $this->toSparklineItemRef($details),
-            ],
-        ];
-    }
-
-    private function parseInterfaceDirection(string $direction_raw): ?string
-    {
-        if (str_contains($direction_raw, 'received') || str_contains($direction_raw, 'in')) {
-            return 'received';
-        }
-
-        if (str_contains($direction_raw, 'sent') || str_contains($direction_raw, 'out')) {
-            return 'sent';
-        }
-
-        return null;
-    }
-
-    private function calculateInterfacePercent(mixed $bps, int $capacity): ?int
-    {
-        if ($bps === null) {
-            return null;
-        }
-
-        if ($capacity > 0 && is_numeric($bps)) {
-            return $this->clampPercent(($bps / $capacity) * 100);
-        }
-
-        return 0;
-    }
-
-    private function sortInterfaceNames(array $interface_names): array
-    {
-        natcasesort($interface_names);
-
-        return array_values($interface_names);
-    }
-
-    private function generateInterfaceAliases(array $ordered_names): array
-    {
-        $alias_counter = 1;
-        $interface_aliases = [];
-        $used_labels = [];
-
-        foreach ($ordered_names as $interface_name) {
-            if (strlen($interface_name) <= 4) {
-                $interface_aliases[$interface_name] = $interface_name;
-                $used_labels[strtoupper($interface_name)] = true;
-            }
-        }
-
-        foreach ($ordered_names as $interface_name) {
-            if (isset($interface_aliases[$interface_name])) {
-                continue;
-            }
-
-            do {
-                $alias = 'IF' . $alias_counter++;
-            } while (isset($used_labels[$alias]));
-
-            $interface_aliases[$interface_name] = $alias;
-            $used_labels[$alias] = true;
-        }
-
-        return $interface_aliases;
-    }
-
-    private function buildInterfaceOutputRows(array $interface_rows, array $ordered_names, array $interface_aliases): array
-    {
-        $rows = [];
-
-        foreach ($ordered_names as $interface_name) {
-            $label = $interface_aliases[$interface_name];
-
-            foreach (['received' => 'RX', 'sent' => 'TX'] as $direction => $suffix) {
-                if (!isset($interface_rows[$interface_name][$direction])) {
-                    continue;
-                }
-
-                $row = $interface_rows[$interface_name][$direction];
-                $row['label'] = strtoupper($label . ' ' . $suffix);
-                $rows[] = $row;
-            }
-        }
-
-        return $rows;
     }
 
     ###############################################
@@ -636,25 +393,7 @@ class WidgetView extends CControllerDashboardWidgetView
     // Resolve a metric name safely: exact match first, then a unique substring match.
     private function findMetric(array $metrics, string $search): ?array
     {
-        $search = trim($search);
-
-        if ($search === '') {
-            return null;
-        }
-
-        if (isset($metrics[$search])) {
-            return $metrics[$search];
-        }
-
-        $matches = [];
-
-        foreach ($metrics as $key => $details) {
-            if (str_contains($key, $search)) {
-                $matches[] = $details;
-            }
-        }
-
-        return count($matches) === 1 ? $matches[0] : null;
+        return $this->getMetricMatcher()->resolve($metrics, $search);
     }
 
     private function hasBadgeType(array $badges, int $type): bool
@@ -684,6 +423,24 @@ class WidgetView extends CControllerDashboardWidgetView
         }
 
         return false;
+    }
+
+    private function getMetricMatcher(): MetricMatcher
+    {
+        if ($this->metric_matcher === null) {
+            $this->metric_matcher = new MetricMatcher();
+        }
+
+        return $this->metric_matcher;
+    }
+
+    private function getWildcardMetricResolver(): WildcardMetricResolver
+    {
+        if ($this->wildcard_metric_resolver === null) {
+            $this->wildcard_metric_resolver = new WildcardMetricResolver();
+        }
+
+        return $this->wildcard_metric_resolver;
     }
 
 }

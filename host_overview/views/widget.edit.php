@@ -7,6 +7,7 @@
  */
 
 use Modules\HostOverview\Includes\CWidgetFieldBadgesList;
+use Modules\HostOverview\Includes\WidgetForm;
 
 // Backwards compatibility
 // The ZBX_STYLE_COLOR_PICKER constant disappeared in Zabbix 7.4
@@ -40,7 +41,8 @@ $form
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Processor, Memory and Load')))
             ->addItem(getItemNameView($form, $data['fields']['item_name_cpu'],
-                'Enter the exact CPU item name, for example "CPU utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+                'Enter the exact CPU item name, for example "CPU utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.',
+                (string) WidgetForm::METRIC_CPU
             ))
             ->addItem(getMetricThresholdViews($form, $data['fields'],
                 _('Processor thresholds'),
@@ -49,7 +51,8 @@ $form
                 _('Used for the processor utilization bar. High and Medium share the colors from the Style section.')
             ))
             ->addItem(getItemNameView($form, $data['fields']['item_name_ram'],
-                'Enter the exact memory item name, for example "Memory utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+                'Enter the exact memory item name, for example "Memory utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.',
+                (string) WidgetForm::METRIC_RAM
             ))
             ->addItem(getMetricThresholdViews($form, $data['fields'],
                 _('Memory thresholds'),
@@ -58,7 +61,8 @@ $form
                 _('Used for the memory utilization bar. High and Medium share the colors from the Style section.')
             ))
             ->addItem(getItemNameView($form, $data['fields']['item_name_load'],
-                'Enter the exact load item name, for example "Load average (5m avg)". The widget displays the raw load value and scales the bar using the Load ceiling setting below. Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+                'Enter the exact load item name, for example "Load average (5m avg)". The widget displays the raw load value and scales the bar using the Load ceiling setting below. Partial names are only used when they match one item uniquely; otherwise the widget shows No data.',
+                (string) WidgetForm::METRIC_LOAD
             ))
             ->addItem(getMetricThresholdViews($form, $data['fields'],
                 _('Load thresholds'),
@@ -71,7 +75,8 @@ $form
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Swap')))
             ->addItem(getItemNameView($form, $data['fields']['item_name_swap'],
-                'Enter the exact swap item name, for example "Free swap space in %". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.'
+                'Enter the exact swap item name, for example "Free swap space in %". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.',
+                (string) WidgetForm::METRIC_SWAP
             ))
             ->addItem(getMetricThresholdViews($form, $data['fields'],
                 _('Swap thresholds'),
@@ -86,7 +91,14 @@ $form
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Interfaces')))
             ->addItem(getPatternView($form, $data['fields']['item_name_interface'],
-                'Use * as wildcard. First * = interface name, second * = direction. Direction is automatically labeled RX (received/in) or TX (sent/out).'
+                'Use * as wildcard. First * = interface name, second * = direction. Direction is automatically labeled RX (received/in) or TX (sent/out).',
+                [
+                    'mode' => 'wildcard',
+                    'metric_type' => 'interface',
+                    'metric_value' => (string) WidgetForm::METRIC_INTERFACES,
+                    'exclude_field_name' => 'interfaces_exclude',
+                    'button_text' => _('Test'),
+                ]
             ))
             ->addItem(getPatternView($form, $data['fields']['interfaces_exclude'],
                 'Comma-separated list of interface names to hide. Wildcards * and ? are supported.'
@@ -102,7 +114,14 @@ $form
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Disk utilization')))
             ->addItem(getPatternView($form, $data['fields']['item_name_disk'],
-                'Use * as wildcard for the disk name.'
+                'Use * as wildcard for the disk name.',
+                [
+                    'mode' => 'wildcard',
+                    'metric_type' => 'disk',
+                    'metric_value' => (string) WidgetForm::METRIC_DISKS,
+                    'exclude_field_name' => 'disks_exclude',
+                    'button_text' => _('Test'),
+                ]
             ))
             ->addItem(getPatternView($form, $data['fields']['disks_exclude'],
                 'Comma-separated list of disk names to hide. Wildcards * and ? are supported.'
@@ -117,7 +136,14 @@ $form
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Partitions')))
             ->addItem(getPatternView($form, $data['fields']['item_name_partition'],
-                'Use * as wildcard for the partition/mount path.'
+                'Use * as wildcard for the partition/mount path.',
+                [
+                    'mode' => 'wildcard',
+                    'metric_type' => 'partition',
+                    'metric_value' => (string) WidgetForm::METRIC_PARTITIONS,
+                    'exclude_field_name' => 'partitions_exclude',
+                    'button_text' => _('Test'),
+                ]
             ))
             ->addItem(getPatternView($form, $data['fields']['partitions_exclude'],
                 'Comma-separated list of partition paths to hide. Wildcards * and ? are supported.'
@@ -155,37 +181,94 @@ $form
         'badge_multiple_types' => CWidgetFieldBadgesList::getMultipleBadgeTypes(),
         'badge_types_with_text' => CWidgetFieldBadgesList::getTextFieldBadgeTypes(),
         'badge_types_with_url' => CWidgetFieldBadgesList::getUrlFieldBadgeTypes(),
+        'item_lookup_action' => 'widget.host_overview.lookup',
     ], JSON_THROW_ON_ERROR) . ');')
     ->show();
 
-function getItemNameView(CWidgetFormView $form, $field, string $hint = ''): array
+function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?string $metric_value = null): array
 {
     $view = $form->registerField(new CWidgetFieldTextBoxView($field));
     $label = new CLabel($field->getLabel(), $field->getName());
+    $field_view = $view->getView();
 
     if ($hint === '') {
         $hint = 'Prefer the exact item name. Partial names are only used when they match one item uniquely; otherwise the widget shows No data.';
     }
     $label->addItem(makeHelpIcon($hint));
 
+    if ($metric_value !== null) {
+        $field_view = (new CDiv())
+            ->addClass('item-match-assistant')
+            ->addClass('js-item-match-assistant')
+            ->setAttribute('data-field-name', $field->getName())
+            ->setAttribute('data-metric-value', $metric_value)
+            ->addItem(
+                (new CDiv())
+                    ->addClass('item-match-controls')
+                    ->addItem($view->getView())
+                    ->addItem(
+                        (new CButton(null, _('Test')))
+                            ->addClass('js-item-match-test')
+                    )
+            )
+            ->addItem(
+                (new CDiv())
+                    ->addClass('item-match-preview')
+                    ->addClass('js-item-match-preview')
+                    ->setAttribute('hidden', 'hidden')
+            );
+    }
+
     return [
         $label,
-        new CFormField($view->getView()),
+        new CFormField($field_view),
     ];
 }
 
-function getPatternView(CWidgetFormView $form, $field, string $hint = ''): array
+function getPatternView(CWidgetFormView $form, $field, string $hint = '', ?array $assistant = null): array
 {
     $view = $form->registerField(new CWidgetFieldTextBoxView($field));
     $label = new CLabel($field->getLabel(), $field->getName());
+    $field_view = $view->getView();
 
     if ($hint !== '') {
         $label->addItem(makeHelpIcon($hint));
     }
 
+    if ($assistant !== null) {
+        $field_view = (new CDiv())
+            ->addClass('item-match-assistant')
+            ->addClass('js-item-match-assistant')
+            ->setAttribute('data-field-name', $field->getName())
+            ->setAttribute('data-metric-value', (string) ($assistant['metric_value'] ?? ''))
+            ->setAttribute('data-lookup-mode', (string) ($assistant['mode'] ?? 'wildcard'))
+            ->setAttribute('data-metric-type', (string) ($assistant['metric_type'] ?? ''));
+
+        if (array_key_exists('exclude_field_name', $assistant)) {
+            $field_view->setAttribute('data-exclude-field-name', (string) $assistant['exclude_field_name']);
+        }
+
+        $field_view
+            ->addItem(
+                (new CDiv())
+                    ->addClass('item-match-controls')
+                    ->addItem($view->getView())
+                    ->addItem(
+                        (new CButton(null, (string) ($assistant['button_text'] ?? _('Test'))))
+                            ->addClass('js-item-match-test')
+                    )
+            )
+            ->addItem(
+                (new CDiv())
+                    ->addClass('item-match-preview')
+                    ->addClass('js-item-match-preview')
+                    ->setAttribute('hidden', 'hidden')
+            );
+    }
+
     return [
         $label,
-        new CFormField($view->getView()),
+        new CFormField($field_view),
     ];
 }
 
@@ -297,7 +380,8 @@ function getBadgeUptimeItemViews(CWidgetFormView $form, $field): array
     return getItemNameView(
         $form,
         $field,
-        _('Enter the exact uptime item name, for example "System uptime". Partial names are only used when they match one item uniquely; otherwise the badge shows —.')
+        _('Enter the exact uptime item name, for example "System uptime". Partial names are only used when they match one item uniquely; otherwise the badge shows —.'),
+        ''
     );
 }
 
