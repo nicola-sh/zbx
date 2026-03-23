@@ -18,6 +18,8 @@ class CWidgetFieldBadgesList extends CWidgetField {
     public const BADGE_PROBLEMS   = 3;
     public const BADGE_TEXT       = 4;
     public const BADGE_LINK       = 5;
+    public const BADGE_MAINTENANCE = 6;
+    public const BADGE_TAGS       = 8;
 
     public const BADGE_TYPE_LABELS = [
         self::BADGE_HOSTNAME   => 'Hostname',
@@ -26,24 +28,8 @@ class CWidgetFieldBadgesList extends CWidgetField {
         self::BADGE_PROBLEMS   => 'Problems',
         self::BADGE_TEXT       => 'Text',
         self::BADGE_LINK       => 'Link',
-    ];
-
-    public const SCOPE_ALL   = 0;
-    public const SCOPE_UNACK = 1;
-
-	public const SCOPE_LABELS = [
-		self::SCOPE_UNACK => 'Unacknowledged',
-		self::SCOPE_ALL   => 'Any',
-	];
-
-    public const HOSTNAME_LINK_DISABLED = 0;
-    public const HOSTNAME_LINK_LATEST   = 1;
-    public const HOSTNAME_LINK_PROBLEMS = 2;
-
-    public const HOSTNAME_LINK_LABELS = [
-        self::HOSTNAME_LINK_DISABLED => 'Nothing',
-        self::HOSTNAME_LINK_LATEST   => 'Latest data',
-        self::HOSTNAME_LINK_PROBLEMS => 'Problems',
+        self::BADGE_MAINTENANCE => 'Maintenance',
+        self::BADGE_TAGS       => 'Tags',
     ];
 
     public const SIDE_LEFT  = 'left';
@@ -58,6 +44,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
         ['type' => self::BADGE_UPTIME,     'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
         ['type' => self::BADGE_LIVELINESS, 'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
         ['type' => self::BADGE_PROBLEMS,   'text' => '', 'url' => '', 'side' => self::SIDE_RIGHT],
+        ['type' => self::BADGE_MAINTENANCE, 'text' => '', 'url' => '', 'side' => self::SIDE_RIGHT],
     ];
 
     public function __construct(string $name, ?string $label = null) {

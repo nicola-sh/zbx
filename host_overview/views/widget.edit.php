@@ -24,15 +24,13 @@ $form
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Badges')))
             ->addItem(getBadgesListView($data['fields']['badges']))
-            ->addItem(getBadgeHostnameLinkViews($form, $data['fields']['badge_hostname_link']))
             ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
-            ->addItem(getBadgeProblemsScopeViews($form, $data['fields']['badge_problems_scope']))
-            ->addField(
-                new CWidgetFieldRadioButtonListView($data['fields']['badge_size'])
-            )
             ->addItem(getFreshnessThresholdViews($form, $data['fields']))
-            ->addItem(getCheckBoxView($form, $data['fields']['problems_show_zero'],
-                'Keep the Problems badge visible even when the selected host has zero active problems.'
+            ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_acknowledged'],
+                'Exclude acknowledged problems from the Problems badge count.'
+            ))
+            ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_suppressed'],
+                'Exclude suppressed problems from the Problems badge count.'
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_pulse'],
                 'Animate the problems badge with a pulsing effect when there are active problems.'
@@ -110,7 +108,7 @@ $form
                 new CWidgetFieldRadioButtonListView($data['fields']['label_length'])
             )
             ->addField(
-                new CWidgetFieldSelectView($data['fields']['bar_height'])
+                new CWidgetFieldRadioButtonListView($data['fields']['bar_height'])
             )
     )
     ->includeJsFile('widget.edit.js')
@@ -187,21 +185,6 @@ function getCheckBoxView(CWidgetFormView $form, $field, string $hint = ''): arra
     ];
 }
 
-function getSelectView(CWidgetFormView $form, $field, string $hint = ''): array
-{
-    $view = $form->registerField(new CWidgetFieldSelectView($field));
-    $label = new CLabel($field->getLabel(), $field->getName());
-
-    if ($hint !== '') {
-        $label->addItem(makeHelpIcon($hint));
-    }
-
-    return [
-        $label,
-        new CFormField($view->getView()),
-    ];
-}
-
 function getInterfaceHighViews(CWidgetFormView $form, array $fields): array
 {
     $interfaces_unit = $form->registerField(
@@ -254,30 +237,12 @@ function getThresholdMediumViews(CWidgetFormView $form, array $fields): array
     ];
 }
 
-function getBadgeHostnameLinkViews(CWidgetFormView $form, $field): array
-{
-    return getSelectView(
-        $form,
-        $field,
-        _('Choose where the Hostname badge should open when clicked.')
-    );
-}
-
 function getBadgeUptimeItemViews(CWidgetFormView $form, $field): array
 {
     return getItemNameView(
         $form,
         $field,
         _('Enter the exact uptime item name, for example "System uptime". Partial names are only used when they match one item uniquely; otherwise the badge shows —.')
-    );
-}
-
-function getBadgeProblemsScopeViews(CWidgetFormView $form, $field): array
-{
-    return getSelectView(
-        $form,
-        $field,
-        _('Choose whether the Problems badge counts any active problems or only unacknowledged ones.')
     );
 }
 
