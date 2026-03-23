@@ -87,11 +87,10 @@ class WidgetView extends CControllerDashboardWidgetView
             $this->fields_values['item_name_swap'],
         ];
 
-        // Add uptime item names from badges config
-        foreach ($badges as $b) {
-            if ((int) ($b['type'] ?? -1) === CWidgetFieldBadgesList::BADGE_UPTIME) {
-                $name_filters[] = $b['item_name'] ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME;
-            }
+        // Add uptime item name when an Uptime badge is configured.
+        if ($this->hasBadgeType($badges, CWidgetFieldBadgesList::BADGE_UPTIME)) {
+            $name_filters[] = trim((string) ($this->fields_values['badge_uptime_item_name']
+                ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME));
         }
 
         // Wildcard patterns — extract literal segments for API search
@@ -103,7 +102,16 @@ class WidgetView extends CControllerDashboardWidgetView
             }
         }
 
-        $name_filters = array_values(array_unique($name_filters));
+        $name_filters = array_values(array_unique(array_filter(
+            array_map('trim', $name_filters),
+            static fn(string $value): bool => $value !== ''
+        )));
+
+        if ($name_filters === []) {
+            $this->latest_clock = 0;
+
+            return [];
+        }
 
         // Retrieve from API
         $items = API::Item()->get([
@@ -148,6 +156,10 @@ class WidgetView extends CControllerDashboardWidgetView
         $hostname = null;
         $freshness = null;
         $problems_cache = [];
+        $uptime_item_name = trim((string) ($this->fields_values['badge_uptime_item_name']
+            ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME));
+        $problems_scope = (int) ($this->fields_values['badge_problems_scope']
+            ?? CWidgetFieldBadgesList::SCOPE_ALL);
 
         foreach ($badges as $index => $badge) {
             $type = (int) ($badge['type'] ?? CWidgetFieldBadgesList::BADGE_HOSTNAME);
@@ -162,10 +174,9 @@ class WidgetView extends CControllerDashboardWidgetView
                     break;
 
                 case CWidgetFieldBadgesList::BADGE_UPTIME:
-                    $item_name = $badge['item_name'] ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME;
                     $badge_data[$index] = [
                         'type' => $type,
-                        'uptime' => $this->computeUptime($metrics, $item_name),
+                        'uptime' => $this->computeUptime($metrics, $uptime_item_name),
                     ];
                     break;
 
@@ -178,16 +189,14 @@ class WidgetView extends CControllerDashboardWidgetView
                     break;
 
                 case CWidgetFieldBadgesList::BADGE_PROBLEMS:
-                    $scope = (int) ($badge['scope'] ?? CWidgetFieldBadgesList::SCOPE_ALL);
-
-                    if (!array_key_exists($scope, $problems_cache)) {
-                        $problems_cache[$scope] = $this->fetchProblems($scope);
+                    if (!array_key_exists($problems_scope, $problems_cache)) {
+                        $problems_cache[$problems_scope] = $this->fetchProblems($problems_scope);
                     }
 
                     $badge_data[$index] = [
                         'type' => $type,
-                        'problems' => $problems_cache[$scope],
-                        'scope' => $scope,
+                        'problems' => $problems_cache[$problems_scope],
+                        'scope' => $problems_scope,
                     ];
                     break;
             }
@@ -502,20 +511,39 @@ class WidgetView extends CControllerDashboardWidgetView
         ];
     }
 
-    // Find first metric whose key contains the given substring
+    // Resolve a metric name safely: exact match first, then a unique substring match.
     private function findMetric(array $metrics, string $search): ?array
     {
+        $search = trim($search);
+
+        if ($search === '') {
+            return null;
+        }
+
         if (isset($metrics[$search])) {
             return $metrics[$search];
         }
 
+        $matches = [];
+
         foreach ($metrics as $key => $details) {
             if (str_contains($key, $search)) {
-                return $details;
+                $matches[] = $details;
             }
         }
 
-        return null;
+        return count($matches) === 1 ? $matches[0] : null;
+    }
+
+    private function hasBadgeType(array $badges, int $type): bool
+    {
+        foreach ($badges as $badge) {
+            if ((int) ($badge['type'] ?? -1) === $type) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Check if a name matches any comma-separated wildcard pattern

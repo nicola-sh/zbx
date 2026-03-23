@@ -204,7 +204,7 @@ class CWidgetHostOverview extends CWidget {
       const data = bar ? bar.closest('.data') : null;
       if (bar) bar.style.display = 'none';
       if (data) data.classList.add('no-bar');
-      if (text) text.textContent = 'No data.';
+      if (text) text.textContent = 'No data';
     };
 
     const setSingleMetricVisible = (fill) => {
@@ -221,7 +221,7 @@ class CWidgetHostOverview extends CWidget {
 
       subcell.classList.add('no-bar');
       if (bar) bar.style.display = 'none';
-      if (text) text.textContent = `${labelName} — No data.`;
+      if (text) text.textContent = `${labelName} — No data`;
     };
 
     const setMultiMetricVisible = (subcell) => {
@@ -288,19 +288,25 @@ class CWidgetHostOverview extends CWidget {
           ? payload.freshness
           : null;
       const secs = Number(freshness);
+      const warnThreshold = Math.max(
+        0,
+        Number(fields["freshness_warn"]) || 60
+      );
+      const staleThreshold = Math.max(
+        warnThreshold,
+        Number(fields["freshness_stale"]) || 300
+      );
 
       badge.classList.remove('freshness-warn', 'freshness-stale');
       if (Number.isFinite(secs)) {
-        let label;
+        const label = secs < 60
+          ? `${secs}s ago`
+          : `${Math.floor(secs / 60)}m ago`;
         let cls = null;
-        if (secs < 60) {
-          label = `${secs}s ago`;
-        } else if (secs < 300) {
-          label = `${Math.floor(secs / 60)}m ago`;
-          cls = 'freshness-warn';
-        } else {
-          label = `${Math.floor(secs / 60)}m ago`;
+        if (secs >= staleThreshold) {
           cls = 'freshness-stale';
+        } else if (secs >= warnThreshold) {
+          cls = 'freshness-warn';
         }
         badgeText.textContent = label;
         if (cls) {
@@ -322,6 +328,7 @@ class CWidgetHostOverview extends CWidget {
         [0, 'not_classified', 'N/C'],
       ];
 
+      const showZeroProblems = fields["problems_show_zero"] == 1;
       const colorClasses = ['problems-info', 'problems-warning',
         'problems-average', 'problems-high', 'problems-disaster'];
       const sevClassMap = {
@@ -351,7 +358,12 @@ class CWidgetHostOverview extends CWidget {
         const total = Number(p.total) || 0;
 
         if (total === 0) {
-          badge.style.display = 'none';
+          badge.style.display = showZeroProblems ? '' : 'none';
+          if (showZeroProblems) {
+            if (badgeText) {
+              badgeText.textContent = 'No problems';
+            }
+          }
           continue;
         }
 
@@ -404,7 +416,7 @@ class CWidgetHostOverview extends CWidget {
         if (!naIndicator) {
           const na = document.createElement('span');
           na.className = 'na-indicator';
-          na.textContent = 'No data.';
+          na.textContent = 'No data';
           container.appendChild(na);
         }
         return;
@@ -450,7 +462,7 @@ class CWidgetHostOverview extends CWidget {
         if (!naIndicator) {
           const na = document.createElement('span');
           na.className = 'na-indicator';
-          na.textContent = 'No data.';
+          na.textContent = 'No data';
           container.appendChild(na);
         }
         return;
@@ -464,7 +476,7 @@ class CWidgetHostOverview extends CWidget {
         const text = sub.querySelector(".text");
         const fill = sub.querySelector(".fill");
 
-        if (bps === null) {
+        if (bps === null || bps === undefined) {
           setMultiMetricNoData(sub, String(name));
           return;
         }
@@ -508,7 +520,7 @@ class CWidgetHostOverview extends CWidget {
 
       for (const name in interfaces) {
         const item = interfaces[name] || {};
-        startTicker(name, item.bps || 0, item.percent);
+        startTicker(name, item.bps ?? null, item.percent ?? null);
       }
     };
 

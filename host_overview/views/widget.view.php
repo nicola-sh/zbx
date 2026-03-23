@@ -139,6 +139,7 @@ $freshness_icon = fn() => $makeSvg([
 $badges_raw = $data['config']['badges'] ?? '[]';
 $badges = is_string($badges_raw) ? (json_decode($badges_raw, true) ?: []) : [];
 $hostid = $data['config']['hostid'][0] ?? null;
+$hostname_link = (int) ($data['config']['badge_hostname_link'] ?? CWidgetFieldBadgesList::HOSTNAME_LINK_LATEST);
 
 if (!empty($badges)) {
     $info_bar = (new CDiv())->addClass('info-bar');
@@ -152,7 +153,6 @@ if (!empty($badges)) {
 
         switch ($type) {
             case CWidgetFieldBadgesList::BADGE_HOSTNAME:
-                $hostname_link = (int) ($badge['link'] ?? CWidgetFieldBadgesList::HOSTNAME_LINK_LATEST);
                 $hostname_href = null;
 
                 if ($hostid !== null) {
