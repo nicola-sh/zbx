@@ -84,7 +84,7 @@ class CWidgetHostOverview extends CWidget {
   }
 
   // Set width and color for a fill element
-  updateFillWidth(element, percent, fields = null) {
+  updateFillWidth(element, percent, fields = null, metricKey = null) {
     if (!element) return;
     const p = Number(percent);
     const targetWidth = `${p}%`;
@@ -96,8 +96,10 @@ class CWidgetHostOverview extends CWidget {
     if (fields["color_scheme"] == "1") {
       element.style.backgroundColor = `#${fields["fill_color"]}`;
     } else {
-      const highThreshold = Number(fields["th_num_1"]);
-      const mediumThreshold = Number(fields["th_num_2"]);
+      const thresholdMetric = this._getThresholdMetricKey(metricKey);
+      const highThreshold = this._getThresholdValue(fields, thresholdMetric, 1);
+      const mediumThreshold = this._getThresholdValue(fields, thresholdMetric, 2);
+
       if (p > highThreshold) {
         element.style.backgroundColor = `#${fields["th_color_1"]}`;
       } else if (p > mediumThreshold) {
@@ -106,6 +108,37 @@ class CWidgetHostOverview extends CWidget {
         element.style.backgroundColor = `#${fields["th_color_3"]}`;
       }
     }
+  }
+
+  _getThresholdMetricKey(metricKey) {
+    if (!metricKey) {
+      return null;
+    }
+
+    if (metricKey === 'iface' || metricKey.startsWith('iface:')) {
+      return 'iface';
+    }
+
+    if (metricKey === 'disk' || metricKey.startsWith('disk:')) {
+      return 'disk';
+    }
+
+    if (metricKey === 'partition' || metricKey.startsWith('partition:')) {
+      return 'partition';
+    }
+
+    return metricKey;
+  }
+
+  _getThresholdValue(fields, metricKey, level) {
+    const metricField = metricKey ? fields[`th_${metricKey}_${level}`] : undefined;
+    const fallbackField = fields[`th_num_${level}`];
+    const rawValue = metricField !== undefined && metricField !== null && metricField !== ''
+      ? metricField
+      : fallbackField;
+    const value = Number(rawValue);
+
+    return Number.isFinite(value) ? value : 0;
   }
 
   // Widget lifecycle
@@ -346,13 +379,13 @@ class CWidgetHostOverview extends CWidget {
 
   _updateSingleMetrics(response, fields, enabledMetrics) {
     const singleMetrics = [
-      [CWidgetHostOverview.METRIC_CPU,  'cpu',  'cpu',          '.cpu',  '.cpu-text'],
-      [CWidgetHostOverview.METRIC_RAM,  'ram',  'ram',          '.ram',  '.ram-text'],
-      [CWidgetHostOverview.METRIC_LOAD, 'load', 'load_percent', '.load', '.load-text'],
-      [CWidgetHostOverview.METRIC_SWAP, 'swap', 'swap',         '.swap', '.swap-text'],
+      [CWidgetHostOverview.METRIC_CPU,  'cpu',  'cpu',  '.cpu',  '.cpu-text', 'percent'],
+      [CWidgetHostOverview.METRIC_RAM,  'ram',  'ram',  '.ram',  '.ram-text', 'percent'],
+      [CWidgetHostOverview.METRIC_LOAD, 'load', 'load', '.load', '.load-text', 'load'],
+      [CWidgetHostOverview.METRIC_SWAP, 'swap', 'swap', '.swap', '.swap-text', 'percent'],
     ];
 
-    for (const [metricId, key, responseKey, fillSelector, textSelector] of singleMetrics) {
+    for (const [metricId, key, responseKey, fillSelector, textSelector, mode] of singleMetrics) {
       if (!enabledMetrics.has(metricId)) {
         continue;
       }
@@ -368,7 +401,15 @@ class CWidgetHostOverview extends CWidget {
 
       this._setSingleMetricVisible(fill);
       const value = Number(response[responseKey]);
-      this.updateFillWidth(fill, value, fields);
+
+      if (mode === 'load') {
+        this.updateFillWidth(fill, this._getLoadBarPercent(value, fields), fields, key);
+        const arrowDir = this.getArrow(key, value);
+        this._startLoadTicker(key, value, text, arrowDir);
+        continue;
+      }
+
+      this.updateFillWidth(fill, value, fields, key);
       const arrowDir = this.getArrow(key, value);
       this._startPercentTicker(key, null, value, text, arrowDir);
     }
@@ -410,7 +451,7 @@ class CWidgetHostOverview extends CWidget {
       }
 
       this._setMultiMetricVisible(subcell);
-      this.updateFillWidth(fill, Number(row.percent), fields);
+      this.updateFillWidth(fill, Number(row.percent), fields, keyPrefix);
 
       const arrowDir = this.getArrow(metricKey, percent);
       this._startPercentTicker(metricKey, labelName, percent, text, arrowDir);
@@ -473,7 +514,7 @@ class CWidgetHostOverview extends CWidget {
 
     this._setMultiMetricVisible(subcell);
     if (Number.isFinite(Number(percent))) {
-      this.updateFillWidth(fill, Number(percent), fields);
+      this.updateFillWidth(fill, Number(percent), fields, 'iface');
     }
 
     const step = (now) => {
@@ -684,9 +725,58 @@ class CWidgetHostOverview extends CWidget {
     this.percentTicker.set(key, state);
   }
 
+  _startLoadTicker(key, toValue, textEl, arrowDir = null) {
+    const state = this.percentTicker.get(key) || { value: 0, rafId: null };
+    if (state.rafId) {
+      cancelAnimationFrame(state.rafId);
+    }
+
+    const from = Number(state.value) || 0;
+    const to = Number(toValue) || 0;
+    const start = performance.now();
+    const duration = 500;
+
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const current = from + (to - from) * ease;
+
+      this._renderTextWithArrow(textEl, this._formatLoadValue(current), arrowDir);
+      state.value = current;
+
+      if (t < 1) {
+        state.rafId = requestAnimationFrame(step);
+        return;
+      }
+
+      state.value = to;
+      state.rafId = null;
+      this._renderTextWithArrow(textEl, this._formatLoadValue(to), arrowDir);
+    };
+
+    state.rafId = requestAnimationFrame(step);
+    this.percentTicker.set(key, state);
+  }
+
+  _getLoadBarPercent(loadValue, fields) {
+    const loadCeiling = Number(fields?.load_high) || 0;
+
+    if (loadCeiling <= 0) {
+      return 0;
+    }
+
+    return this._clampPercent((Number(loadValue) / loadCeiling) * 100);
+  }
+
   _clampPercent(value) {
     const rounded = Math.round(Number(value) || 0);
     return Math.max(0, Math.min(100, rounded));
+  }
+
+  _formatLoadValue(value) {
+    const rounded = Math.round((Number(value) || 0) * 100) / 100;
+
+    return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(2);
   }
 
   _renderTextWithArrow(textEl, labelText, arrowDir) {

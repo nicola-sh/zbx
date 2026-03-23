@@ -470,7 +470,7 @@ $view
     ->addItem($container)
     ->setVar('cpu', $data['cpu'] ?? null)
     ->setVar('ram', $data['ram'] ?? null)
-    ->setVar('load_percent', $data['load_percent'] ?? null)
+    ->setVar('load', $data['load'] ?? null)
     ->setVar('swap', $data['swap'] ?? null)
     ->setVar('badge_data', $data['badge_data'] ?? [])
     ->setVar('interfaces', $data['interfaces'] ?? [])
