@@ -127,12 +127,20 @@ class CWidgetHostOverview extends CWidget {
     // Store disk/partition item names from row data
     if (response.disks) {
       for (const row of response.disks) {
-        if (row.item_name) this.itemMap[`disk:${row.name}`] = row.item_name;
+        if (row.item_ref) {
+          this.itemMap[`disk:${row.name}`] = row.item_ref;
+        } else if (row.item_name) {
+          this.itemMap[`disk:${row.name}`] = row.item_name;
+        }
       }
     }
     if (response.partitions) {
       for (const row of response.partitions) {
-        if (row.item_name) this.itemMap[`partition:${row.name}`] = row.item_name;
+        if (row.item_ref) {
+          this.itemMap[`partition:${row.name}`] = row.item_ref;
+        } else if (row.item_name) {
+          this.itemMap[`partition:${row.name}`] = row.item_name;
+        }
       }
     }
     if (Array.isArray(response.interfaces)) {
@@ -351,6 +359,7 @@ class CWidgetHostOverview extends CWidget {
 
       const fill = this._body.querySelector(fillSelector);
       const text = this._body.querySelector(textSelector);
+      this._syncSingleMetricLink(key, fill);
 
       if (response[responseKey] == null) {
         this._setSingleMetricNoData(fill, text);
@@ -390,6 +399,10 @@ class CWidgetHostOverview extends CWidget {
       const fill = subcell.querySelector(".fill");
       const labelName = row.label;
       const percent = row.percent === null ? null : Number(row.percent);
+      const metricKey = `${keyPrefix}:${row.key}`;
+
+      this._syncMetricLink(text, metricKey, row.item_ref);
+      subcell.setAttribute('data-metric-key', metricKey);
 
       if (percent === null || Number.isNaN(percent)) {
         this._setMultiMetricNoData(subcell, labelName);
@@ -399,9 +412,8 @@ class CWidgetHostOverview extends CWidget {
       this._setMultiMetricVisible(subcell);
       this.updateFillWidth(fill, Number(row.percent), fields);
 
-      const arrowKey = `${keyPrefix}:${row.key}`;
-      const arrowDir = this.getArrow(arrowKey, percent);
-      this._startPercentTicker(arrowKey, labelName, percent, text, arrowDir);
+      const arrowDir = this.getArrow(metricKey, percent);
+      this._startPercentTicker(metricKey, labelName, percent, text, arrowDir);
     }
   }
 
@@ -435,6 +447,10 @@ class CWidgetHostOverview extends CWidget {
     const subcell = row.cell;
     const text = subcell.querySelector(".text");
     const fill = subcell.querySelector(".fill");
+    const metricKey = `iface:${key}`;
+
+    this._syncMetricLink(text, metricKey, row.item_ref);
+    subcell.setAttribute('data-metric-key', metricKey);
 
     if (bps === null || bps === undefined) {
       this._setMultiMetricNoData(subcell, String(label));
@@ -453,7 +469,7 @@ class CWidgetHostOverview extends CWidget {
     const to = Number(bps) || 0;
     const start = performance.now();
     const duration = 700;
-    const arrowDir = this.getArrow(`iface:${key}`, to);
+    const arrowDir = this.getArrow(metricKey, to);
 
     this._setMultiMetricVisible(subcell);
     if (Number.isFinite(Number(percent))) {
@@ -591,7 +607,7 @@ class CWidgetHostOverview extends CWidget {
     const cell = document.createElement('div');
     const bar = document.createElement('div');
     const fill = document.createElement('div');
-    const text = document.createElement('span');
+    const text = document.createElement('a');
 
     cell.className = 'cell';
     cell.setAttribute('data-key', key);
@@ -599,7 +615,7 @@ class CWidgetHostOverview extends CWidget {
 
     bar.className = 'bar';
     fill.className = 'fill';
-    text.className = 'text';
+    text.className = 'text metric-link metric-value-link js-metric-link';
 
     bar.appendChild(fill);
     cell.appendChild(bar);
@@ -689,6 +705,67 @@ class CWidgetHostOverview extends CWidget {
     span.className = `dir-arrow dir-${arrowDir}`;
     textEl.appendChild(document.createTextNode(' '));
     textEl.appendChild(span);
+  }
+
+  _syncSingleMetricLink(metricKey, fill) {
+    const row = fill?.closest('.row');
+    const link = row?.querySelector('.label .js-metric-link');
+
+    this._syncMetricLink(link, metricKey);
+  }
+
+  _syncMetricLink(linkEl, metricKey, itemRef = undefined) {
+    if (!linkEl) {
+      return;
+    }
+
+    if (metricKey) {
+      linkEl.setAttribute('data-metric-key', metricKey);
+    }
+
+    const latestDataUrl = this._buildMetricLatestDataUrl(
+      itemRef !== undefined ? itemRef : this.itemMap[metricKey]
+    );
+
+    if (latestDataUrl) {
+      linkEl.setAttribute('href', latestDataUrl);
+      linkEl.setAttribute('title', 'Open latest data');
+      linkEl.classList.remove('is-disabled');
+      return;
+    }
+
+    linkEl.removeAttribute('href');
+    linkEl.removeAttribute('title');
+    linkEl.classList.add('is-disabled');
+  }
+
+  _buildMetricLatestDataUrl(itemRef) {
+    const hostid = (this._fields?.hostid || [])[0];
+
+    if (!hostid) {
+      return null;
+    }
+
+    let itemName = '';
+
+    if (typeof itemRef === 'string') {
+      itemName = itemRef.trim();
+    } else if (itemRef && typeof itemRef === 'object' && itemRef.name != null) {
+      itemName = String(itemRef.name).trim();
+    }
+
+    if (!itemName) {
+      return null;
+    }
+
+    const params = new URLSearchParams({
+      action: 'latest.view',
+      name: itemName,
+      filter_set: '1',
+    });
+    params.append('hostids[]', String(hostid));
+
+    return `zabbix.php?${params.toString()}`;
   }
 
   _setSingleMetricNoData(fill, text) {

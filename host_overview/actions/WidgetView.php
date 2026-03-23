@@ -411,6 +411,7 @@ class WidgetView extends CControllerDashboardWidgetView
                 if ($percent !== null || $rows[$row_index]['percent'] === null) {
                     $rows[$row_index]['percent'] = $percent;
                     $rows[$row_index]['item_name'] = $key;
+                    $rows[$row_index]['item_ref'] = $this->toSparklineItemRef($details);
                 }
             } else {
                 $index[$name] = count($rows);
@@ -418,6 +419,7 @@ class WidgetView extends CControllerDashboardWidgetView
                     'name'      => $name,
                     'percent'   => $percent,
                     'item_name' => $key,
+                    'item_ref'  => $this->toSparklineItemRef($details),
                 ];
             }
         }
