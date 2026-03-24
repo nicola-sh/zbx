@@ -1,0 +1,127 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 ObviousAIChicken
+ * github.com/obviousaichicken/zabbix_widgets
+ */
+
+/* Sparkline View */
+.host-overview-container.sparkline-active {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sparkline-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  container-type: inline-size;
+  font-size: 12px;
+  padding: 0 10px 10px;
+  box-sizing: border-box;
+  overflow: auto;
+  background: var(--sparkline-overlay-bg);
+  border-radius: inherit;
+}
+
+.sparkline-overlay.visible {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.sparkline-overlay .sparkline-toolbar {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 5px 0 10px 0;
+}
+
+.sparkline-overlay .sparkline-toolbar .toolbar-group {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.sparkline-overlay .sparkline-toolbar .toolbar-group-left {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sparkline-overlay .sparkline-toolbar .toolbar-group-right {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sparkline-overlay .sparkline-title {
+  flex: 1 1 0;
+  width: 0;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+  padding-left: 10px;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sparkline-overlay .sparkline-periods {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.sparkline-overlay .sparkline-periods::-webkit-scrollbar {
+  display: none;
+}
+
+.sparkline-overlay .sparkline-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--gap-3);
+  min-height: 0;
+}
+
+.sparkline-overlay .toolbar-control:focus,
+.sparkline-overlay .toolbar-control:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.dashboard-widget-host_overview .sparkline-periods .toolbar-control.active,
+.dashboard-widget-host_overview .sparkline-periods .toolbar-control.active:hover {
+  color: var(--sparkline-active-fg);
+  background: var(--sparkline-active-color);
+}
+
+.sparkline-overlay .sparkline-canvas {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+  box-sizing: border-box;
+  border: 1px solid var(--sparkline-border-color);
+  border-radius: var(--canvas-radius);
+}
+
+.sparkline-overlay.visible .sparkline-canvas {
+  cursor: crosshair;
+}
+
+.sparkline-overlay .sparkline-y-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 6px 0;
+  color: var(--sparkline-label-color);
+  font-size: 12px;
+  line-height: 1;
+  text-transform: none;
+}

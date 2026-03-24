@@ -187,32 +187,32 @@ $makeSvg = static function (array $paths, string $class = '', array $circles = [
 $link_icon = fn() => $makeSvg([
     'M13 5H19V11',
     'M19 5L5 19',
-], 'menu-icon menu-icon-trailing');
+], 'toolbar-icon toolbar-icon-trailing');
 $tags_icon = fn() => $makeSvg([
     'M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z',
     'M7 7h.01'
-], 'menu-icon menu-icon-leading');
+], 'toolbar-icon toolbar-icon-leading');
 $uptime_icon = fn() => $makeSvg([
     'M12 6v6l1.56.78',
     'M13.227 21.925a10 10 0 1 1 8.767-9.588',
     'm14 18 4-4 4 4',
     'M18 22v-8',
-], 'menu-icon menu-icon-leading');
+], 'toolbar-icon toolbar-icon-leading');
 $freshness_icon = fn() => $makeSvg([
     'M16.247 7.761a6 6 0 0 1 0 8.478',
     'M19.075 4.933a10 10 0 0 1 0 14.134',
     'M4.925 19.067a10 10 0 0 1 0-14.134',
     'M7.753 16.239a6 6 0 0 1 0-8.478',
-], 'menu-icon menu-icon-leading', [['12', '12', '2']]);
+], 'toolbar-icon toolbar-icon-leading', [['12', '12', '2']]);
 $back_icon = fn() => $makeSvg([
     'M15 18l-6-6 6-6',
     'M9 12h10',
-], 'menu-icon menu-icon-leading');
+], 'toolbar-icon toolbar-icon-leading');
 
 $maintenance_icon = fn() => $makeSvg([
     'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'
-], 'menu-icon menu-icon-leading');
-$menu_icon = fn() => $makeSvg([], 'menu-icon menu-icon-trailing', [
+], 'toolbar-icon toolbar-icon-leading');
+$toolbar_more_icon = fn() => $makeSvg([], 'toolbar-icon toolbar-icon-trailing', [
     ['12', '12', '1'],
     ['19', '12', '1'],
     ['5', '12', '1'],
@@ -255,11 +255,29 @@ $makeBadgeElement = static function (
     return $element;
 };
 
+$makeToolbarLink = static function (
+    array $items = [],
+    array $class_names = [],
+    array $attributes = []
+): CLinkAction {
+    $link = new CLinkAction($items);
+
+    foreach ($class_names as $class_name) {
+        $link->addClass($class_name);
+    }
+
+    foreach ($attributes as $name => $value) {
+        $link->setAttribute($name, $value);
+    }
+
+    return $link;
+};
+
 $finalizeBadge = static function ($badge, int $index, bool $is_interactive = false) {
-    $badge->addClass('menu-control');
+    $badge->addClass('toolbar-control');
 
     if ($is_interactive) {
-        $badge->addClass('menu-control-interactive');
+        $badge->addClass('toolbar-control-interactive');
     }
 
     $badge->setAttribute('data-badge-index', $index);
@@ -273,9 +291,9 @@ $badges = is_string($badges_raw) ? (json_decode($badges_raw, true) ?: []) : [];
 $hostid = $data['config']['hostid'][0] ?? null;
 
 if (!empty($badges)) {
-    $info_bar = (new CDiv())->addClass('info-bar');
-    $left_group = (new CDiv())->addClass('info-bar-group info-bar-group-left');
-    $right_group = (new CDiv())->addClass('info-bar-group info-bar-group-right');
+    $toolbar = (new CDiv())->addClass('toolbar');
+    $left_group = (new CDiv())->addClass('toolbar-group toolbar-group-left');
+    $right_group = (new CDiv())->addClass('toolbar-group toolbar-group-right');
     $left_count = 0;
     $right_count = 0;
 
@@ -287,12 +305,13 @@ if (!empty($badges)) {
         switch ($type) {
             case CWidgetFieldBadgesList::BADGE_HOSTNAME:
                 if ($hostid !== null) {
-                    $el = (new CLinkAction([
-                        $makeBadgeText(),
-                        $menu_icon(),
-                    ]))
-                        ->addClass('badge')
-                        ->addClass('host-badge')
+                    $el = $makeToolbarLink(
+                        [
+                            $makeBadgeText(),
+                            $toolbar_more_icon(),
+                        ],
+                        ['badge', 'host-badge']
+                    )
                         ->setMenuPopup(CMenuPopupHelper::getHost($hostid));
                     $is_interactive = true;
                 }
@@ -417,14 +436,14 @@ if (!empty($badges)) {
     }
 
     if ($left_count > 0) {
-        $info_bar->addItem($left_group);
+        $toolbar->addItem($left_group);
     }
 
     if ($right_count > 0) {
-        $info_bar->addItem($right_group);
+        $toolbar->addItem($right_group);
     }
 
-    $container->addItem($info_bar);
+    $container->addItem($toolbar);
 }
 
 // Single-metric rows: [metric_id, metric_key, full_label, short_label]
@@ -484,32 +503,34 @@ $sparkline_overlay = (new CDiv())
     ->setAttribute('aria-label', _('Sparkline viewer'))
     ->setAttribute('role', 'dialog');
 
-$sparkline_toolbar = (new CDiv())->addClass('info-bar sparkline-toolbar');
-$sparkline_left = (new CDiv())->addClass('info-bar-group info-bar-group-left');
+$sparkline_toolbar = (new CDiv())->addClass('toolbar sparkline-toolbar');
+$sparkline_left = (new CDiv())->addClass('toolbar-group toolbar-group-left');
 $sparkline_left->addItem(
-    (new CTag('button', true))
-        ->setAttribute('type', 'button')
-        ->setAttribute('aria-label', _('Back to overview'))
-        ->addClass('menu-control menu-control-interactive js-sparkline-close')
-        ->addItem([
+    $makeToolbarLink(
+        [
             $back_icon(),
             (new CTag('span', true))->addItem(_('Back')),
-        ])
+        ],
+        ['toolbar-control', 'toolbar-control-interactive', 'js-sparkline-close'],
+        ['aria-label' => _('Back to overview')]
+    )
 );
 $sparkline_left->addItem(
     (new CDiv())->addClass('sparkline-title')
 );
-$sparkline_right = (new CDiv())->addClass('info-bar-group info-bar-group-right sparkline-periods');
+$sparkline_right = (new CDiv())->addClass('toolbar-group toolbar-group-right sparkline-periods');
 foreach (['1h', '3h', '12h', '1d', '3d', '1w', '30d'] as $p) {
-    $btn = (new CTag('button', true))
-        ->setAttribute('type', 'button')
-        ->setAttribute('data-period', $p)
-        ->setAttribute('aria-pressed', $p === '1h' ? 'true' : 'false')
-        ->addClass('menu-control menu-control-interactive')
-        ->addItem($p);
+    $btn = $makeToolbarLink(
+        [$p],
+        ['toolbar-control', 'toolbar-control-interactive'],
+        ['data-period' => $p]
+    );
+
     if ($p === '1h') {
         $btn->addClass('active');
+        $btn->setAttribute('aria-current', 'true');
     }
+
     $sparkline_right->addItem($btn);
 }
 $sparkline_toolbar->addItem($sparkline_left);

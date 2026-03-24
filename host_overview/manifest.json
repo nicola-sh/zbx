@@ -24,7 +24,13 @@
     }
   },
   "assets": {
-    "css": ["widget.css"],
+    "css": [
+      "widget.edit.css",
+      "widget.config.css",
+      "widget.toolbar.css",
+      "widget.default.css",
+      "widget.sparkline.css"
+    ],
     "js": ["class.sparkline.js", "class.widget.js"]
   }
 }
