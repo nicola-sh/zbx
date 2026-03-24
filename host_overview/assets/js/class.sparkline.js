@@ -477,7 +477,7 @@ class HostOverviewSparkline {
       return;
     }
 
-    const periodBtn = e.target.closest('.sparkline-periods button[data-period]');
+    const periodBtn = e.target.closest('.sparkline-periods .toolbar-control[data-period]');
     if (periodBtn) {
       e.preventDefault();
       const period = periodBtn.getAttribute('data-period');
@@ -981,11 +981,16 @@ class HostOverviewSparkline {
     const fields = this._getFields();
     const fillColor = fields.fill_color ? `#${fields.fill_color}` : '#458ADC';
 
-    body?.querySelectorAll('.sparkline-periods button').forEach((btn) => {
+    body?.querySelectorAll('.sparkline-periods .toolbar-control[data-period]').forEach((btn) => {
       btn.style.setProperty('--sparkline-active-color', fillColor);
       const isActive = btn.getAttribute('data-period') === this.state.period;
       btn.classList.toggle('active', isActive);
-      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      if (isActive) {
+        btn.setAttribute('aria-current', 'true');
+      }
+      else {
+        btn.removeAttribute('aria-current');
+      }
     });
   }
 
