@@ -9,12 +9,11 @@ class HostOverviewSparkline {
   static PERIODS = {
     '1h': 3600,
     '3h': 10800,
-    '6h': 21600,
     '12h': 43200,
     '1d': 86400,
     '3d': 259200,
     '1w': 604800,
-    '2w': 1209600,
+    '30d': 2592000,
   };
 
   constructor(options = {}) {
@@ -96,6 +95,7 @@ class HostOverviewSparkline {
     this.state.message = 'Loading...';
     this._pauseUpdating();
     this._updateChrome();
+    this._primeYLabels();
 
     const root = this._getWidgetRoot();
     if (root) {
@@ -106,12 +106,8 @@ class HostOverviewSparkline {
     const overlay = body?.querySelector('.sparkline-overlay');
     if (overlay) {
       overlay.style.backgroundColor = this._getSurfaceColor();
+      overlay.setAttribute('aria-hidden', 'false');
       overlay.classList.add('visible');
-    }
-
-    const backdrop = body?.querySelector('.sparkline-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('visible');
     }
 
     const container = body?.querySelector('#container');
@@ -144,12 +140,8 @@ class HostOverviewSparkline {
     const body = this._getBody();
     const overlay = body?.querySelector('.sparkline-overlay');
     if (overlay) {
+      overlay.setAttribute('aria-hidden', 'true');
       overlay.classList.remove('visible');
-    }
-
-    const backdrop = body?.querySelector('.sparkline-backdrop');
-    if (backdrop) {
-      backdrop.classList.remove('visible');
     }
 
     const root = this._getWidgetRoot();
@@ -485,13 +477,6 @@ class HostOverviewSparkline {
       return;
     }
 
-    const backdrop = e.target.closest('.sparkline-backdrop');
-    if (backdrop) {
-      e.preventDefault();
-      this.close();
-      return;
-    }
-
     const periodBtn = e.target.closest('.sparkline-periods button[data-period]');
     if (periodBtn) {
       e.preventDefault();
@@ -506,7 +491,7 @@ class HostOverviewSparkline {
       return;
     }
 
-    const bar = e.target.closest('.bar');
+    const bar = e.target.closest('.metric-bar');
     if (!bar) {
       return;
     }
@@ -526,46 +511,20 @@ class HostOverviewSparkline {
   }
 
   _getMetricFromBar(bar) {
-    const cell = bar.closest('.cell[data-key]');
-    if (cell) {
-      const name = cell.getAttribute('data-key');
-      const label = cell.getAttribute('data-label') || name;
-      if (!name) {
-        return null;
-      }
-
-      if (cell.closest('.interfaces-data')) {
-        return { key: `iface:${name}`, title: label };
-      }
-      if (cell.closest('.disks-data')) {
-        return { key: `disk:${name}`, title: label };
-      }
-      if (cell.closest('.partitions-data')) {
-        return { key: `partition:${name}`, title: label };
-      }
-
+    const cell = bar.closest('.metric-cell[data-metric-key]');
+    if (!cell) {
       return null;
     }
 
-    const fill = bar.querySelector('.fill');
-    if (!fill) {
+    const key = cell.getAttribute('data-metric-key');
+    if (!key) {
       return null;
     }
 
-    if (fill.classList.contains('cpu')) {
-      return { key: 'cpu', title: 'Processor' };
-    }
-    if (fill.classList.contains('ram')) {
-      return { key: 'ram', title: 'Memory' };
-    }
-    if (fill.classList.contains('load')) {
-      return { key: 'load', title: 'Load' };
-    }
-    if (fill.classList.contains('swap')) {
-      return { key: 'swap', title: 'Swap' };
-    }
-
-    return null;
+    return {
+      key,
+      title: cell.getAttribute('data-label') || key,
+    };
   }
 
   _setupResizeObserver() {
@@ -628,13 +587,12 @@ class HostOverviewSparkline {
       return;
     }
 
-    this._setYLabelsVisible(false);
     const { ctx, dpr, w, h } = canvasState;
     ctx.scale(dpr, dpr);
     const cssW = Math.round(w / dpr);
     const cssH = Math.round(h / dpr);
     ctx.fillStyle = 'rgba(128,128,128,0.5)';
-    ctx.font = '10px sans-serif';
+    ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(message, cssW / 2, cssH / 2);
@@ -949,6 +907,38 @@ class HostOverviewSparkline {
     spans[2].textContent = '0%';
   }
 
+  _primeYLabels() {
+    const metricKey = this.state.metricKey || '';
+    const fields = this._getFields();
+    const isInterface = metricKey.startsWith('iface:');
+    const isLoad = metricKey === 'load';
+
+    if (isInterface) {
+      const high = parseInt(fields.interfaces_high, 10);
+      const unit = parseInt(fields.interfaces_unit, 10);
+      const safeHigh = Number.isFinite(high) && high > 0 ? high : 1;
+      const safeUnit = Number.isFinite(unit) ? unit : 2;
+      const factors = { 2: 1e9, 1: 1e6, 0: 1e3 };
+      this._updateYLabels(safeHigh * (factors[safeUnit] || 1e9), true, false);
+      this._setYLabelsVisible(true);
+      return;
+    }
+
+    if (isLoad) {
+      const loadHigh = parseFloat(fields.load_high);
+      this._updateYLabels(
+        Number.isFinite(loadHigh) && loadHigh > 0 ? loadHigh : 2,
+        false,
+        true
+      );
+      this._setYLabelsVisible(true);
+      return;
+    }
+
+    this._updateYLabels(100, false, false);
+    this._setYLabelsVisible(true);
+  }
+
   _setYLabelsVisible(visible) {
     const labels = this._getBody()?.querySelector('.sparkline-y-labels');
     if (labels) {
@@ -993,7 +983,9 @@ class HostOverviewSparkline {
 
     body?.querySelectorAll('.sparkline-periods button').forEach((btn) => {
       btn.style.setProperty('--sparkline-active-color', fillColor);
-      btn.classList.toggle('active', btn.getAttribute('data-period') === this.state.period);
+      const isActive = btn.getAttribute('data-period') === this.state.period;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
   }
 

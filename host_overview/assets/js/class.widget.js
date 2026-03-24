@@ -14,6 +14,22 @@ class CWidgetHostOverview extends CWidget {
   static METRIC_INTERFACES = 4;
   static METRIC_DISKS      = 5;
   static METRIC_PARTITIONS = 6;
+  static BADGE_FRESHNESS_STATE_CLASSES = ['freshness-warn', 'freshness-stale'];
+  static BADGE_PROBLEM_STATE_CLASSES = [
+    'problems-info',
+    'problems-warning',
+    'problems-average',
+    'problems-high',
+    'problems-disaster',
+  ];
+  static BADGE_PROBLEM_SEVERITY_CLASS_MAP = {
+    0: 'problems-info',
+    1: 'problems-info',
+    2: 'problems-warning',
+    3: 'problems-average',
+    4: 'problems-high',
+    5: 'problems-disaster',
+  };
 
   onInitialize() {
     this.rendered = false;
@@ -28,9 +44,7 @@ class CWidgetHostOverview extends CWidget {
       getBody: () => this._body,
       getFields: () => this._fields || {},
       getItemRef: (metricKey) => this.itemMap[metricKey],
-      getWidgetRoot: () => this._body?.closest('.dashboard-widget-host_overview')
-        || this._target
-        || this._body,
+      getWidgetRoot: () => this._getWidgetRoot(),
       formatBps: (bps) => this._formatBps(bps),
       pauseUpdating: () => {
         if (typeof this._pauseUpdating !== 'function') {
@@ -70,17 +84,29 @@ class CWidgetHostOverview extends CWidget {
     return null;
   }
 
-  // Toggle a class on the container div if the header is hidden
+  // Get the widget root element (.dashboard-widget-host_overview)
+  _getWidgetRoot() {
+    return this._body?.closest('.dashboard-widget-host_overview')
+      || this._target
+      || this._body;
+  }
+
+  // Toggle hidden_header class on the widget root when the header is hidden
   updateViewModeAttr() {
     try {
       if (!this._body) return;
-      const container = this._body.querySelector("#container");
-      if (!container) return;
-      if (typeof this.getViewMode === "function") {
-        const mode = this.getViewMode();
-        container.classList.toggle("hidden_header", mode);
-      }
+      if (typeof this.getViewMode !== "function") return;
+      const root = this._getWidgetRoot();
+      if (root) root.classList.toggle("hidden_header", this.getViewMode());
     } catch (_) {}
+  }
+
+  // Sync config-driven modifier classes to the widget root (once on first render)
+  _syncRootModifiers(fields) {
+    const root = this._getWidgetRoot();
+    if (!root) return;
+    root.classList.toggle('square-corners', String(fields['corners']) === '1');
+    root.classList.toggle('problems-pulse-enabled', String(fields['problems_pulse']) === '1');
   }
 
   // Set width and color for a fill element
@@ -152,8 +178,9 @@ class CWidgetHostOverview extends CWidget {
       this._sparkline?.attach();
     }
 
-    // Store item map for sparkline lookups
+    // Store config and sync root modifiers
     this._fields = response.config || this._fields || {};
+    this._syncRootModifiers(this._fields);
     if (response.item_map) {
       this.itemMap = response.item_map;
     }
@@ -200,11 +227,7 @@ class CWidgetHostOverview extends CWidget {
     const enabledMetrics = new Set(fields["metrics_show"] || []);
     const badgeData = response.badge_data || {};
 
-    this._updateHostBadges(badgeData);
-    this._updateUptimeBadges(badgeData);
-    this._updateFreshnessBadges(badgeData, fields);
-    this._updateMaintenanceBadges(badgeData);
-    this._updateProblemBadges(badgeData);
+    this._updateBadges(badgeData, fields);
     this._updateSingleMetrics(response, fields, enabledMetrics);
 
     if (enabledMetrics.has(CWidgetHostOverview.METRIC_INTERFACES)) {
@@ -212,194 +235,149 @@ class CWidgetHostOverview extends CWidget {
     }
 
     if (enabledMetrics.has(CWidgetHostOverview.METRIC_DISKS)) {
-      this._updateMetricRows(".disks-data", response.disks, "disks", fields);
+      this._updateMetricRows(".disks-data", response.disks, "disk", fields);
     }
 
     if (enabledMetrics.has(CWidgetHostOverview.METRIC_PARTITIONS)) {
-      this._updateMetricRows(".partitions-data", response.partitions, "partitions", fields);
+      this._updateMetricRows(".partitions-data", response.partitions, "partition", fields);
     }
   }
 
-  _updateHostBadges(badgeData) {
-    for (const badge of this._body.querySelectorAll(".host-badge")) {
-      const hostText = badge.querySelector(".badge-text");
-      if (!hostText) {
-        continue;
-      }
-
-      const payload = this._getBadgePayload(badge, badgeData);
-      const hostname =
-        payload && Object.prototype.hasOwnProperty.call(payload, "hostname")
-          ? payload.hostname
-          : null;
-
-      if (hostname) {
-        hostText.textContent = hostname;
-        hostText.style.fontStyle = '';
-      } else {
-        hostText.textContent = 'Hostname missing';
-        hostText.style.fontStyle = 'italic';
-      }
-    }
-  }
-
-  _updateUptimeBadges(badgeData) {
-    for (const badge of this._body.querySelectorAll(".uptime-badge")) {
-      const badgeText = badge.querySelector(".badge-text");
-      if (!badgeText) {
-        continue;
-      }
-
-      const payload = this._getBadgePayload(badge, badgeData);
-      const uptime =
-        payload && Object.prototype.hasOwnProperty.call(payload, "uptime")
-          ? payload.uptime
-          : null;
-
-      badgeText.textContent = uptime || '—';
-    }
-  }
-
-  _updateFreshnessBadges(badgeData, fields) {
+  _updateBadges(badgeData, fields) {
     const warnThreshold = Math.max(0, Number(fields["freshness_warn"]) || 60);
     const staleThreshold = Math.max(
       warnThreshold,
       Number(fields["freshness_stale"]) || 300
     );
 
-    for (const badge of this._body.querySelectorAll(".freshness-badge")) {
-      const badgeText = badge.querySelector(".badge-text");
+    this._forEachBadge(".host-badge", badgeData, (_badge, payload, badgeText) => {
       if (!badgeText) {
-        continue;
+        return;
       }
 
-      const payload = this._getBadgePayload(badge, badgeData);
-      const freshness =
-        payload && Object.prototype.hasOwnProperty.call(payload, "freshness")
-          ? payload.freshness
-          : null;
-      const secs = Number(freshness);
+      const hostname = String(this._getBadgeValue(payload, "hostname", "") || '').trim();
+      this._setBadgeText(badgeText, hostname || 'Hostname missing');
+      badgeText.classList.toggle('is-placeholder', hostname === '');
+    });
 
-      badge.classList.remove('freshness-warn', 'freshness-stale');
+    this._forEachBadge(".uptime-badge", badgeData, (_badge, payload, badgeText) => {
+      if (!badgeText) {
+        return;
+      }
 
+      this._setBadgeText(badgeText, this._getBadgeValue(payload, "uptime", "—") || '—');
+    });
+
+    this._forEachBadge(".freshness-badge", badgeData, (badge, payload, badgeText) => {
+      if (!badgeText) {
+        return;
+      }
+
+      const secs = Number(this._getBadgeValue(payload, "freshness"));
+
+      badge.classList.remove(...CWidgetHostOverview.BADGE_FRESHNESS_STATE_CLASSES);
       if (!Number.isFinite(secs)) {
-        badgeText.textContent = '—';
-        continue;
+        this._setBadgeText(badgeText, '—');
+        return;
       }
 
-      badgeText.textContent = secs < 60
-        ? `${secs}s ago`
-        : `${Math.floor(secs / 60)}m ago`;
+      this._setBadgeText(
+        badgeText,
+        secs < 60 ? `${secs}s ago` : `${Math.floor(secs / 60)}m ago`
+      );
 
       if (secs >= staleThreshold) {
         badge.classList.add('freshness-stale');
       } else if (secs >= warnThreshold) {
         badge.classList.add('freshness-warn');
       }
-    }
-  }
+    });
 
-  _updateMaintenanceBadges(badgeData) {
-    for (const badge of this._body.querySelectorAll(".maintenance-badge")) {
-      const badgeText = badge.querySelector(".badge-text");
-      if (!badgeText) {
-        continue;
+    this._forEachBadge(".maintenance-badge", badgeData, (badge, payload, badgeText) => {
+      const status = Number(this._getBadgeValue(payload, "status", 0));
+      const isActive = status === 1;
+
+      badge.classList.toggle("maintenance-active", isActive);
+      this._setBadgeHidden(badge, !isActive);
+
+      if (badgeText) {
+        this._setBadgeText(badgeText, isActive ? "Maintenance" : "");
       }
+    });
 
-      const payload = this._getBadgePayload(badge, badgeData);
-      const status =
-        payload && Object.prototype.hasOwnProperty.call(payload, "status")
-          ? Number(payload.status)
-          : 0;
+    this._forEachBadge(".problems-badge", badgeData, (badge, payload, badgeText) => {
+      const problems = this._getBadgeValue(payload, "problems");
 
-      badge.classList.remove("maintenance-active", "is-hidden");
-
-      if (status === 1) {
-        badge.classList.add("maintenance-active");
-        badge.style.display = "";
-        badgeText.textContent = "Maintenance";
-      } else {
-        badge.classList.add("is-hidden");
-        badge.style.display = "none";
-        badgeText.textContent = "";
-      }
-    }
-  }
-
-  _updateProblemBadges(badgeData) {
-    const problemBadges = this._body.querySelectorAll(".problems-badge");
-    if (problemBadges.length === 0) {
-      return;
-    }
-
-    const colorClasses = ['problems-info', 'problems-warning',
-      'problems-average', 'problems-high', 'problems-disaster'];
-    const severityClassMap = {
-      0: 'problems-info',
-      1: 'problems-info',
-      2: 'problems-warning',
-      3: 'problems-average',
-      4: 'problems-high',
-      5: 'problems-disaster',
-    };
-
-    for (const badge of problemBadges) {
-      const payload = this._getBadgePayload(badge, badgeData);
-      const problems =
-        payload && Object.prototype.hasOwnProperty.call(payload, "problems")
-          ? payload.problems
-          : null;
-      const badgeText = badge.querySelector(".badge-text");
-
-      badge.classList.remove(...colorClasses);
+      badge.classList.remove(...CWidgetHostOverview.BADGE_PROBLEM_STATE_CLASSES);
 
       if (!problems) {
-        badge.style.display = '';
+        this._setBadgeHidden(badge, false);
         if (badgeText) {
           this._setBadgeText(badgeText, 'Problems —');
         }
-        continue;
+        return;
       }
 
       const total = Number(problems.total) || 0;
       if (total === 0) {
-        badge.style.display = 'none';
-        continue;
+        this._setBadgeHidden(badge, true);
+        return;
       }
 
-      badge.style.display = '';
+      this._setBadgeHidden(badge, false);
       if (badgeText) {
         this._setBadgeText(badgeText, `${total} problems`);
       }
 
       const maxSeverity = Number(problems.max_severity);
-      badge.classList.add(severityClassMap[maxSeverity] || 'problems-info');
+      badge.classList.add(
+        CWidgetHostOverview.BADGE_PROBLEM_SEVERITY_CLASS_MAP[maxSeverity] || 'problems-info'
+      );
+    });
+  }
+
+  _forEachBadge(selector, badgeData, callback) {
+    for (const badge of this._body.querySelectorAll(selector)) {
+      callback(badge, this._getBadgePayload(badge, badgeData), badge.querySelector(".badge-text"));
     }
+  }
+
+  _getBadgeValue(payload, key, fallback = null) {
+    if (!payload || !Object.prototype.hasOwnProperty.call(payload, key)) {
+      return fallback;
+    }
+
+    return payload[key];
   }
 
   _updateSingleMetrics(response, fields, enabledMetrics) {
     const singleMetrics = [
-      [CWidgetHostOverview.METRIC_CPU,  'cpu',  'cpu',  '.cpu',  '.cpu-text', 'percent'],
-      [CWidgetHostOverview.METRIC_RAM,  'ram',  'ram',  '.ram',  '.ram-text', 'percent'],
-      [CWidgetHostOverview.METRIC_LOAD, 'load', 'load', '.load', '.load-text', 'load'],
-      [CWidgetHostOverview.METRIC_SWAP, 'swap', 'swap', '.swap', '.swap-text', 'percent'],
+      [CWidgetHostOverview.METRIC_CPU,  'cpu',  'cpu',  'percent'],
+      [CWidgetHostOverview.METRIC_RAM,  'ram',  'ram',  'percent'],
+      [CWidgetHostOverview.METRIC_LOAD, 'load', 'load', 'load'],
+      [CWidgetHostOverview.METRIC_SWAP, 'swap', 'swap', 'percent'],
     ];
 
-    for (const [metricId, key, responseKey, fillSelector, textSelector, mode] of singleMetrics) {
+    for (const [metricId, key, responseKey, mode] of singleMetrics) {
       if (!enabledMetrics.has(metricId)) {
         continue;
       }
 
-      const fill = this._body.querySelector(fillSelector);
-      const text = this._body.querySelector(textSelector);
-      this._syncSingleMetricLink(key, fill);
-
-      if (response[responseKey] == null) {
-        this._setSingleMetricNoData(fill, text);
+      const cell = this._getMetricCell(key);
+      if (!cell) {
         continue;
       }
 
-      this._setSingleMetricVisible(fill);
+      const fill = cell.querySelector('.metric-fill');
+      const text = cell.querySelector('.metric-text');
+      this._syncMetricLinks(cell, key);
+
+      if (response[responseKey] == null) {
+        this._setMetricCellNoData(cell);
+        continue;
+      }
+
+      this._setMetricCellVisible(cell);
       const value = Number(response[responseKey]);
 
       if (mode === 'load') {
@@ -436,22 +414,21 @@ class CWidgetHostOverview extends CWidget {
 
     for (const row of boundRows) {
       const subcell = row.cell;
-      const text = subcell.querySelector(".text");
-      const fill = subcell.querySelector(".fill");
+      const text = subcell.querySelector(".metric-text");
+      const fill = subcell.querySelector(".metric-fill");
       const labelName = row.label;
       const percent = row.percent === null ? null : Number(row.percent);
       const metricKey = `${keyPrefix}:${row.key}`;
 
-      this._syncMetricLink(text, metricKey, row.item_ref);
-      subcell.setAttribute('data-metric-key', metricKey);
+      this._syncMetricLinks(subcell, metricKey, row.item_ref);
 
       if (percent === null || Number.isNaN(percent)) {
-        this._setMultiMetricNoData(subcell, labelName);
+        this._setMetricCellNoData(subcell, `${labelName} — No data`);
         continue;
       }
 
-      this._setMultiMetricVisible(subcell);
-      this.updateFillWidth(fill, Number(row.percent), fields, keyPrefix);
+      this._setMetricCellVisible(subcell);
+      this.updateFillWidth(fill, Number(row.percent), fields, metricKey);
 
       const arrowDir = this.getArrow(metricKey, percent);
       this._startPercentTicker(metricKey, labelName, percent, text, arrowDir);
@@ -486,15 +463,14 @@ class CWidgetHostOverview extends CWidget {
     const bps = row.bps ?? null;
     const percent = row.percent ?? null;
     const subcell = row.cell;
-    const text = subcell.querySelector(".text");
-    const fill = subcell.querySelector(".fill");
+    const text = subcell.querySelector(".metric-text");
+    const fill = subcell.querySelector(".metric-fill");
     const metricKey = `iface:${key}`;
 
-    this._syncMetricLink(text, metricKey, row.item_ref);
-    subcell.setAttribute('data-metric-key', metricKey);
+    this._syncMetricLinks(subcell, metricKey, row.item_ref);
 
     if (bps === null || bps === undefined) {
-      this._setMultiMetricNoData(subcell, String(label));
+      this._setMetricCellNoData(subcell, `${label} — No data`);
       return;
     }
 
@@ -512,9 +488,9 @@ class CWidgetHostOverview extends CWidget {
     const duration = 700;
     const arrowDir = this.getArrow(metricKey, to);
 
-    this._setMultiMetricVisible(subcell);
+    this._setMetricCellVisible(subcell);
     if (Number.isFinite(Number(percent))) {
-      this.updateFillWidth(fill, Number(percent), fields, 'iface');
+      this.updateFillWidth(fill, Number(percent), fields, metricKey);
     }
 
     const step = (now) => {
@@ -577,7 +553,7 @@ class CWidgetHostOverview extends CWidget {
     }
 
     const existingCells = new Map();
-    for (const cell of container.querySelectorAll('.cell[data-key]')) {
+    for (const cell of container.querySelectorAll('.metric-cell[data-key]')) {
       const key = cell.getAttribute('data-key');
       if (key !== null) {
         existingCells.set(key, cell);
@@ -585,7 +561,7 @@ class CWidgetHostOverview extends CWidget {
     }
 
     const removedKeys = [];
-    const naIndicator = container.querySelector('.na-indicator');
+    const emptyState = container.querySelector('.metric-empty');
 
     if (normalizedRows.length === 0) {
       for (const [key, cell] of existingCells) {
@@ -593,11 +569,11 @@ class CWidgetHostOverview extends CWidget {
         cell.remove();
       }
 
-      if (!naIndicator) {
-        const emptyState = document.createElement('span');
-        emptyState.className = 'na-indicator';
-        emptyState.textContent = 'No data';
-        container.appendChild(emptyState);
+      if (!emptyState) {
+        const placeholder = document.createElement('span');
+        placeholder.className = 'metric-empty';
+        placeholder.textContent = 'No data';
+        container.appendChild(placeholder);
       }
 
       return {
@@ -606,8 +582,8 @@ class CWidgetHostOverview extends CWidget {
       };
     }
 
-    if (naIndicator) {
-      naIndicator.remove();
+    if (emptyState) {
+      emptyState.remove();
     }
 
     const desiredKeys = new Set();
@@ -627,7 +603,7 @@ class CWidgetHostOverview extends CWidget {
 
     const boundRows = [];
     for (const row of normalizedRows) {
-      const cell = existingCells.get(row.key) || this._createMultiMetricCell(row.key, row.label);
+      const cell = existingCells.get(row.key) || this._createMetricCell(row.key, row.label);
       cell.setAttribute('data-key', row.key);
       cell.setAttribute('data-label', row.label);
       container.appendChild(cell);
@@ -644,19 +620,19 @@ class CWidgetHostOverview extends CWidget {
     };
   }
 
-  _createMultiMetricCell(key, label) {
+  _createMetricCell(key, label) {
     const cell = document.createElement('div');
     const bar = document.createElement('div');
     const fill = document.createElement('div');
     const text = document.createElement('a');
 
-    cell.className = 'cell';
+    cell.className = 'metric-cell';
     cell.setAttribute('data-key', key);
     cell.setAttribute('data-label', label);
 
-    bar.className = 'bar';
-    fill.className = 'fill';
-    text.className = 'text metric-link metric-value-link js-metric-link';
+    bar.className = 'metric-bar';
+    fill.className = 'metric-fill';
+    text.className = 'metric-text metric-link metric-value-link js-metric-link';
 
     bar.appendChild(fill);
     cell.appendChild(bar);
@@ -797,11 +773,38 @@ class CWidgetHostOverview extends CWidget {
     textEl.appendChild(span);
   }
 
-  _syncSingleMetricLink(metricKey, fill) {
-    const row = fill?.closest('.row');
-    const link = row?.querySelector('.label .js-metric-link');
+  _getMetricCell(metricKey) {
+    if (!metricKey || !this._body) {
+      return null;
+    }
 
-    this._syncMetricLink(link, metricKey);
+    for (const cell of this._body.querySelectorAll('.metric-cell[data-metric-key]')) {
+      if (cell.getAttribute('data-metric-key') === metricKey) {
+        return cell;
+      }
+    }
+
+    return null;
+  }
+
+  _syncMetricLinks(cell, metricKey, itemRef = undefined) {
+    if (!cell) {
+      return;
+    }
+
+    if (metricKey) {
+      cell.setAttribute('data-metric-key', metricKey);
+    }
+
+    const row = cell.closest('.metric-row');
+    const labelLink = row?.querySelector('.metric-label .js-metric-link');
+    const valueLink = cell.querySelector('.js-metric-link');
+
+    this._syncMetricLink(labelLink, metricKey, itemRef);
+
+    if (valueLink && valueLink !== labelLink) {
+      this._syncMetricLink(valueLink, metricKey, itemRef);
+    }
   }
 
   _syncMetricLink(linkEl, metricKey, itemRef = undefined) {
@@ -858,59 +861,32 @@ class CWidgetHostOverview extends CWidget {
     return `zabbix.php?${params.toString()}`;
   }
 
-  _setSingleMetricNoData(fill, text) {
-    const bar = fill ? fill.closest('.bar') : null;
-    const data = bar ? bar.closest('.data') : null;
-
-    if (bar) {
-      bar.style.display = 'none';
-    }
-    if (data) {
-      data.classList.add('no-bar');
-    }
-    if (text) {
-      text.textContent = 'No data';
-    }
-  }
-
-  _setSingleMetricVisible(fill) {
-    const bar = fill ? fill.closest('.bar') : null;
-    const data = bar ? bar.closest('.data') : null;
-
-    if (bar) {
-      bar.style.display = '';
-    }
-    if (data) {
-      data.classList.remove('no-bar');
-    }
-  }
-
-  _setMultiMetricNoData(subcell, labelName) {
-    if (!subcell) {
+  _setMetricCellNoData(cell, textValue = 'No data') {
+    if (!cell) {
       return;
     }
 
-    const bar = subcell.querySelector('.bar');
-    const text = subcell.querySelector('.text');
+    const bar = cell.querySelector('.metric-bar');
+    const text = cell.querySelector('.metric-text');
 
-    subcell.classList.add('no-bar');
+    cell.classList.add('is-empty');
     if (bar) {
-      bar.style.display = 'none';
+      bar.hidden = true;
     }
     if (text) {
-      text.textContent = `${labelName} — No data`;
+      text.textContent = textValue;
     }
   }
 
-  _setMultiMetricVisible(subcell) {
-    if (!subcell) {
+  _setMetricCellVisible(cell) {
+    if (!cell) {
       return;
     }
 
-    const bar = subcell.querySelector('.bar');
-    subcell.classList.remove('no-bar');
+    const bar = cell.querySelector('.metric-bar');
+    cell.classList.remove('is-empty');
     if (bar) {
-      bar.style.display = '';
+      bar.hidden = false;
     }
   }
 
@@ -923,12 +899,21 @@ class CWidgetHostOverview extends CWidget {
     return badgeData[index] ?? null;
   }
 
+  _setBadgeHidden(badge, hidden) {
+    if (!badge) {
+      return;
+    }
+
+    badge.classList.toggle("is-hidden", hidden);
+  }
+
   _setBadgeText(badgeText, text) {
     if (!badgeText) {
       return;
     }
 
     badgeText.classList.remove("badge-parts");
+    badgeText.classList.remove("is-placeholder");
     badgeText.textContent = text;
   }
 
