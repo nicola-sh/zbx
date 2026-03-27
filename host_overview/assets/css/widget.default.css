@@ -14,24 +14,23 @@
   container-type: inline-size;
   font-size: 10px;
   letter-spacing: 1px;
-  text-transform: uppercase;
 }
 
 /* Default View Metrics */
+
 .host-overview-container .metric-row {
   display: grid;
   grid-template-columns: var(--label-width, 90px) minmax(0, 1fr);
   gap: 25px;
+  padding: 5px 0;
 }
 
-.host-overview-container .metric-row:not(:last-child) {
-  padding-bottom: 10px;
-}
 
 .host-overview-container .metric-link {
   color: inherit;
   text-decoration: none;
   border-bottom: none;
+
 }
 
 .host-overview-container .metric-link[href] {
@@ -48,9 +47,14 @@
   pointer-events: none;
 }
 
+.host-overview-container .metric-label {
+  text-transform: uppercase;
+}
+
 .host-overview-container .metric-label-link {
   display: inline-flex;
   align-items: center;
+
 }
 
 .host-overview-container .metric-value-link {
@@ -69,14 +73,15 @@
 
 .host-overview-container .metric-list {
   align-items: center;
+
 }
 
-.host-overview-container .metric-list > .metric-cell {
+.host-overview-container .metric-list>.metric-cell {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
 }
 
-.host-overview-container .metric-list:not(.metric-list-multi) > .metric-cell > .metric-text {
+.host-overview-container .metric-list:not(.metric-list-multi)>.metric-cell>.metric-text {
   width: var(--text-col-width);
   opacity: var(--muted-opacity);
   text-align: right;
@@ -105,7 +110,7 @@
   }
 }
 
-.host-overview-container .metric-list-multi > .metric-cell {
+.host-overview-container .metric-list-multi>.metric-cell {
   grid-template-columns: var(--cell-label-width) minmax(0, 1fr);
 }
 
@@ -113,7 +118,7 @@
   grid-template-columns: 1fr;
 }
 
-.host-overview-container .metric-cell.is-empty > .metric-text {
+.host-overview-container .metric-cell.is-empty>.metric-empty {
   width: auto;
   text-align: left;
 }
@@ -121,11 +126,10 @@
 .host-overview-container .metric-list-multi .metric-text,
 .host-overview-container .metric-empty {
   opacity: var(--muted-opacity);
-}
 
-.host-overview-container .metric-list-multi .metric-text,
+}
 .host-overview-container .metric-empty {
-  text-transform: none;
+  text-transform: uppercase;
 }
 
 .host-overview-container .metric-bar {

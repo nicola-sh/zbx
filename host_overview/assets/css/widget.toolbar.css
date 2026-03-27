@@ -4,175 +4,138 @@
  * github.com/obviousaichicken/zabbix_widgets
  */
 
-/* Toolbar Layout */
-.dashboard-widget-host_overview :is(.toolbar, .toolbar-group) {
+/* Toolbar layout */
+.toolbar {
   display: flex;
+  align-items: center;
   gap: var(--gap-2);
+  margin: 5px 0 10px;
 }
 
-.dashboard-widget-host_overview .toolbar {
+.toolbar .left,
+.toolbar .right {
+  display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.dashboard-widget-host_overview .toolbar-group {
-  align-items: center;
+  gap: var(--gap-2);
   flex-wrap: wrap;
   min-width: 0;
 }
 
-.dashboard-widget-host_overview .toolbar-group-right {
-  justify-content: flex-end;
+.toolbar .right {
   margin-left: auto;
 }
 
-/* Default View Toolbar */
-.host-overview-container .toolbar {
-  align-items: flex-start;
-  flex-wrap: wrap;
-  padding: 5px 0 15px;
-  row-gap: var(--gap-2);
-}
-
-/* Toolbar Controls */
-.dashboard-widget-host_overview .toolbar-control {
-  box-sizing: border-box;
+/* Badge */
+.toolbar .badge {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
   height: var(--badge-height);
   padding: 0 var(--badge-padding-x);
-  color: inherit;
-  background: var(--badge-bg);
+  background: var(--bg, var(--badge-bg));
   border-radius: var(--badge-radius);
-  font: inherit;
   font-size: var(--badge-font-size);
-  letter-spacing: 0.2px;
   line-height: 1;
   text-decoration: none;
-  text-transform: none;
-  border-bottom: none;
+  white-space: nowrap;
+  /* Strip Zabbix styling */
+  border-bottom: 0;
+  margin-bottom: 0;
+  color: inherit;
 }
 
-.dashboard-widget-host_overview .toolbar-control-interactive {
-  cursor: pointer;
-}
-
-.dashboard-widget-host_overview .toolbar-control-interactive:hover {
+/* Link badge states */
+.toolbar .badge.link:hover:not(.problems-severity) {
   background: var(--badge-hover-bg);
-  filter: none;
+  /* Strip Zabbix styling */
+  color: inherit;
 }
 
-/* Toolbar Icons */
-.dashboard-widget-host_overview .toolbar-icon {
-  display: block;
-  width: var(--badge-icon-size);
-  height: var(--badge-icon-size);
-  flex: 0 0 auto;
+.toolbar .badge.link:visited {
+  /* Strip Zabbix styling */
+  color: inherit;
 }
 
-.dashboard-widget-host_overview .toolbar-icon-leading {
-  margin-right: var(--badge-icon-gap);
+.toolbar .badge.active {
+  color: var(--sparkline-active-fg);
+  background: var(--sparkline-active-color);
 }
 
-.dashboard-widget-host_overview .toolbar-icon-trailing {
-  margin-left: var(--badge-icon-gap);
-}
-
-/* Badge Helpers */
-.host-overview-container .badge.is-hidden {
+.toolbar .badge[hidden] {
   display: none;
 }
 
-.host-overview-container .badge-text.is-placeholder {
-  font-style: italic;
+/* Badge icons */
+.toolbar .badge-icon {
+  width: var(--badge-icon-size);
+  height: var(--badge-icon-size);
+  flex-shrink: 0;
 }
 
-.host-overview-container .badge-text.badge-parts {
-  display: inline-flex;
-  align-items: center;
+.toolbar .badge>.badge-icon+* {
+  margin-left: var(--badge-icon-gap);
 }
 
-.host-overview-container .badge-text:empty + .toolbar-icon-trailing {
-  margin-left: 0;
+.toolbar .badge>*+.badge-icon {
+  margin-left: var(--badge-icon-gap);
 }
 
-.host-overview-container .badge-dot-separator {
-  width: var(--dot-size);
-  height: var(--dot-size);
-  margin: 0 var(--dot-gap);
-  flex: 0 0 auto;
-  background: currentColor;
-  border-radius: 999px;
-  opacity: 0.8;
+/* Badge specific styles */
+.freshness-warn {
+  --bg: var(--orange-bg);
 }
 
-/* Badge States */
-.host-overview-container .freshness-warn {
-  background-color: var(--orange-bg);
+.freshness-stale {
+  --bg: var(--red-bg);
 }
 
-.host-overview-container .freshness-stale {
-  background-color: var(--red-bg);
+.maintenance {
+  --bg: var(--blue-bg);
 }
 
-.host-overview-container .badge.maintenance-active {
-  background-color: var(--blue-bg);
+/* Problem severity base */
+.problems-severity {
+  --pulse: var(--bg);
 }
 
-/* Problem Badges */
-.host-overview-container .problems-badge {
-  background-color: var(--problems-badge-bg, var(--badge-bg));
+/* Problem severity variants */
+.problems-info {
+  --bg: var(--blue-bg);
+  --pulse: var(--blue-pulse-bg);
 }
 
-.host-overview-container .problems-badge:is(
-  .problems-info,
-  .problems-warning,
-  .problems-average,
-  .problems-high,
-  .problems-disaster
-) {
-  --problems-badge-animation: problems-pulse 1.5s ease-in-out infinite;
+.problems-warning {
+  --bg: var(--yellow-bg);
+  --pulse: var(--yellow-pulse-bg);
 }
 
-.host-overview-container .problems-info {
-  --problems-badge-bg: var(--blue-bg);
-  --problems-badge-bg-pulse: var(--blue-pulse-bg);
+.problems-average {
+  --bg: var(--orange-bg);
+  --pulse: var(--orange-pulse-bg);
 }
 
-.host-overview-container .problems-warning {
-  --problems-badge-bg: var(--yellow-bg);
-  --problems-badge-bg-pulse: var(--yellow-pulse-bg);
+.problems-high {
+  --bg: var(--lightred-bg);
+  --pulse: var(--lightred-pulse-bg);
 }
 
-.host-overview-container .problems-average {
-  --problems-badge-bg: var(--orange-bg);
-  --problems-badge-bg-pulse: var(--orange-pulse-bg);
+.problems-disaster {
+  --bg: var(--red-bg);
+  --pulse: var(--red-pulse-bg);
 }
 
-.host-overview-container .problems-high {
-  --problems-badge-bg: var(--lightred-bg);
-  --problems-badge-bg-pulse: var(--lightred-pulse-bg);
-}
+/* Problem pulse animation */
+@keyframes pulse-bg {
 
-.host-overview-container .problems-disaster {
-  --problems-badge-bg: var(--red-bg);
-  --problems-badge-bg-pulse: var(--red-pulse-bg);
-}
-
-@keyframes problems-pulse {
   0%,
   100% {
-    background-color: var(--problems-badge-bg);
+    background: var(--bg, var(--badge-bg));
   }
 
   50% {
-    background-color: var(--problems-badge-bg-pulse, var(--problems-badge-bg));
+    background: var(--pulse, var(--bg, var(--badge-bg)));
   }
 }
 
-.dashboard-widget-host_overview.problems-pulse-enabled .problems-badge {
-  animation: var(--problems-badge-animation, none);
+.problems-pulse-enabled .problems-severity {
+  animation: pulse-bg 1.5s ease-in-out infinite;
 }

@@ -15,6 +15,7 @@ use Zabbix\Widgets\Fields\CWidgetFieldColor;
 use Zabbix\Widgets\Fields\CWidgetFieldIntegerBox;
 use Zabbix\Widgets\Fields\CWidgetFieldCheckBox;
 use Zabbix\Widgets\Fields\CWidgetFieldMultiSelectHost;
+use Zabbix\Widgets\Fields\CWidgetFieldMultiSelectOverrideHost;
 use Zabbix\Widgets\Fields\CWidgetFieldRadioButtonList;
 use Zabbix\Widgets\Fields\CWidgetFieldTextBox;
 
@@ -82,8 +83,10 @@ class WidgetForm extends CWidgetForm
         return $this
             ->addField(
                 (new CWidgetFieldMultiSelectHost('hostid', _('Host')))
-                    ->setFlags(CWidgetField::FLAG_NOT_EMPTY | CWidgetField::FLAG_LABEL_ASTERISK)
                     ->setMultiple(false)
+            )
+            ->addField(
+                new CWidgetFieldMultiSelectOverrideHost()
             )
             ->addField(
                 (new CWidgetFieldBadgesList('badges'))
@@ -246,6 +249,10 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_BAR_HEIGHT)
             )
             ->addField(
+                (new CWidgetFieldCheckBox('open_links_same_window', _('Open in same tab')))
+                    ->setDefault(0)
+            )
+            ->addField(
                 (new CWidgetFieldCheckBox('problems_pulse', _('Pulse problems badge')))
                     ->setDefault(1)
             )
@@ -330,6 +337,11 @@ class WidgetForm extends CWidgetForm
         $errors = parent::validate($strict);
         $enabled_metrics = array_map('intval', (array) $this->getFieldValue('metrics_show'));
 
+        if (!self::hasConfiguredValue($this->getFieldValue('hostid'))
+                && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))) {
+            $this->addFieldError($errors, 'hostid', _('cannot be empty'));
+        }
+
         foreach ([
             self::METRIC_CPU => 'item_name_cpu',
             self::METRIC_RAM => 'item_name_ram',
@@ -392,6 +404,25 @@ class WidgetForm extends CWidgetForm
             $this->getField($field_name)->getErrorLabel(),
             $message
         );
+    }
+
+    private static function hasConfiguredValue($value): bool
+    {
+        if (is_array($value)) {
+            if (array_key_exists(CWidgetField::FOREIGN_REFERENCE_KEY, $value)) {
+                return trim((string) $value[CWidgetField::FOREIGN_REFERENCE_KEY]) !== '';
+            }
+
+            foreach ($value as $entry) {
+                if ((string) $entry !== '') {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return trim((string) $value) !== '';
     }
 
     private function hasBadgeType(int $type): bool

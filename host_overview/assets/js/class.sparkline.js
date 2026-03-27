@@ -477,7 +477,7 @@ class HostOverviewSparkline {
       return;
     }
 
-    const periodBtn = e.target.closest('.sparkline-periods .toolbar-control[data-period]');
+    const periodBtn = e.target.closest('.sparkline-periods [data-period]');
     if (periodBtn) {
       e.preventDefault();
       const period = periodBtn.getAttribute('data-period');
@@ -973,15 +973,10 @@ class HostOverviewSparkline {
 
   _updateChrome() {
     const body = this._getBody();
-    const titleEl = body?.querySelector('.sparkline-title');
-    if (titleEl) {
-      titleEl.textContent = this._getTitle(this.state.itemRef, this.state.fallbackTitle);
-    }
-
     const fields = this._getFields();
     const fillColor = fields.fill_color ? `#${fields.fill_color}` : '#458ADC';
 
-    body?.querySelectorAll('.sparkline-periods .toolbar-control[data-period]').forEach((btn) => {
+    body?.querySelectorAll('.sparkline-periods [data-period]').forEach((btn) => {
       btn.style.setProperty('--sparkline-active-color', fillColor);
       const isActive = btn.getAttribute('data-period') === this.state.period;
       btn.classList.toggle('active', isActive);
