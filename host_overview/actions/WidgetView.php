@@ -24,6 +24,8 @@ class WidgetView extends CControllerDashboardWidgetView
 
     protected function doAction(): void
     {
+        $this->fields_values['hostid'] = $this->getSelectedHostIds();
+
         // Decode badges config once for the entire request
         $badges = $this->decodeBadges();
 
@@ -441,6 +443,36 @@ class WidgetView extends CControllerDashboardWidgetView
         }
 
         return $this->wildcard_metric_resolver;
+    }
+
+    private function getSelectedHostIds(): array
+    {
+        $override_hostids = $this->normalizeHostIds($this->fields_values['override_hostid'] ?? []);
+
+        if ($override_hostids !== []) {
+            return $override_hostids;
+        }
+
+        return $this->normalizeHostIds($this->fields_values['hostid'] ?? []);
+    }
+
+    private function normalizeHostIds($hostids): array
+    {
+        $normalized = [];
+
+        foreach ((array) $hostids as $hostid) {
+            if (!is_scalar($hostid)) {
+                continue;
+            }
+
+            $hostid = trim((string) $hostid);
+
+            if ($hostid !== '') {
+                $normalized[] = $hostid;
+            }
+        }
+
+        return array_values(array_unique($normalized));
     }
 
 }

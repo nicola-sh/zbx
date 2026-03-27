@@ -19,10 +19,17 @@ $form
     ->addField(
         new CWidgetFieldMultiSelectHostView($data['fields']['hostid'])
     )
+    ->addField($data['templateid'] === null
+        ? new CWidgetFieldMultiSelectOverrideHostView($data['fields']['override_hostid'])
+        : null
+    )
     ->addField(
         (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))
             ->setColumns(3)
     )
+    ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
+        'Open metric and badge links in the current browser tab instead of a new tab.'
+    ))
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Badges')))
             ->addItem(getBadgesListView($data['fields']['badges']))
