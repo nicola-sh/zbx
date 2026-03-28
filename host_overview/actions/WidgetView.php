@@ -8,6 +8,9 @@
 
 namespace Modules\HostOverview\Actions;
 
+require_once __DIR__ . '/../includes/badge.func.php';
+require_once __DIR__ . '/../includes/format.func.php';
+
 use API;
 use CControllerDashboardWidgetView;
 use CControllerResponseData;
@@ -16,93 +19,509 @@ use Modules\HostOverview\Includes\MetricMatcher;
 use Modules\HostOverview\Includes\WildcardMetricResolver;
 use Modules\HostOverview\Includes\WidgetForm;
 
+use function Modules\HostOverview\Includes\badge_hostname;
+use function Modules\HostOverview\Includes\badge_uptime;
+use function Modules\HostOverview\Includes\badge_freshness;
+use function Modules\HostOverview\Includes\badge_maintenance;
+use function Modules\HostOverview\Includes\badge_tags;
+use function Modules\HostOverview\Includes\badge_problems;
+use function Modules\HostOverview\Includes\badge_link;
+use function Modules\HostOverview\Includes\badge_text;
+use function Modules\HostOverview\Includes\format_freshness;
+use function Modules\HostOverview\Includes\format_problems;
+use function Modules\HostOverview\Includes\format_uptime;
+use function Modules\HostOverview\Includes\format_tags;
+use function Modules\HostOverview\Includes\format_display_text;
+use function Modules\HostOverview\Includes\format_empty_text;
+use function Modules\HostOverview\Includes\freshness_state_classes;
+use function Modules\HostOverview\Includes\problems_state_classes;
+
 class WidgetView extends CControllerDashboardWidgetView
 {
+    private array $badges = [];
+    private array $metrics = [];
     private int $latest_clock = 0;
+    private ?array $host_details = null;
+    private ?array $problems = null;
     private ?MetricMatcher $metric_matcher = null;
     private ?WildcardMetricResolver $wildcard_metric_resolver = null;
 
     protected function doAction(): void
     {
-        $this->fields_values['hostid'] = $this->getSelectedHostIds();
+        $this->fields_values['hostid'] = $this->resolveSelectedHostIds();
 
-        // Decode badges config once for the entire request
-        $badges = $this->decodeBadges();
+        $this->badges = $this->decodeBadges();
+        $this->metrics = $this->collectMetrics();
 
-        // Collect metrics
-        $metrics = $this->collectMetrics($badges);
+        $badges = $this->buildBadgeModels();
+        $rows = $this->buildOverviewRows();
 
-        $enabled = $this->fields_values['metrics_show'] ?? [];
-
-        // Process metrics
-        $cpu          = in_array(WidgetForm::METRIC_CPU, $enabled) ? $this->computePercent('item_name_cpu', $metrics) : 0;
-        $ram          = in_array(WidgetForm::METRIC_RAM, $enabled) ? $this->computePercent('item_name_ram', $metrics) : 0;
-        $swap         = in_array(WidgetForm::METRIC_SWAP, $enabled) ? $this->computeSwap($metrics) : 0;
-        $load         = in_array(WidgetForm::METRIC_LOAD, $enabled) ? $this->computeLoad($metrics) : 0;
-        $disks        = in_array(WidgetForm::METRIC_DISKS, $enabled) ? $this->buildWildcardRows('item_name_disk', 'disks_exclude', $metrics) : [];
-        $interfaces   = in_array(WidgetForm::METRIC_INTERFACES, $enabled) ? $this->buildInterfaces($metrics) : [];
-        $partitions   = in_array(WidgetForm::METRIC_PARTITIONS, $enabled) ? $this->buildWildcardRows('item_name_partition', 'partitions_exclude', $metrics) : [];
-
-        // Host info badges — build data per configured badge instance.
-        $badge_data = $this->buildBadgeData($metrics, $badges);
-
-        // Resolved item map so JS can request sparkline data from the exact item used by the bar.
-        $item_map = [
-            'cpu'  => $this->toSparklineItemRef($this->findMetric($metrics, $this->fields_values['item_name_cpu'])),
-            'ram'  => $this->toSparklineItemRef($this->findMetric($metrics, $this->fields_values['item_name_ram'])),
-            'load' => $this->toSparklineItemRef($this->findMetric($metrics, $this->fields_values['item_name_load'])),
-            'swap' => $this->toSparklineItemRef($this->findMetric($metrics, $this->fields_values['item_name_swap'])),
-        ];
-
-        // Format response
         $this->setResponse(new CControllerResponseData([
-            'name'         => $this->getInput('name', $this->widget->getName()),
-            'cpu'          => $cpu,
-            'ram'          => $ram,
-            'load'         => $load,
-            'swap'         => $swap,
-            'badge_data'   => $badge_data,
-            'interfaces'   => $interfaces,
-            'disks'        => $disks,
-            'partitions'   => $partitions,
-            'item_map'     => $item_map,
-            'config'       => $this->fields_values,
+            'name' => $this->getInput('name', $this->widget->getName()),
+            'config' => $this->fields_values,
+            'badges' => $badges,
+            'rows' => $rows,
+            'layout_signature' => $this->buildLayoutSignature($badges, $rows),
         ]));
     }
 
-    ###############################################
-    ### FUNCTIONS
-    ###############################################
+    private function buildBadgeModels(): array
+    {
+        $models = [];
 
-    // Decode the badges JSON field once
+        foreach ($this->badges as $index => $badge) {
+            $model = $this->buildBadgeModel($index, $badge);
+
+            if ($model !== null) {
+                $models[] = $model;
+            }
+        }
+
+        return $models;
+    }
+
+    private function buildBadgeModel(int $index, array $badge): ?array
+    {
+        $type = (int) ($badge['type'] ?? CWidgetFieldBadgesList::BADGE_HOSTNAME);
+        $side = $this->normalizeSide($badge['side'] ?? CWidgetFieldBadgesList::SIDE_LEFT);
+        $hostid = $this->getPrimaryHostId();
+        $id = 'badge:' . $index;
+
+        return match ($type) {
+            CWidgetFieldBadgesList::BADGE_HOSTNAME => [
+                'id' => $id,
+                'side' => $side,
+                'text' => trim((string) ($this->fetchHostDetails()['name'] ?? '')) ?: 'Hostname missing',
+                'element' => badge_hostname(
+                    trim((string) ($this->fetchHostDetails()['name'] ?? '')) ?: 'Hostname missing',
+                    $hostid
+                ),
+            ],
+
+            CWidgetFieldBadgesList::BADGE_UPTIME => $this->buildUptimeBadge($id, $side),
+
+            CWidgetFieldBadgesList::BADGE_LIVELINESS => $this->buildFreshnessBadge($index, $side),
+
+            CWidgetFieldBadgesList::BADGE_MAINTENANCE => $this->buildMaintenanceBadge($index, $side),
+
+            CWidgetFieldBadgesList::BADGE_TAGS => [
+                'id' => $id,
+                'side' => $side,
+                'text' => format_tags($this->fetchHostDetails()['tags'] ?? []),
+                'element' => badge_tags(format_tags($this->fetchHostDetails()['tags'] ?? [])),
+            ],
+
+            CWidgetFieldBadgesList::BADGE_PROBLEMS => $this->buildProblemsBadge($index, $side),
+
+            CWidgetFieldBadgesList::BADGE_TEXT => [
+                'id' => $id,
+                'side' => $side,
+                'text' => (string) ($badge['text'] ?? ''),
+                'element' => badge_text((string) ($badge['text'] ?? '')),
+            ],
+
+            CWidgetFieldBadgesList::BADGE_LINK => [
+                'id' => $id,
+                'side' => $side,
+                'text' => (string) ($badge['text'] ?? ''),
+                'element' => badge_link(
+                    (string) ($badge['text'] ?? ''),
+                    ($url = CWidgetFieldBadgesList::sanitizeLinkUrl($badge['url'] ?? null)) !== null
+                        ? $this->buildLinkModel($url)
+                        : null
+                ),
+            ],
+
+            default => null,
+        };
+    }
+
+    private function buildFreshnessBadge(int $index, string $side): array
+    {
+        $freshness = $this->computeFreshness();
+        $warn_threshold = max(0, (int) ($this->fields_values['freshness_warn'] ?? WidgetForm::DEFAULT_FRESHNESS_WARN));
+        $stale_threshold = max(
+            $warn_threshold,
+            (int) ($this->fields_values['freshness_stale'] ?? WidgetForm::DEFAULT_FRESHNESS_STALE)
+        );
+        $text = format_freshness($freshness);
+        $state_classes = freshness_state_classes($freshness, $warn_threshold, $stale_threshold);
+
+        return [
+            'id' => 'badge:' . $index,
+            'side' => $side,
+            'text' => $text,
+            'state_classes' => $state_classes,
+            'element' => badge_freshness($text, $state_classes),
+        ];
+    }
+
+    private function buildMaintenanceBadge(int $index, string $side): array
+    {
+        $status = (int) ($this->fetchHostDetails()['maintenance_status'] ?? 0);
+        $text = $status === 1 ? _('Maintenance') : '';
+
+        return [
+            'id' => 'badge:' . $index,
+            'side' => $side,
+            'text' => $text,
+            'hidden' => $status !== 1,
+            'element' => badge_maintenance($text),
+        ];
+    }
+
+    private function buildProblemsBadge(int $index, string $side): array
+    {
+        $hostid = $this->getPrimaryHostId();
+        $problems = $this->fetchProblems();
+        $total = (int) ($problems['total'] ?? 0);
+        $max_severity = (int) ($problems['max_severity'] ?? -1);
+        $text = format_problems($total);
+        $state_classes = problems_state_classes($total, $max_severity);
+        $link = $hostid !== null
+            ? $this->buildLinkModel('zabbix.php?action=problem.view&hostids%5B%5D=' . urlencode($hostid))
+            : null;
+
+        return [
+            'id' => 'badge:' . $index,
+            'side' => $side,
+            'text' => $text,
+            'hidden' => $total === 0,
+            'state_classes' => $state_classes,
+            'element' => badge_problems($text, $link, $state_classes),
+        ];
+    }
+
+    private function normalizeSide(mixed $side): string
+    {
+        return $side === CWidgetFieldBadgesList::SIDE_RIGHT
+            ? CWidgetFieldBadgesList::SIDE_RIGHT
+            : CWidgetFieldBadgesList::SIDE_LEFT;
+    }
+
+    private function buildOverviewRows(): array
+    {
+        $rows = [];
+        $enabled = array_map('intval', (array) ($this->fields_values['metrics_show'] ?? []));
+        $labels_short = (int) ($this->fields_values['label_length'] ?? WidgetForm::LABELS_FULL)
+            === WidgetForm::LABELS_SHORT;
+
+        if (in_array(WidgetForm::METRIC_CPU, $enabled, true)) {
+            $rows[] = $this->buildSingleMetricRow(
+                'cpu',
+                $labels_short ? 'CPU' : 'Processor',
+                $this->findMetric((string) ($this->fields_values['item_name_cpu'] ?? '')),
+                $this->computePercent((string) ($this->fields_values['item_name_cpu'] ?? '')),
+                'percent',
+                'cpu'
+            );
+        }
+
+        if (in_array(WidgetForm::METRIC_RAM, $enabled, true)) {
+            $rows[] = $this->buildSingleMetricRow(
+                'ram',
+                $labels_short ? 'RAM' : 'Memory',
+                $this->findMetric((string) ($this->fields_values['item_name_ram'] ?? '')),
+                $this->computePercent((string) ($this->fields_values['item_name_ram'] ?? '')),
+                'percent',
+                'ram'
+            );
+        }
+
+        if (in_array(WidgetForm::METRIC_LOAD, $enabled, true)) {
+            $rows[] = $this->buildSingleMetricRow(
+                'load',
+                'Load',
+                $this->findMetric((string) ($this->fields_values['item_name_load'] ?? '')),
+                $this->computeLoad(),
+                'load',
+                'load',
+                [
+                    'axis_max' => $this->getLoadCeiling(),
+                ]
+            );
+        }
+
+        if (in_array(WidgetForm::METRIC_SWAP, $enabled, true)) {
+            $rows[] = $this->buildSingleMetricRow(
+                'swap',
+                'Swap',
+                $this->findMetric((string) ($this->fields_values['item_name_swap'] ?? '')),
+                $this->computeSwap(),
+                'percent',
+                'swap',
+                [
+                    'invert_percent' => (int) ($this->fields_values['item_swap_invert'] ?? 1) === 1,
+                ]
+            );
+        }
+
+        if (in_array(WidgetForm::METRIC_INTERFACES, $enabled, true)) {
+            $rows[] = $this->buildInterfacesRow($labels_short ? 'NICs' : 'Interfaces');
+        }
+
+        if (in_array(WidgetForm::METRIC_DISKS, $enabled, true)) {
+            $rows[] = $this->buildCollectionRow(
+                'disks',
+                $labels_short ? 'Disks' : 'Disk util.',
+                $this->getWildcardMetricResolver()->buildSingleWildcardRows(
+                    $this->metrics,
+                    (string) ($this->fields_values['item_name_disk'] ?? ''),
+                    (string) ($this->fields_values['disks_exclude'] ?? '')
+                ),
+                'disk'
+            );
+        }
+
+        if (in_array(WidgetForm::METRIC_PARTITIONS, $enabled, true)) {
+            $rows[] = $this->buildCollectionRow(
+                'partitions',
+                $labels_short ? 'Parts' : 'Partitions',
+                $this->getWildcardMetricResolver()->buildSingleWildcardRows(
+                    $this->metrics,
+                    (string) ($this->fields_values['item_name_partition'] ?? ''),
+                    (string) ($this->fields_values['partitions_exclude'] ?? '')
+                ),
+                'partition'
+            );
+        }
+
+        return $rows;
+    }
+
+    private function buildSingleMetricRow(
+        string $row_id,
+        string $row_label,
+        ?array $metric,
+        float|int|null $value,
+        string $display_kind,
+        string $threshold_group,
+        array $options = []
+    ): array {
+        $item_ref = $this->toItemRef($metric);
+        $cell = $this->buildCellModel([
+            'cell_id' => $row_id,
+            'cell_label' => $row_label,
+            'display_kind' => $display_kind,
+            'value' => $value,
+            'prefix' => null,
+            'bar_percent' => $display_kind === 'load'
+                ? $this->calculateLoadBarPercent($value)
+                : $this->normalizePercent($value),
+            'threshold_group' => $threshold_group,
+            'item_ref' => $item_ref,
+            'sparkline_title' => $row_label,
+            'axis_min' => 0,
+            'axis_max' => $options['axis_max'] ?? ($display_kind === 'percent' ? 100 : null),
+            'invert_percent' => (bool) ($options['invert_percent'] ?? false),
+        ]);
+
+        return [
+            'row_id' => $row_id,
+            'kind' => 'single',
+            'label' => $row_label,
+            'label_link' => $this->buildLatestDataLink($item_ref),
+            'cells' => [$cell],
+        ];
+    }
+
+    private function buildCollectionRow(string $row_id, string $row_label, array $rows, string $family): array
+    {
+        $cells = [];
+
+        foreach ($rows as $row) {
+            $cell_label = trim((string) ($row['label'] ?? $row['name'] ?? $row['key'] ?? ''));
+            $cell_key = trim((string) ($row['key'] ?? $row['name'] ?? $cell_label));
+
+            if ($cell_key === '' || $cell_label === '') {
+                continue;
+            }
+
+            $cells[] = $this->buildCellModel([
+                'cell_id' => $family . ':' . $cell_key,
+                'cell_label' => $cell_label,
+                'display_kind' => 'percent',
+                'value' => $row['percent'] ?? null,
+                'prefix' => $cell_label,
+                'bar_percent' => $this->normalizePercent($row['percent'] ?? null),
+                'threshold_group' => $family,
+                'item_ref' => $row['item_ref'] ?? null,
+                'sparkline_title' => $cell_label,
+                'axis_min' => 0,
+                'axis_max' => 100,
+                'invert_percent' => false,
+            ]);
+        }
+
+        return [
+            'row_id' => $row_id,
+            'kind' => 'multi',
+            'label' => $row_label,
+            'label_link' => null,
+            'cells' => $cells,
+        ];
+    }
+
+    private function buildInterfacesRow(string $row_label): array
+    {
+        $cells = [];
+        $capacity = $this->calculateInterfaceCapacity();
+        $rows = $this->getWildcardMetricResolver()->buildInterfaceRows(
+            $this->metrics,
+            (string) ($this->fields_values['item_name_interface'] ?? ''),
+            (string) ($this->fields_values['interfaces_exclude'] ?? ''),
+            $capacity
+        );
+
+        foreach ($rows as $row) {
+            $cell_label = trim((string) ($row['label'] ?? ''));
+            $cell_key = trim((string) ($row['key'] ?? $cell_label));
+
+            if ($cell_label === '' || $cell_key === '') {
+                continue;
+            }
+
+            $cells[] = $this->buildCellModel([
+                'cell_id' => 'iface:' . $cell_key,
+                'cell_label' => $cell_label,
+                'display_kind' => 'interface',
+                'value' => $row['bps'] ?? null,
+                'prefix' => $cell_label,
+                'bar_percent' => $this->normalizePercent($row['percent'] ?? null),
+                'threshold_group' => 'iface',
+                'item_ref' => $row['item_ref'] ?? null,
+                'sparkline_title' => $cell_label,
+                'axis_min' => 0,
+                'axis_max' => $capacity > 0 ? $capacity : null,
+                'invert_percent' => false,
+            ]);
+        }
+
+        return [
+            'row_id' => 'interfaces',
+            'kind' => 'multi',
+            'label' => $row_label,
+            'label_link' => null,
+            'cells' => $cells,
+        ];
+    }
+
+    private function buildCellModel(array $options): array
+    {
+        $value = $options['value'] ?? null;
+        $display_kind = (string) ($options['display_kind'] ?? 'percent');
+        $prefix = $options['prefix'] ?? null;
+        $item_ref = $options['item_ref'] ?? null;
+        $state = $value === null ? 'empty' : 'ok';
+        $bar_percent = $options['bar_percent'] ?? null;
+        $threshold_group = (string) ($options['threshold_group'] ?? '');
+
+        return [
+            'cell_id' => (string) ($options['cell_id'] ?? ''),
+            'cell_label' => (string) ($options['cell_label'] ?? ''),
+            'display' => [
+                'kind' => $display_kind,
+                'value' => $value === null ? null : (float) $value,
+                'prefix' => $prefix,
+                'text' => $value === null
+                    ? format_empty_text($prefix)
+                    : format_display_text($display_kind, (float) $value, $prefix),
+                'empty_text' => format_empty_text($prefix),
+            ],
+            'bar' => [
+                'percent' => $bar_percent,
+                'threshold_group' => $threshold_group,
+                'color' => $this->resolveBarColor($bar_percent, $threshold_group),
+            ],
+            'state' => $state,
+            'links' => [
+                'latest_data' => $this->buildLatestDataLink($item_ref),
+            ],
+            'sparkline' => [
+                'enabled' => $item_ref !== null,
+                'title' => (string) ($options['sparkline_title'] ?? $options['cell_label'] ?? ''),
+                'spec' => $item_ref !== null
+                    ? [
+                        'item_ref' => $item_ref,
+                        'display_kind' => $display_kind,
+                        'axis' => [
+                            'min' => $options['axis_min'] ?? 0,
+                            'max' => $options['axis_max'] ?? null,
+                        ],
+                        'transform' => [
+                            'invert_percent' => (bool) ($options['invert_percent'] ?? false),
+                        ],
+                    ]
+                    : null,
+            ],
+        ];
+    }
+
+    private function buildLatestDataLink(?array $item_ref): ?array
+    {
+        $hostid = $this->getPrimaryHostId();
+
+        if ($hostid === null || $item_ref === null) {
+            return null;
+        }
+
+        $item_name = trim((string) ($item_ref['name'] ?? ''));
+
+        if ($item_name === '') {
+            return null;
+        }
+
+        return $this->buildLinkModel(
+            'zabbix.php?action=latest.view&hostids%5B%5D=' . urlencode($hostid)
+            . '&name=' . urlencode($item_name)
+            . '&filter_set=1'
+        );
+    }
+
+    private function buildLinkModel(string $href): array
+    {
+        $link_target = $this->getLinkTarget();
+        $link = [
+            'href' => $href,
+            'target' => $link_target,
+        ];
+
+        if ($link_target === '_blank') {
+            $link['rel'] = 'noopener';
+        }
+
+        return $link;
+    }
+
+    private function getLinkTarget(): string
+    {
+        return (int) ($this->fields_values['open_links_same_window'] ?? 0) === 1 ? '_self' : '_blank';
+    }
+
     private function decodeBadges(): array
     {
         $badges_raw = $this->fields_values['badges'] ?? '[]';
+        $badges = is_string($badges_raw) ? (json_decode($badges_raw, true) ?: []) : [];
 
-        return is_string($badges_raw) ? (json_decode($badges_raw, true) ?: []) : [];
+        return array_map([CWidgetFieldBadgesList::class, 'normalizeBadge'], $badges);
     }
 
-    // Collect last values for relevant items on the selected host
-    private function collectMetrics(array $badges): array
+    private function collectMetrics(): array
     {
-        // Name filters; API will match any of them
         $name_filters = [
-            $this->fields_values['item_name_load'],
-            $this->fields_values['item_name_ram'],
-            $this->fields_values['item_name_cpu'],
-            $this->fields_values['item_name_swap'],
+            (string) ($this->fields_values['item_name_load'] ?? ''),
+            (string) ($this->fields_values['item_name_ram'] ?? ''),
+            (string) ($this->fields_values['item_name_cpu'] ?? ''),
+            (string) ($this->fields_values['item_name_swap'] ?? ''),
         ];
 
-        // Add uptime item name when an Uptime badge is configured.
-        if ($this->hasBadgeType($badges, CWidgetFieldBadgesList::BADGE_UPTIME)) {
+        if ($this->hasBadgeType(CWidgetFieldBadgesList::BADGE_UPTIME)) {
             $name_filters[] = trim((string) ($this->fields_values['badge_uptime_item_name']
                 ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME));
         }
 
-        // Wildcard patterns — extract literal segments for API search
-        $wildcard_fields = ['item_name_disk', 'item_name_partition', 'item_name_interface'];
-        foreach ($wildcard_fields as $field) {
-            foreach ($this->getWildcardMetricResolver()->extractSearchTerms($this->fields_values[$field] ?? '') as $part) {
+        foreach (['item_name_disk', 'item_name_partition', 'item_name_interface'] as $field) {
+            foreach ($this->getWildcardMetricResolver()->extractSearchTerms((string) ($this->fields_values[$field] ?? '')) as $part) {
                 $name_filters[] = trim($part);
             }
         }
@@ -112,84 +531,20 @@ class WidgetView extends CControllerDashboardWidgetView
             static fn(string $value): bool => $value !== ''
         )));
 
-        $collection = $this->getMetricMatcher()->collect($this->fields_values['hostid'], $name_filters);
-        $this->latest_clock = $collection['latest_clock'];
+        $collection = $this->getMetricMatcher()->collect((array) ($this->fields_values['hostid'] ?? []), $name_filters);
+        $this->latest_clock = (int) ($collection['latest_clock'] ?? 0);
 
-        return $collection['metrics'];
+        return $collection['metrics'] ?? [];
     }
 
-    // Build dynamic badge data keyed by badge index so duplicate badge types remain independent
-    private function buildBadgeData(array $metrics, array $badges): array
+    private function findMetric(string $search): ?array
     {
-        $badge_data = [];
-        $host_details = null;
-        $freshness = null;
-        $problems = null;
-        $uptime_item_name = trim((string) ($this->fields_values['badge_uptime_item_name']
-            ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME));
-
-        foreach ($badges as $index => $badge) {
-            $type = (int) ($badge['type'] ?? CWidgetFieldBadgesList::BADGE_HOSTNAME);
-
-            switch ($type) {
-                case CWidgetFieldBadgesList::BADGE_HOSTNAME:
-                    $host_details ??= $this->fetchHostDetails();
-                    $badge_data[$index] = [
-                        'type' => $type,
-                        'hostname' => $host_details['name'] ?? null,
-                    ];
-                    break;
-
-                case CWidgetFieldBadgesList::BADGE_MAINTENANCE:
-                    $host_details ??= $this->fetchHostDetails();
-                    $badge_data[$index] = [
-                        'type' => $type,
-                        'status' => (int) ($host_details['maintenance_status'] ?? 0),
-                    ];
-                    break;
-
-                case CWidgetFieldBadgesList::BADGE_TAGS:
-                    $host_details ??= $this->fetchHostDetails();
-                    $badge_data[$index] = [
-                        'type' => $type,
-                        'tags' => $host_details['tags'] ?? [],
-                    ];
-                    break;
-
-                case CWidgetFieldBadgesList::BADGE_UPTIME:
-                    $badge_data[$index] = [
-                        'type' => $type,
-                        'uptime' => $this->computeUptime($metrics, $uptime_item_name),
-                    ];
-                    break;
-
-                case CWidgetFieldBadgesList::BADGE_LIVELINESS:
-                    $freshness ??= $this->computeFreshness();
-                    $badge_data[$index] = [
-                        'type' => $type,
-                        'freshness' => $freshness,
-                    ];
-                    break;
-
-                case CWidgetFieldBadgesList::BADGE_PROBLEMS:
-                    $problems ??= $this->fetchProblems();
-
-                    $badge_data[$index] = [
-                        'type' => $type,
-                        'problems' => $problems,
-                    ];
-                    break;
-            }
-        }
-
-        return $badge_data;
+        return $this->getMetricMatcher()->resolve($this->metrics, trim($search));
     }
 
-    // Compute a simple percentage metric by field name
-    private function computePercent(string $field_name, array $metrics): ?int
+    private function computePercent(string $item_name): ?int
     {
-        $item_name = $this->fields_values[$field_name];
-        $metric = $this->findMetric($metrics, $item_name);
+        $metric = $this->findMetric($item_name);
 
         if ($metric === null || $metric['value'] === null) {
             return null;
@@ -198,11 +553,9 @@ class WidgetView extends CControllerDashboardWidgetView
         return $this->clampPercent($metric['value']);
     }
 
-    // Compute swap utilization (optionally inverted — default item reports free %, we show used %)
-    private function computeSwap(array $metrics): ?int
+    private function computeSwap(): ?int
     {
-        $item_name = $this->fields_values['item_name_swap'];
-        $metric = $this->findMetric($metrics, $item_name);
+        $metric = $this->findMetric((string) ($this->fields_values['item_name_swap'] ?? ''));
 
         if ($metric === null || $metric['value'] === null) {
             return null;
@@ -213,16 +566,80 @@ class WidgetView extends CControllerDashboardWidgetView
         return $this->clampPercent($invert ? 100 - $metric['value'] : $metric['value']);
     }
 
-    // Fetch active problems grouped by severity
+    private function computeLoad(): ?float
+    {
+        $metric = $this->findMetric((string) ($this->fields_values['item_name_load'] ?? ''));
+
+        if ($metric === null || $metric['value'] === null) {
+            return null;
+        }
+
+        return (float) $metric['value'];
+    }
+
+    private function fetchHostDetails(): ?array
+    {
+        if ($this->host_details !== null) {
+            return $this->host_details;
+        }
+
+        $hostid = $this->getPrimaryHostId();
+
+        if ($hostid === null) {
+            return null;
+        }
+
+        $hosts = API::Host()->get([
+            'output' => ['name', 'maintenance_status'],
+            'selectTags' => ['tag', 'value'],
+            'hostids' => [$hostid],
+            'limit' => 1,
+        ]);
+
+        $this->host_details = $hosts[0] ?? null;
+
+        return $this->host_details;
+    }
+
+    private function buildUptimeBadge(string $id, string $side): array
+    {
+        $metric = $this->findMetric(
+            trim((string) ($this->fields_values['badge_uptime_item_name']
+                ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME))
+        );
+        $seconds = $metric['value'] ?? null;
+        $text = format_uptime($seconds !== null ? (int) $seconds : null) ?? '—';
+
+        return [
+            'id' => $id,
+            'side' => $side,
+            'text' => $text,
+            'element' => badge_uptime($text),
+        ];
+    }
+
+    private function computeFreshness(): ?int
+    {
+        if ($this->latest_clock <= 0) {
+            return null;
+        }
+
+        return max(0, time() - $this->latest_clock);
+    }
+
     private function fetchProblems(): array
     {
+        if ($this->problems !== null) {
+            return $this->problems;
+        }
+
         $params = [
-            'output'       => ['eventid', 'severity'],
-            'hostids'      => $this->fields_values['hostid'],
-            'recent'       => true,
-            'sortfield'    => 'eventid',
-            'sortorder'    => 'DESC',
-            'limit'        => 1000,
+            'output' => ['eventid', 'severity'],
+            'hostids' => (array) ($this->fields_values['hostid'] ?? []),
+            'recent' => true,
+            'sortfield' => 'eventid',
+            'sortorder' => 'DESC',
+            'limit' => 1000,
         ];
 
         if ((int) ($this->fields_values['problems_hide_suppressed'] ?? 0) === 1) {
@@ -234,7 +651,6 @@ class WidgetView extends CControllerDashboardWidgetView
         }
 
         $events = API::Problem()->get($params);
-
         $severity_map = [
             5 => 'disaster',
             4 => 'high',
@@ -243,143 +659,137 @@ class WidgetView extends CControllerDashboardWidgetView
             1 => 'information',
             0 => 'not_classified',
         ];
-
         $counts = array_fill_keys(array_values($severity_map), 0);
         $max_severity = -1;
 
         foreach ($events as $event) {
-            $sev = (int) ($event['severity'] ?? 0);
-            $key = $severity_map[$sev] ?? 'not_classified';
+            $severity = (int) ($event['severity'] ?? 0);
+            $key = $severity_map[$severity] ?? 'not_classified';
             $counts[$key]++;
 
-            if ($sev > $max_severity) {
-                $max_severity = $sev;
+            if ($severity > $max_severity) {
+                $max_severity = $severity;
             }
         }
 
-        $counts['total']        = count($events);
+        $counts['total'] = count($events);
         $counts['max_severity'] = $max_severity;
+        $this->problems = $counts;
 
-        return $counts;
+        return $this->problems;
     }
 
-    // Fetch host details (name, maintenance, tags)
-    private function fetchHostDetails(): ?array
-    {
-        $hostid = $this->fields_values['hostid'][0] ?? null;
 
-        if ($hostid === null) {
+    private function resolveBarColor(mixed $bar_percent, string $threshold_group): string
+    {
+        $fill_color = '#' . ((string) ($this->fields_values['fill_color'] ?? WidgetForm::DEFAULT_COLOR_FILL));
+
+        if ((int) ($this->fields_values['color_scheme'] ?? WidgetForm::COLOR_SCHEME_THRESHOLD)
+                === WidgetForm::COLOR_SCHEME_SOLID) {
+            return $fill_color;
+        }
+
+        $percent = $this->normalizePercent($bar_percent) ?? 0;
+        $high_threshold = $this->getThresholdValue($threshold_group, 1);
+        $medium_threshold = $this->getThresholdValue($threshold_group, 2);
+
+        if ($percent > $high_threshold) {
+            return '#' . ((string) ($this->fields_values['th_color_1'] ?? WidgetForm::DEFAULT_COLOR_THRESHOLD_HIGH));
+        }
+
+        if ($percent > $medium_threshold) {
+            return '#' . ((string) ($this->fields_values['th_color_2'] ?? WidgetForm::DEFAULT_COLOR_THRESHOLD_MEDIUM));
+        }
+
+        return '#' . ((string) ($this->fields_values['th_color_3'] ?? WidgetForm::DEFAULT_COLOR_THRESHOLD_LOW));
+    }
+
+    private function getThresholdValue(string $threshold_group, int $level): int
+    {
+        $group_field = 'th_' . $threshold_group . '_' . $level;
+        $fallback_field = 'th_num_' . $level;
+        $value = $this->fields_values[$group_field] ?? $this->fields_values[$fallback_field] ?? 0;
+
+        return is_numeric($value) ? (int) $value : 0;
+    }
+
+    private function calculateLoadBarPercent(float|int|null $load): ?int
+    {
+        if ($load === null) {
             return null;
         }
 
-        $hosts = API::Host()->get([
-            'output' => [
-                'name',
-                'maintenance_status'
-            ],
-            'selectTags' => ['tag', 'value'],
-            'hostids' => [$hostid],
-            'limit' => 1,
-        ]);
+        $load_ceiling = $this->getLoadCeiling();
 
-        return $hosts[0] ?? null;
-    }
-
-    // Compute formatted uptime string
-    private function computeUptime(array $metrics, string $item_name = 'System uptime'): ?string
-    {
-        $metric = $this->findMetric($metrics, $item_name);
-        $seconds = $metric['value'] ?? null;
-
-        if ($seconds === null || $seconds < 0) {
-            return null;
+        if ($load_ceiling <= 0) {
+            return 0;
         }
 
-        $seconds = (int) $seconds;
-        $days    = intdiv($seconds, 86400);
-        $hours   = intdiv($seconds % 86400, 3600);
-        $minutes = intdiv($seconds % 3600, 60);
-
-        if ($days > 0) {
-            return $days . 'd ' . $hours . 'h';
-        }
-
-        if ($hours > 0) {
-            return $hours . 'h ' . $minutes . 'm';
-        }
-
-        return $minutes . 'm';
+        return $this->clampPercent(((float) $load / $load_ceiling) * 100);
     }
 
-    // Compute data freshness in seconds
-    private function computeFreshness(): ?int
+    private function getLoadCeiling(): ?float
     {
-        if ($this->latest_clock <= 0) {
-            return null;
-        }
+        $load_high = $this->fields_values['load_high'] ?? WidgetForm::DEFAULT_LOAD_HIGH;
 
-        return max(0, time() - $this->latest_clock);
-    }
-
-    // Return the raw load value; the frontend uses the configured ceiling to scale the bar.
-    private function computeLoad(array $metrics): ?float
-    {
-        $item_name = $this->fields_values['item_name_load'];
-        $metric = $this->findMetric($metrics, $item_name);
-
-        if ($metric === null || $metric['value'] === null) {
-            return null;
-        }
-
-        return (float) $metric['value'];
-    }
-
-    // Build rows for single-wildcard patterns (disks, partitions)
-    private function buildWildcardRows(string $pattern_field, string $exclude_field, array $metrics): array
-    {
-        return $this->getWildcardMetricResolver()->buildSingleWildcardRows(
-            $metrics,
-            $this->fields_values[$pattern_field] ?? '',
-            $this->fields_values[$exclude_field] ?? ''
-        );
-    }
-
-    // Build interface bitrate rows
-    private function buildInterfaces(array $metrics): array
-    {
-        return $this->getWildcardMetricResolver()->buildInterfaceRows(
-            $metrics,
-            $this->fields_values['item_name_interface'] ?? '',
-            $this->fields_values['interfaces_exclude'] ?? '',
-            $this->calculateInterfaceCapacity()
-        );
+        return is_numeric($load_high) && (float) $load_high > 0
+            ? (float) $load_high
+            : null;
     }
 
     private function calculateInterfaceCapacity(): int
     {
         $interfaces_high = (int) ($this->fields_values['interfaces_high'] ?? 0);
-        $interfaces_unit = (int) ($this->fields_values['interfaces_unit'] ?? WidgetForm::INTERFACES_UNIT_KBPS);
+        $interfaces_unit = (int) ($this->fields_values['interfaces_unit'] ?? WidgetForm::INTERFACES_UNIT_GBPS);
 
         $factor = match ($interfaces_unit) {
             WidgetForm::INTERFACES_UNIT_GBPS => 1_000_000_000,
             WidgetForm::INTERFACES_UNIT_MBPS => 1_000_000,
-            default                          => 1_000,
+            default => 1_000,
         };
 
         return $interfaces_high > 0 ? $interfaces_high * $factor : 0;
     }
 
-    ###############################################
-    ### HELPERS
-    ###############################################
+    private function getPrimaryHostId(): ?string
+    {
+        $hostid = $this->fields_values['hostid'][0] ?? null;
 
-    private function clampPercent(float | int $value): int
+        if (!is_scalar($hostid)) {
+            return null;
+        }
+
+        $hostid = trim((string) $hostid);
+
+        return $hostid !== '' ? $hostid : null;
+    }
+
+    private function hasBadgeType(int $type): bool
+    {
+        foreach ($this->badges as $badge) {
+            if ((int) ($badge['type'] ?? -1) === $type) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizePercent(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? $this->clampPercent((float) $value) : null;
+    }
+
+    private function clampPercent(float|int $value): int
     {
         return max(0, min(100, (int) round($value)));
     }
 
-    // Build the exact item reference used by sparklines so the browser does not need a second fuzzy lookup
-    private function toSparklineItemRef(?array $metric): ?array
+    private function toItemRef(?array $metric): ?array
     {
         if ($metric === null || !array_key_exists('itemid', $metric) || !array_key_exists('value_type', $metric)) {
             return null;
@@ -392,39 +802,78 @@ class WidgetView extends CControllerDashboardWidgetView
         ];
     }
 
-    // Resolve a metric name safely: exact match first, then a unique substring match.
-    private function findMetric(array $metrics, string $search): ?array
+    private function buildLayoutSignature(array $badges, array $rows): string
     {
-        return $this->getMetricMatcher()->resolve($metrics, $search);
+        $layout_model = [
+            'style' => [
+                'label_length' => (int) ($this->fields_values['label_length'] ?? WidgetForm::LABELS_FULL),
+                'bar_height' => (int) ($this->fields_values['bar_height'] ?? WidgetForm::DEFAULT_BAR_HEIGHT),
+                'fill_color' => (string) ($this->fields_values['fill_color'] ?? WidgetForm::DEFAULT_COLOR_FILL),
+                'corners' => (int) ($this->fields_values['corners'] ?? WidgetForm::CORNERS_ROUNDED),
+            ],
+            'toolbar' => array_map(static function(array $badge): array {
+                return [
+                    'badge_id' => $badge['badge_id'] ?? '',
+                    'type' => $badge['type'] ?? '',
+                    'side' => $badge['side'] ?? '',
+                    'menu' => $badge['menu'] ?? null,
+                    'link' => $badge['link'] ?? null,
+                ];
+            }, $badges),
+            'rows' => array_map(static function(array $row): array {
+                return [
+                    'row_id' => $row['row_id'] ?? '',
+                    'kind' => $row['kind'] ?? '',
+                    'label' => $row['label'] ?? '',
+                    'label_link' => $row['label_link'] ?? null,
+                    'cells' => array_map(static function(array $cell): array {
+                        return [
+                            'cell_id' => $cell['cell_id'] ?? '',
+                            'cell_label' => $cell['cell_label'] ?? '',
+                            'display_kind' => $cell['display']['kind'] ?? '',
+                            'latest_data' => $cell['links']['latest_data'] ?? null,
+                            'sparkline' => $cell['sparkline'] ?? null,
+                        ];
+                    }, $row['cells'] ?? []),
+                ];
+            }, $rows),
+        ];
+
+        return md5((string) json_encode($layout_model));
     }
 
-    private function hasBadgeType(array $badges, int $type): bool
+    private function resolveSelectedHostIds(): array
     {
-        foreach ($badges as $badge) {
-            if ((int) ($badge['type'] ?? -1) === $type) {
-                return true;
+        $override_hostids = $this->normalizeHostIds($this->fields_values['override_hostid'] ?? []);
+
+        if ($override_hostids !== []) {
+            return $override_hostids;
+        }
+
+        return $this->normalizeHostIds($this->fields_values['hostid'] ?? []);
+    }
+
+    private function normalizeHostIds(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $hostids = [];
+
+        foreach ($value as $hostid) {
+            if (!is_scalar($hostid)) {
+                continue;
+            }
+
+            $hostid = trim((string) $hostid);
+
+            if ($hostid !== '') {
+                $hostids[] = $hostid;
             }
         }
 
-        return false;
-    }
-
-    // Check if a name matches any comma-separated wildcard pattern
-    private function matchesExcludePattern(string $name, string $patterns): bool
-    {
-        if ($patterns === '') {
-            return false;
-        }
-
-        foreach (explode(',', $patterns) as $pattern) {
-            $pattern = trim($pattern);
-
-            if ($pattern !== '' && fnmatch($pattern, $name, FNM_CASEFOLD)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_values(array_unique($hostids));
     }
 
     private function getMetricMatcher(): MetricMatcher
@@ -444,35 +893,4 @@ class WidgetView extends CControllerDashboardWidgetView
 
         return $this->wildcard_metric_resolver;
     }
-
-    private function getSelectedHostIds(): array
-    {
-        $override_hostids = $this->normalizeHostIds($this->fields_values['override_hostid'] ?? []);
-
-        if ($override_hostids !== []) {
-            return $override_hostids;
-        }
-
-        return $this->normalizeHostIds($this->fields_values['hostid'] ?? []);
-    }
-
-    private function normalizeHostIds($hostids): array
-    {
-        $normalized = [];
-
-        foreach ((array) $hostids as $hostid) {
-            if (!is_scalar($hostid)) {
-                continue;
-            }
-
-            $hostid = trim((string) $hostid);
-
-            if ($hostid !== '') {
-                $normalized[] = $hostid;
-            }
-        }
-
-        return array_values(array_unique($normalized));
-    }
-
 }

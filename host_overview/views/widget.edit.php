@@ -6,8 +6,12 @@
  * github.com/obviousaichicken/zabbix_widgets
  */
 
+require_once __DIR__ . '/../includes/icons.func.php';
+
 use Modules\HostOverview\Includes\CWidgetFieldBadgesList;
 use Modules\HostOverview\Includes\WidgetForm;
+
+use function Modules\HostOverview\Includes\render_icon;
 
 // Backwards compatibility
 // The ZBX_STYLE_COLOR_PICKER constant disappeared in Zabbix 7.4
@@ -502,25 +506,7 @@ function createBadgeRow(array $badge): CDiv
         ->addClass('js-badge-drag')
         ->setAttribute('draggable', 'true')
         ->setAttribute('title', _('Drag to reorder'));
-    $drag_handle->addItem(
-        (new CTag('svg', true))
-            ->setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-            ->setAttribute('width', '24')
-            ->setAttribute('height', '24')
-            ->setAttribute('viewBox', '0 0 24 24')
-            ->setAttribute('fill', 'none')
-            ->setAttribute('stroke', 'currentColor')
-            ->setAttribute('stroke-width', '2')
-            ->setAttribute('stroke-linecap', 'round')
-            ->setAttribute('stroke-linejoin', 'round')
-            ->addClass('lucide lucide-grip-vertical-icon lucide-grip-vertical')
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '9')->setAttribute('cy', '12')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '9')->setAttribute('cy', '5')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '9')->setAttribute('cy', '19')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '15')->setAttribute('cy', '12')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '15')->setAttribute('cy', '5')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '15')->setAttribute('cy', '19')->setAttribute('r', '1'))
-    );
+    $drag_handle->addItem(render_icon('grip-vertical'));
     $type_badge = (new CSpan(_($type_label)))
         ->addClass('badge-row-type');
 
