@@ -23,7 +23,9 @@ use function Modules\HostOverview\Includes\format_problems;
 use function Modules\HostOverview\Includes\format_uptime;
 use function Modules\HostOverview\Includes\format_tags;
 use function Modules\HostOverview\Includes\format_display_text;
+use function Modules\HostOverview\Includes\format_display_value;
 use function Modules\HostOverview\Includes\format_empty_text;
+use function Modules\HostOverview\Includes\format_empty_value;
 use function Modules\HostOverview\Includes\freshness_state_classes;
 use function Modules\HostOverview\Includes\problems_state_classes;
 
@@ -31,7 +33,6 @@ class WidgetView extends CControllerDashboardWidgetView
 {
     private array $badges = [];
     private array $metrics = [];
-    private int $latest_clock = 0;
     private ?array $host_details = null;
     private ?array $problems = null;
     private ?MetricMatcher $metric_matcher = null;
@@ -108,6 +109,7 @@ class WidgetView extends CControllerDashboardWidgetView
                         'kind' => (string) ($cell['display']['kind'] ?? 'percent'),
                         'value' => $cell['display']['value'] ?? null,
                         'prefix' => $cell['display']['prefix'] ?? null,
+                        'value_text' => (string) ($cell['display']['value_text'] ?? ''),
                         'text' => (string) ($cell['display']['text'] ?? ''),
                         'empty_text' => (string) ($cell['display']['empty_text'] ?? 'No data'),
                     ],
@@ -162,12 +164,7 @@ class WidgetView extends CControllerDashboardWidgetView
 
             CWidgetFieldBadgesList::BADGE_MAINTENANCE => $this->buildMaintenanceBadgeModel($id, $type, $side),
 
-            CWidgetFieldBadgesList::BADGE_TAGS => [
-                'id' => $id,
-                'type' => $type,
-                'side' => $side,
-                'text' => format_tags($this->fetchHostDetails()['tags'] ?? []),
-            ],
+            CWidgetFieldBadgesList::BADGE_TAGS => $this->buildTagsBadgeModel($id, $type, $side),
 
             CWidgetFieldBadgesList::BADGE_PROBLEMS => $this->buildProblemsBadgeModel($id, $type, $side),
 
@@ -199,30 +196,54 @@ class WidgetView extends CControllerDashboardWidgetView
                 ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME))
         );
         $seconds = $metric['value'] ?? null;
+        $text = format_uptime($seconds !== null ? (int) $seconds : null);
 
         return [
             'id' => $id,
             'type' => $type,
             'side' => $side,
-            'text' => format_uptime($seconds !== null ? (int) $seconds : null) ?? '—',
+            'text' => $text ?? 'No uptime',
+            'state_classes' => $text === null ? ['empty'] : [],
         ];
     }
 
     private function buildFreshnessBadgeModel(string $id, int $type, string $side): array
     {
-        $freshness = $this->computeFreshness();
+        $metric = $this->findMetric(
+            trim((string) ($this->fields_values['badge_liveliness_item_name']
+                ?? CWidgetFieldBadgesList::DEFAULT_ITEM_LIVELINESS))
+        );
+        $freshness = $this->computeFreshness($metric);
         $warn_threshold = max(0, (int) ($this->fields_values['freshness_warn'] ?? WidgetForm::DEFAULT_FRESHNESS_WARN));
         $stale_threshold = max(
             $warn_threshold,
             (int) ($this->fields_values['freshness_stale'] ?? WidgetForm::DEFAULT_FRESHNESS_STALE)
         );
+        $state_classes = freshness_state_classes($freshness, $warn_threshold, $stale_threshold);
+
+        if ($freshness === null) {
+            $state_classes[] = 'empty';
+        }
 
         return [
             'id' => $id,
             'type' => $type,
             'side' => $side,
             'text' => format_freshness($freshness),
-            'state_classes' => freshness_state_classes($freshness, $warn_threshold, $stale_threshold),
+            'state_classes' => $state_classes,
+        ];
+    }
+
+    private function buildTagsBadgeModel(string $id, int $type, string $side): array
+    {
+        $text = format_tags($this->fetchHostDetails()['tags'] ?? []);
+
+        return [
+            'id' => $id,
+            'type' => $type,
+            'side' => $side,
+            'text' => $text,
+            'state_classes' => $text === 'No tags' ? ['empty'] : [],
         ];
     }
 
@@ -390,7 +411,7 @@ class WidgetView extends CControllerDashboardWidgetView
             'row_id' => $row_id,
             'kind' => 'single',
             'label' => $row_label,
-            'label_link' => $this->buildLatestDataLink($item_ref),
+            'label_link' => null,
             'cells' => [$cell],
         ];
     }
@@ -491,6 +512,9 @@ class WidgetView extends CControllerDashboardWidgetView
                 'kind' => $display_kind,
                 'value' => $value === null ? null : (float) $value,
                 'prefix' => $prefix,
+                'value_text' => $value === null
+                    ? format_empty_value()
+                    : format_display_value($display_kind, (float) $value),
                 'text' => $value === null
                     ? format_empty_text($prefix)
                     : format_display_text($display_kind, (float) $value, $prefix),
@@ -595,6 +619,11 @@ class WidgetView extends CControllerDashboardWidgetView
                 ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME));
         }
 
+        if ($this->hasBadgeType(CWidgetFieldBadgesList::BADGE_LIVELINESS)) {
+            $name_filters[] = trim((string) ($this->fields_values['badge_liveliness_item_name']
+                ?? CWidgetFieldBadgesList::DEFAULT_ITEM_LIVELINESS));
+        }
+
         foreach (['item_name_disk', 'item_name_partition', 'item_name_interface'] as $field) {
             foreach ($this->getWildcardMetricResolver()->extractSearchTerms((string) ($this->fields_values[$field] ?? '')) as $part) {
                 $name_filters[] = trim($part);
@@ -607,7 +636,6 @@ class WidgetView extends CControllerDashboardWidgetView
         )));
 
         $collection = $this->getMetricMatcher()->collect((array) ($this->fields_values['hostid'] ?? []), $name_filters);
-        $this->latest_clock = (int) ($collection['latest_clock'] ?? 0);
 
         return $collection['metrics'] ?? [];
     }
@@ -676,13 +704,15 @@ class WidgetView extends CControllerDashboardWidgetView
         return $this->host_details;
     }
 
-    private function computeFreshness(): ?int
+    private function computeFreshness(?array $metric = null): ?int
     {
-        if ($this->latest_clock <= 0) {
+        $clock = (int) ($metric['lastclock'] ?? 0);
+
+        if ($clock <= 0) {
             return null;
         }
 
-        return max(0, time() - $this->latest_clock);
+        return max(0, time() - $clock);
     }
 
     private function fetchProblems(): array

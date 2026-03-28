@@ -36,6 +36,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
     public const SIDE_RIGHT = 'right';
 
     public const DEFAULT_ITEM_UPTIME = 'System uptime';
+    public const DEFAULT_ITEM_LIVELINESS = 'Zabbix agent ping';
 
     private const LINK_BADGE_ALLOWED_SCHEMES = ['http', 'https'];
 

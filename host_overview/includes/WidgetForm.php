@@ -53,7 +53,7 @@ class WidgetForm extends CWidgetForm
     public const DEFAULT_THRESHOLD_MEDIUM = 70;
     public const DEFAULT_THRESHOLD_SWAP_HIGH = 10;
     public const DEFAULT_THRESHOLD_SWAP_MEDIUM = 5;
-    public const DEFAULT_FRESHNESS_WARN   = 60;
+    public const DEFAULT_FRESHNESS_WARN   = 90;
     public const DEFAULT_FRESHNESS_STALE  = 300;
 
     public const DEFAULT_LOAD_HIGH       = 2;
@@ -94,6 +94,10 @@ class WidgetForm extends CWidgetForm
             ->addField(
                 (new CWidgetFieldTextBox('badge_uptime_item_name', _('Uptime item')))
                     ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('badge_liveliness_item_name', _('Liveliness item')))
+                    ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_LIVELINESS)
             )
             ->addField(
                 (new CWidgetFieldCheckBox('problems_hide_acknowledged', _('Hide acknowledged problems')))
@@ -367,6 +371,10 @@ class WidgetForm extends CWidgetForm
 
         if ($this->hasBadgeType(CWidgetFieldBadgesList::BADGE_UPTIME)) {
             $this->validateRequiredTextField($errors, 'badge_uptime_item_name');
+        }
+
+        if ($this->hasBadgeType(CWidgetFieldBadgesList::BADGE_LIVELINESS)) {
+            $this->validateRequiredTextField($errors, 'badge_liveliness_item_name');
         }
 
         return $errors;

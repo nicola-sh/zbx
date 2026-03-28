@@ -38,6 +38,7 @@ $form
         (new CWidgetFormFieldsetCollapsibleView(_('Badges')))
             ->addItem(getBadgesListView($data['fields']['badges']))
             ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
+            ->addItem(getBadgeLivelinessItemViews($form, $data['fields']['badge_liveliness_item_name']))
             ->addItem(getFreshnessThresholdViews($form, $data['fields']))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_acknowledged'],
                 'Exclude acknowledged problems from the Problems badge count.'
@@ -391,7 +392,17 @@ function getBadgeUptimeItemViews(CWidgetFormView $form, $field): array
     return getItemNameView(
         $form,
         $field,
-        _('Enter the exact uptime item name, for example "System uptime". Partial names are only used when they match one item uniquely; otherwise the badge shows —.'),
+        _('Enter the exact uptime item name, for example "System uptime". Partial names are only used when they match one item uniquely; otherwise the badge shows No uptime.'),
+        ''
+    );
+}
+
+function getBadgeLivelinessItemViews(CWidgetFormView $form, $field): array
+{
+    return getItemNameView(
+        $form,
+        $field,
+        _('Enter the exact liveliness item name, for example "Zabbix agent ping". Partial names are only used when they match one item uniquely; otherwise the badge shows No ping.'),
         ''
     );
 }
@@ -407,7 +418,7 @@ function getFreshnessThresholdViews(CWidgetFormView $form, array $fields): array
 
     $label = new CLabel(_('Liveliness thresholds'), 'freshness_warn');
     $label->addItem(makeHelpIcon(
-        _('Age in seconds since the host last reported data. Warn applies first, then Stale.')
+        _('Age in seconds since the configured liveliness item last reported data. Warn applies first, then Stale.')
     ));
 
     return [

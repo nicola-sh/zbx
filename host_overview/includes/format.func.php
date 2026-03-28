@@ -36,7 +36,7 @@ function format_uptime(?int $seconds): ?string
 function format_freshness(?int $freshness): string
 {
     if ($freshness === null) {
-        return '—';
+        return 'No ping';
     }
 
     return $freshness < 60
@@ -103,7 +103,7 @@ function format_tags(array $tags): string
         $parts[] = $tag_value === '' ? $tag_name : $tag_name . ': ' . $tag_value;
     }
 
-    return implode(' • ', $parts);
+    return $parts === [] ? 'No tags' : implode(' • ', $parts);
 }
 
 function format_display_text(string $display_kind, float $value, ?string $prefix = null): string
@@ -115,15 +115,29 @@ function format_display_text(string $display_kind, float $value, ?string $prefix
     };
 
     return ($prefix !== null && $prefix !== '')
-        ? $prefix . ' — ' . $text
+        ? $prefix . ' ' . $text
         : $text;
+}
+
+function format_display_value(string $display_kind, float $value): string
+{
+    return match ($display_kind) {
+        'load' => format_load($value),
+        'interface' => format_bps($value),
+        default => format_percent($value),
+    };
 }
 
 function format_empty_text(?string $prefix = null): string
 {
     return ($prefix !== null && $prefix !== '')
-        ? $prefix . ' — No data'
+        ? $prefix . ' ' . 'No data'
         : 'No data';
+}
+
+function format_empty_value(): string
+{
+    return 'No data';
 }
 
 // =============================================================================
