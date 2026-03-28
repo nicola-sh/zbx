@@ -11,8 +11,6 @@
   --gap-4: 10px;
   --gap-5: 15px;
   --widget-inline-spacing: 10px;
-  --overview-font-size: 10px;
-  --overview-letter-spacing: 1px;
   --label-width-default: 90px;
   --metric-row-gap: 25px;
   --metric-row-padding-y: 5px;
@@ -25,7 +23,6 @@
   --toolbar-margin-bottom: var(--widget-inline-spacing);
   --badge-height: 30px;
   --badge-padding-x: 12px;
-  --badge-font-size: 12px;
   --badge-radius: 8px;
   --badge-icon-size: 14px;
   --badge-icon-gap: 8px;
@@ -35,7 +32,7 @@
   --dot-gap: 15px;
   --text-col-width: 40px;
   --cell-label-width: 60px;
-  --trend-arrow-size: 10px;
+  --trend-arrow-size: 14px;
   --muted-opacity: 0.6;
   --badge-bg: rgba(0, 0, 0, 0.2);
   --badge-hover-bg: rgba(0, 0, 0, 0.3);

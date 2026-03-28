@@ -124,7 +124,13 @@ function _badge_with_optional_link(string $class_name, string $text, ?array $lin
     }
 
     $tag = $link !== null ? 'a' : 'span';
-    $el = _badge_span(['badge', $class_name], $items, $tag);
+    $class_names = ['badge', $class_name];
+
+    if ($link !== null) {
+        $class_names[] = 'link';
+    }
+
+    $el = _badge_span($class_names, $items, $tag);
 
     if ($link !== null && ($link['href'] ?? '') !== '') {
         $el->setAttribute('href', $link['href']);

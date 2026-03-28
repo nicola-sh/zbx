@@ -34,7 +34,7 @@ function render_metric_row(array $row): CDiv
     if ($cells === []) {
         $list->addItem(
             (new CTag('span', true))
-                ->addClass('metric-empty')
+                ->addClass('empty')
                 ->addItem(_('No data'))
         );
     } else {
@@ -77,18 +77,6 @@ function render_metric_cell(array $cell, bool $is_multi = false): CDiv
 function _render_row_label(array $row): CTag
 {
     $label = (string) ($row['label'] ?? '');
-    $link = $row['label_link'] ?? null;
-
-    if (_has_link_href($link)) {
-        $label_link = (new CTag('a', true))
-            ->addClass('metric-link')
-            ->addClass('metric-label-link')
-            ->addItem($label);
-
-        _apply_link_attrs($label_link, $link, _('Open latest data'));
-
-        return $label_link;
-    }
 
     return (new CTag('span', true))->addItem($label);
 }
@@ -97,19 +85,42 @@ function _render_metric_text(array $cell, bool $is_multi = false): CTag
 {
     $latest_data_link = $cell['links']['latest_data'] ?? null;
     $tag = _has_link_href($latest_data_link) ? 'a' : 'span';
+    $prefix = trim((string) ($cell['display']['prefix'] ?? ''));
+    $value_text = (string) ($cell['display']['value_text'] ?? '');
+    $content = (new CTag('span', true))
+        ->addClass('metric-value-content');
+
+    if (! $is_multi) {
+        $content->addClass('metric-value-single');
+    }
+
+    if ($prefix !== '') {
+        $content->addItem(
+            (new CTag('span', true))
+                ->addClass('metric-value-prefix')
+                ->addItem($prefix)
+        );
+    }
+
     $text = (new CTag($tag, true))
-        ->addClass('metric-link')
         ->addClass('metric-value-link')
-        ->addClass($is_multi ? 'metric-value-multi' : 'metric-value-single')
-        ->addClass(($cell['state'] ?? 'ok') === 'empty' ? 'metric-empty' : 'metric-text')
-        ->setAttribute('data-link-role', 'value')
-        ->addItem((string) ($cell['display']['text'] ?? ''));
+        ->addItem(
+            (new CTag('span', true))
+                ->addClass('metric-value-label')
+                ->addItem($value_text !== '' ? $value_text : (string) ($cell['display']['text'] ?? ''))
+        );
+
+    if (($cell['state'] ?? 'ok') === 'empty') {
+        $text->addClass('empty');
+    }
 
     if ($tag === 'a') {
         _apply_link_attrs($text, $latest_data_link, _('Open latest data'));
     }
 
-    return $text;
+    $content->addItem($text);
+
+    return $content;
 }
 
 function _render_metric_bar(array $cell): CDiv

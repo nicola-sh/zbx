@@ -7,9 +7,9 @@
 class CWidgetHostOverview extends CWidget {
 
   static DYNAMIC_BADGE_CLASSES = [
+    'empty',
     'freshness-warn',
     'freshness-stale',
-    'maintenance',
     'problems-severity',
     'problems-info',
     'problems-warning',
@@ -220,14 +220,14 @@ class CWidgetHostOverview extends CWidget {
 
   _patchCell(cellEl, cellId, cellValue) {
     const display = cellValue.display ?? {};
-    const textEl = cellEl.querySelector('[data-link-role="value"]');
+    const textEl = cellEl.querySelector('.metric-value-link');
     const barEl = cellEl.querySelector('.metric-bar');
     const fillEl = cellEl.querySelector('.metric-fill');
 
     if ((cellValue.state ?? 'ok') === 'empty' || display.value == null) {
       this._cancelTicker(cellId);
       this.prevValues.delete(cellId);
-      this._setMetricCellEmpty(cellEl, display.empty_text ?? display.text ?? 'No data');
+      this._setMetricCellEmpty(cellEl, display.value_text ?? 'No data');
 
       if (fillEl) {
         fillEl.style.width = '0%';
@@ -245,7 +245,7 @@ class CWidgetHostOverview extends CWidget {
 
     const numericValue = Number(display.value);
     if (!Number.isFinite(numericValue)) {
-      this._renderTextWithArrow(textEl, display.text ?? '', null);
+      this._renderTextWithArrow(textEl, display.value_text ?? display.text ?? '', null);
       return;
     }
 
@@ -271,7 +271,7 @@ class CWidgetHostOverview extends CWidget {
     }
   }
 
-  _setMetricCellEmpty(cellEl, textValue) {
+  _setMetricCellEmpty(cellEl, valueText) {
     cellEl.classList.add('is-empty');
 
     const barEl = cellEl.querySelector('.metric-bar');
@@ -279,11 +279,10 @@ class CWidgetHostOverview extends CWidget {
       barEl.hidden = true;
     }
 
-    const textEl = cellEl.querySelector('[data-link-role="value"]');
+    const textEl = cellEl.querySelector('.metric-value-link');
     if (textEl) {
-      textEl.classList.remove('metric-text');
-      textEl.classList.add('metric-empty');
-      this._renderTextWithArrow(textEl, textValue, null);
+      textEl.classList.add('empty');
+      this._renderTextWithArrow(textEl, valueText, null);
     }
   }
 
@@ -295,10 +294,9 @@ class CWidgetHostOverview extends CWidget {
       barEl.hidden = false;
     }
 
-    const textEl = cellEl.querySelector('[data-link-role="value"]');
+    const textEl = cellEl.querySelector('.metric-value-link');
     if (textEl) {
-      textEl.classList.remove('metric-empty');
-      textEl.classList.add('metric-text');
+      textEl.classList.remove('empty');
     }
   }
 
@@ -319,11 +317,7 @@ class CWidgetHostOverview extends CWidget {
       const ease = 1 - Math.pow(1 - t, 3);
       const current = from + (to - from) * ease;
 
-      this._renderTextWithArrow(
-        textEl,
-        this._formatAnimatedDisplayText(display, current),
-        arrowDir
-      );
+      this._renderTextWithArrow(textEl, this._formatAnimatedDisplayValue(display, current), arrowDir);
 
       state.value = current;
 
@@ -334,26 +328,24 @@ class CWidgetHostOverview extends CWidget {
 
       state.value = to;
       state.rafId = null;
-      this._renderTextWithArrow(textEl, display.text ?? '', arrowDir);
+      this._renderTextWithArrow(textEl, display.value_text ?? display.text ?? '', arrowDir);
     };
 
     state.rafId = requestAnimationFrame(step);
     this.valueTicker.set(cellId, state);
   }
 
-  _formatAnimatedDisplayText(display, value) {
-    const prefix = display.prefix ? `${display.prefix} — ` : '';
-
+  _formatAnimatedDisplayValue(display, value) {
     switch (display.kind) {
       case 'load':
-        return `${prefix}${this._formatLoadValue(value)}`;
+        return this._formatLoadValue(value);
 
       case 'interface':
-        return `${prefix}${this._formatBps(value)}`;
+        return this._formatBps(value);
 
       case 'percent':
       default:
-        return `${prefix}${this._clampPercent(value)}%`;
+        return `${this._clampPercent(value)}%`;
     }
   }
 
@@ -367,28 +359,23 @@ class CWidgetHostOverview extends CWidget {
     return Math.max(0, Math.min(100, rounded));
   }
 
-  _renderTextWithArrow(textEl, labelText, arrowDir) {
+  _renderTextWithArrow(textEl, valueText, arrowDir) {
     if (!textEl) {
       return;
     }
 
     textEl.innerHTML = '';
 
-    const content = document.createElement('span');
-    content.className = 'metric-value-content';
-
     const label = document.createElement('span');
     label.className = 'metric-value-label';
-    label.textContent = labelText;
-    content.appendChild(label);
+    label.textContent = valueText;
+    textEl.appendChild(label);
 
     if (!arrowDir) {
-      textEl.appendChild(content);
       return;
     }
 
-    content.appendChild(this._createTrendArrow(arrowDir));
-    textEl.appendChild(content);
+    textEl.appendChild(this._createTrendArrow(arrowDir));
   }
 
   _createTrendArrow(arrowDir) {
@@ -400,7 +387,7 @@ class CWidgetHostOverview extends CWidget {
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'none');
     svg.setAttribute('stroke', 'currentColor');
-    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-width', '2.5');
     svg.setAttribute('stroke-linecap', 'round');
     svg.setAttribute('stroke-linejoin', 'round');
     svg.classList.add('dir-arrow');
