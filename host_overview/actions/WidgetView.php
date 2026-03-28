@@ -52,24 +52,24 @@ class WidgetView extends CControllerDashboardWidgetView
             'config' => $this->fields_values,
             'badges' => $badges,
             'rows' => $rows,
-            'patch_values' => $this->buildPatchValues($badges, $rows),
+            'values' => $this->buildValues($badges, $rows),
             'layout_signature' => $this->buildLayoutSignature($badges, $rows),
         ]));
     }
 
     // =============================================================================
-    // Patch value builders (for JS dynamic updates)
+    // Dynamic value builders (for JS updates)
     // =============================================================================
 
-    private function buildPatchValues(array $badges, array $rows): array
+    private function buildValues(array $badges, array $rows): array
     {
         return [
-            'badges' => $this->buildBadgePatchValues($badges),
-            'cells' => $this->buildCellPatchValues($rows),
+            'badges' => $this->buildBadgeValues($badges),
+            'cells' => $this->buildCellValues($rows),
         ];
     }
 
-    private function buildBadgePatchValues(array $badges): array
+    private function buildBadgeValues(array $badges): array
     {
         $values = [];
 
@@ -90,7 +90,7 @@ class WidgetView extends CControllerDashboardWidgetView
         return $values;
     }
 
-    private function buildCellPatchValues(array $rows): array
+    private function buildCellValues(array $rows): array
     {
         $values = [];
 
@@ -381,7 +381,6 @@ class WidgetView extends CControllerDashboardWidgetView
                 : $this->normalizePercent($value),
             'threshold_group' => $threshold_group,
             'item_ref' => $item_ref,
-            'sparkline_title' => $row_label,
             'axis_min' => 0,
             'axis_max' => $options['axis_max'] ?? ($display_kind === 'percent' ? 100 : null),
             'invert_percent' => (bool) ($options['invert_percent'] ?? false),
@@ -417,7 +416,6 @@ class WidgetView extends CControllerDashboardWidgetView
                 'bar_percent' => $this->normalizePercent($row['percent'] ?? null),
                 'threshold_group' => $family,
                 'item_ref' => $row['item_ref'] ?? null,
-                'sparkline_title' => $cell_label,
                 'axis_min' => 0,
                 'axis_max' => 100,
                 'invert_percent' => false,
@@ -461,7 +459,6 @@ class WidgetView extends CControllerDashboardWidgetView
                 'bar_percent' => $this->normalizePercent($row['percent'] ?? null),
                 'threshold_group' => 'iface',
                 'item_ref' => $row['item_ref'] ?? null,
-                'sparkline_title' => $cell_label,
                 'axis_min' => 0,
                 'axis_max' => $capacity > 0 ? $capacity : null,
                 'invert_percent' => false,
@@ -510,7 +507,6 @@ class WidgetView extends CControllerDashboardWidgetView
             ],
             'sparkline' => [
                 'enabled' => $item_ref !== null,
-                'title' => (string) ($options['sparkline_title'] ?? $options['cell_label'] ?? ''),
                 'spec' => $item_ref !== null
                     ? [
                         'item_ref' => $item_ref,

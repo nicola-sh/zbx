@@ -387,27 +387,34 @@ class CWidgetHostOverview extends CWidget {
       return;
     }
 
-    const arrow = this._createTrendArrow(arrowDir);
-    if (!arrow) {
-      textEl.appendChild(content);
-      return;
-    }
-
-    content.appendChild(arrow);
+    content.appendChild(this._createTrendArrow(arrowDir));
     textEl.appendChild(content);
   }
 
   _createTrendArrow(arrowDir) {
-    const template = this._body?.querySelector('[data-host-overview-icon-template="trend-arrow"]');
-    const svg = template?.content?.firstElementChild?.cloneNode(true);
-
-    if (!svg) {
-      return null;
-    }
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('xmlns', ns);
+    svg.setAttribute('width', '24');
+    svg.setAttribute('height', '24');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.classList.add('dir-arrow');
 
     svg.classList.add(`dir-${arrowDir}`);
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
+
+    for (const d of ['m5 12 7-7 7 7', 'M12 19V5']) {
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', d);
+      svg.appendChild(path);
+    }
+
     return svg;
   }
 
@@ -509,8 +516,7 @@ class CWidgetHostOverview extends CWidget {
 
       return {
         cellId,
-        title: cellEl.getAttribute('data-sparkline-title')
-          || cellEl.getAttribute('data-cell-label')
+        title: cellEl.getAttribute('data-cell-label')
           || cellId,
         spec,
       };

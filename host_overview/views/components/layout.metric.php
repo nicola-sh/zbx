@@ -17,15 +17,14 @@ use CTag;
 
 function render_metric_row(array $row): CDiv
 {
-    $metric_row = (new CDiv())->addClass('metric-row');
+    $is_multi = ($row['kind'] ?? 'single') !== 'single';
+    $metric_row = (new CDiv())
+        ->addClass('metric-row')
+        ->addClass($is_multi ? 'metric-row-multi' : 'metric-row-single');
     $list = (new CDiv())->addClass('metric-list');
 
-    if (($row['kind'] ?? 'single') !== 'single') {
-        $list->addClass('metric-list-multi');
-    }
-
     $metric_row->addItem(
-        (new CTag('aside', true))
+        (new CTag('div', true))
             ->addClass('metric-label')
             ->addItem(_render_row_label($row))
     );
@@ -40,14 +39,14 @@ function render_metric_row(array $row): CDiv
         );
     } else {
         foreach ($cells as $cell) {
-            $list->addItem(render_metric_cell($cell));
+            $list->addItem(render_metric_cell($cell, $is_multi));
         }
     }
 
     return $metric_row->addItem($list);
 }
 
-function render_metric_cell(array $cell): CDiv
+function render_metric_cell(array $cell, bool $is_multi = false): CDiv
 {
     $state = (string) ($cell['state'] ?? 'ok');
     $metric_cell = (new CDiv())
@@ -59,7 +58,6 @@ function render_metric_cell(array $cell): CDiv
     $sparkline_spec = _encode_sparkline_spec($sparkline['spec'] ?? null);
 
     if (($sparkline['enabled'] ?? false) && $sparkline_spec !== null) {
-        $metric_cell->setAttribute('data-sparkline-title', (string) ($sparkline['title'] ?? ''));
         $metric_cell->setAttribute('data-sparkline-spec', $sparkline_spec);
     }
 
@@ -69,7 +67,7 @@ function render_metric_cell(array $cell): CDiv
 
     return $metric_cell
         ->addItem(_render_metric_bar($cell))
-        ->addItem(_render_metric_text($cell));
+        ->addItem(_render_metric_text($cell, $is_multi));
 }
 
 // =============================================================================
@@ -81,11 +79,10 @@ function _render_row_label(array $row): CTag
     $label = (string) ($row['label'] ?? '');
     $link = $row['label_link'] ?? null;
 
-    if ($link !== null) {
+    if (_has_link_href($link)) {
         $label_link = (new CTag('a', true))
             ->addClass('metric-link')
             ->addClass('metric-label-link')
-            ->addClass('js-metric-link')
             ->addItem($label);
 
         _apply_link_attrs($label_link, $link, _('Open latest data'));
@@ -96,19 +93,23 @@ function _render_row_label(array $row): CTag
     return (new CTag('span', true))->addItem($label);
 }
 
-function _render_metric_text(array $cell): CTag
+function _render_metric_text(array $cell, bool $is_multi = false): CTag
 {
-    $link = (new CTag('a', true))
+    $latest_data_link = $cell['links']['latest_data'] ?? null;
+    $tag = _has_link_href($latest_data_link) ? 'a' : 'span';
+    $text = (new CTag($tag, true))
         ->addClass('metric-link')
         ->addClass('metric-value-link')
-        ->addClass('js-metric-link')
+        ->addClass($is_multi ? 'metric-value-multi' : 'metric-value-single')
         ->addClass(($cell['state'] ?? 'ok') === 'empty' ? 'metric-empty' : 'metric-text')
         ->setAttribute('data-link-role', 'value')
         ->addItem((string) ($cell['display']['text'] ?? ''));
 
-    _apply_link_attrs($link, $cell['links']['latest_data'] ?? null, _('Open latest data'));
+    if ($tag === 'a') {
+        _apply_link_attrs($text, $latest_data_link, _('Open latest data'));
+    }
 
-    return $link;
+    return $text;
 }
 
 function _render_metric_bar(array $cell): CDiv
@@ -165,8 +166,11 @@ function _apply_link_attrs(CTag $element, ?array $link, ?string $title = null): 
 
         return;
     }
+}
 
-    $element->addClass('is-disabled');
+function _has_link_href(?array $link): bool
+{
+    return $link !== null && ($link['href'] ?? '') !== '';
 }
 
 function _encode_sparkline_spec($sparkline_spec): ?string

@@ -10,6 +10,19 @@
   --gap-3: 8px;
   --gap-4: 10px;
   --gap-5: 15px;
+  --widget-inline-spacing: 10px;
+  --overview-font-size: 10px;
+  --overview-letter-spacing: 1px;
+  --label-width-default: 90px;
+  --metric-row-gap: 25px;
+  --metric-row-padding-y: 5px;
+  --metric-multi-gap: 10px;
+  --metric-multi-min-width: 220px;
+  --metric-value-gap: 0.2em;
+  --metric-bar-offset-y: -2px;
+  --metric-fill-transition-duration: 250ms;
+  --toolbar-margin-top: var(--metric-row-padding-y);
+  --toolbar-margin-bottom: var(--widget-inline-spacing);
   --badge-height: 30px;
   --badge-padding-x: 12px;
   --badge-font-size: 12px;
@@ -19,9 +32,10 @@
   --bar-radius: 10px;
   --canvas-radius: 4px;
   --dot-size: 5px;
-  --dot-gap: 10px;
+  --dot-gap: 15px;
   --text-col-width: 40px;
   --cell-label-width: 60px;
+  --trend-arrow-size: 10px;
   --muted-opacity: 0.6;
   --badge-bg: rgba(0, 0, 0, 0.2);
   --badge-hover-bg: rgba(0, 0, 0, 0.3);
@@ -37,10 +51,17 @@
   --red-bg: rgba(255, 65, 54, 0.4);
   --red-pulse-bg: rgba(255, 65, 54, 0.15);
   --sparkline-border-color: rgba(128, 128, 128, 0.3);
+  --sparkline-border-width: 1px;
   --sparkline-label-color: rgba(128, 128, 128, 0.7);
   --sparkline-active-color: #458adc;
   --sparkline-active-fg: #fff;
+  --sparkline-font-size: 12px;
+  --sparkline-overlay-padding-inline: var(--widget-inline-spacing);
+  --sparkline-overlay-padding-bottom: var(--widget-inline-spacing);
+  --sparkline-label-padding-y: 6px;
   --sparkline-overlay-bg: Canvas;
+  --hidden-header-padding-top: var(--metric-row-padding-y);
+  --problems-pulse-duration: 1.5s;
   position: relative;
 }
 
@@ -61,7 +82,7 @@
 
 .dashboard-widget-host_overview.hidden_header .host-overview-container,
 .dashboard-widget-host_overview.hidden_header .sparkline-overlay {
-  padding-top: 5px;
+  padding-top: var(--hidden-header-padding-top);
 }
 
 .dashboard-widget-host_overview.square-corners {
