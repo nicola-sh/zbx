@@ -6,13 +6,12 @@
  * github.com/obviousaichicken/zabbix_widgets
  */
 
-require_once __DIR__ . '/../includes/container.func.php';
+require_once __DIR__ . '/components/layout.container.php';
 
 use function Modules\HostOverview\Includes\render_overview_container;
 use function Modules\HostOverview\Includes\render_toolbar;
 use function Modules\HostOverview\Includes\render_metric_row;
 use function Modules\HostOverview\Includes\render_sparkline_overlay;
-use function Modules\HostOverview\Includes\build_all_patch_values;
 use const Modules\HostOverview\Includes\SIDE_LEFT;
 use const Modules\HostOverview\Includes\SIDE_RIGHT;
 
@@ -39,11 +38,11 @@ foreach ($rows as $row) {
     $container->addItem(render_metric_row($row));
 }
 
-// Output.
+// Output - patch_values comes pre-built from controller.
 $view
     ->addItem(render_sparkline_overlay())
     ->addItem($container)
     ->setVar('config', $config)
-    ->setVar('values', build_all_patch_values($badges, $rows))
+    ->setVar('values', $data['patch_values'] ?? [])
     ->setVar('layout_signature', $data['layout_signature'] ?? '')
     ->show();

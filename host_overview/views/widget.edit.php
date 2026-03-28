@@ -6,7 +6,7 @@
  * github.com/obviousaichicken/zabbix_widgets
  */
 
-require_once __DIR__ . '/../includes/icons.func.php';
+require_once __DIR__ . '/components/layout.icons.php';
 
 use Modules\HostOverview\Includes\CWidgetFieldBadgesList;
 use Modules\HostOverview\Includes\WidgetForm;

@@ -8,7 +8,7 @@
 
 namespace Modules\HostOverview\Includes;
 
-require_once __DIR__ . '/icons.func.php';
+require_once __DIR__ . '/layout.icons.php';
 
 use CDiv;
 use CLinkAction;
