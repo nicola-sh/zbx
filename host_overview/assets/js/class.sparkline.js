@@ -6,6 +6,7 @@
 
 class HostOverviewSparkline {
 
+  static ACTION = 'widget.host_overview.sparkline';
   static PERIODS = {
     '1h': 3600,
     '3h': 10800,
@@ -20,9 +21,9 @@ class HostOverviewSparkline {
     this.options = options;
     this.state = {
       open: false,
-      metricKey: null,
-      itemRef: null,
-      fallbackTitle: '',
+      cellId: null,
+      spec: null,
+      title: '',
       period: '1h',
       data: null,
       message: '',
@@ -36,29 +37,28 @@ class HostOverviewSparkline {
     this._requestId = 0;
     this._resizeObserver = null;
     this._resizeObserverTarget = null;
-    this._attachedBody = null;
+    this._attachedOverlay = null;
     this._attachedCanvas = null;
-    this._handleBodyClick = (e) => this._onBodyClick(e);
-    this._handleMouseMove = (e) => this._onMouseMove(e);
+    this._handleOverlayClick = (event) => this._onOverlayClick(event);
+    this._handleMouseMove = (event) => this._onMouseMove(event);
     this._handleMouseLeave = () => this._onMouseLeave();
   }
 
   attach() {
-    const body = this._getBody();
-    if (!body) {
-      return;
-    }
-
-    if (this._attachedBody !== body) {
-      if (this._attachedBody) {
-        this._attachedBody.removeEventListener('click', this._handleBodyClick);
+    const overlay = this._getOverlayRoot();
+    if (this._attachedOverlay !== overlay) {
+      if (this._attachedOverlay) {
+        this._attachedOverlay.removeEventListener('click', this._handleOverlayClick);
       }
 
-      body.addEventListener('click', this._handleBodyClick);
-      this._attachedBody = body;
+      if (overlay) {
+        overlay.addEventListener('click', this._handleOverlayClick);
+      }
+
+      this._attachedOverlay = overlay;
     }
 
-    const canvas = body.querySelector('.sparkline-canvas');
+    const canvas = overlay?.querySelector('.sparkline-canvas') || null;
     if (this._attachedCanvas !== canvas) {
       if (this._attachedCanvas) {
         this._attachedCanvas.removeEventListener('mousemove', this._handleMouseMove);
@@ -76,21 +76,25 @@ class HostOverviewSparkline {
     this._setupResizeObserver();
   }
 
-  toggle(metricKey, fallbackTitle) {
-    if (this.state.open && this.state.metricKey === metricKey) {
+  open(metric = {}) {
+    const cellId = metric?.cellId ?? null;
+    const spec = this._normalizeSpec(metric?.spec);
+
+    if (!cellId || !spec?.item_ref || (!spec.item_ref.itemid && !spec.item_ref.name)) {
+      return;
+    }
+
+    if (this.state.open && this.state.cellId === cellId) {
       this.close();
       return;
     }
 
-    const itemRef = this._normalizeRef(this._getItemRef(metricKey));
-    if (!itemRef || (!itemRef.itemid && !itemRef.name)) {
-      return;
-    }
+    this.attach();
 
     this.state.open = true;
-    this.state.metricKey = metricKey;
-    this.state.itemRef = itemRef;
-    this.state.fallbackTitle = fallbackTitle;
+    this.state.cellId = cellId;
+    this.state.spec = spec;
+    this.state.title = metric?.title ?? '';
     this.state.data = null;
     this.state.message = 'Loading...';
     this._pauseUpdating();
@@ -102,22 +106,21 @@ class HostOverviewSparkline {
       root.classList.add('sparkline-open');
     }
 
-    const body = this._getBody();
-    const overlay = body?.querySelector('.sparkline-overlay');
+    const overlay = this._getOverlayRoot();
     if (overlay) {
       overlay.style.backgroundColor = this._getSurfaceColor();
       overlay.setAttribute('aria-hidden', 'false');
       overlay.classList.add('visible');
     }
 
-    const container = body?.querySelector('#container');
-    if (container) {
-      container.classList.add('sparkline-active');
+    const overviewRoot = this._getOverviewRoot();
+    if (overviewRoot) {
+      overviewRoot.classList.add('sparkline-active');
     }
 
     this._bindKeydown();
     this.scheduleRedraw();
-    this.fetchSparkline(itemRef, this.state.period);
+    this.fetchSparkline(spec, this.state.period);
   }
 
   close() {
@@ -130,15 +133,14 @@ class HostOverviewSparkline {
     this._cancelScheduledRedraw();
 
     this.state.open = false;
-    this.state.metricKey = null;
-    this.state.itemRef = null;
-    this.state.fallbackTitle = '';
+    this.state.cellId = null;
+    this.state.spec = null;
+    this.state.title = '';
     this.state.data = null;
     this.state.message = '';
     this._clearDrawState();
 
-    const body = this._getBody();
-    const overlay = body?.querySelector('.sparkline-overlay');
+    const overlay = this._getOverlayRoot();
     if (overlay) {
       overlay.setAttribute('aria-hidden', 'true');
       overlay.classList.remove('visible');
@@ -149,9 +151,9 @@ class HostOverviewSparkline {
       root.classList.remove('sparkline-open');
     }
 
-    const container = body?.querySelector('#container');
-    if (container) {
-      container.classList.remove('sparkline-active');
+    const overviewRoot = this._getOverviewRoot();
+    if (overviewRoot) {
+      overviewRoot.classList.remove('sparkline-active');
     }
 
     this._removeKeydownHandler();
@@ -174,9 +176,9 @@ class HostOverviewSparkline {
       this._resizeObserver = null;
     }
 
-    if (this._attachedBody) {
-      this._attachedBody.removeEventListener('click', this._handleBodyClick);
-      this._attachedBody = null;
+    if (this._attachedOverlay) {
+      this._attachedOverlay.removeEventListener('click', this._handleOverlayClick);
+      this._attachedOverlay = null;
     }
 
     if (this._attachedCanvas) {
@@ -198,17 +200,17 @@ class HostOverviewSparkline {
     });
   }
 
-  fetchSparkline(itemRef, period) {
-    const normalizedRef = this._normalizeRef(itemRef);
+  fetchSparkline(spec, period) {
+    const normalizedSpec = this._normalizeSpec(spec);
 
-    if (!normalizedRef || (!normalizedRef.itemid && !normalizedRef.name)) {
+    if (!normalizedSpec?.item_ref || (!normalizedSpec.item_ref.itemid && !normalizedSpec.item_ref.name)) {
       this.state.data = null;
       this.state.message = 'Item not found';
       this.scheduleRedraw();
       return;
     }
 
-    this.state.itemRef = normalizedRef;
+    this.state.spec = normalizedSpec;
     this.state.period = period;
     this.state.data = null;
     this.state.message = 'Loading...';
@@ -219,120 +221,23 @@ class HostOverviewSparkline {
     const requestId = ++this._requestId;
     const controller = new AbortController();
     this._abortController = controller;
-    this._fetchSparklineAsync(
-      normalizedRef,
-      period,
-      this.state.metricKey,
-      requestId,
-      controller.signal
-    );
+    this._fetchSparklineAsync(normalizedSpec, period, requestId, controller.signal);
   }
 
-  async _fetchSparklineAsync(itemRef, period, metricKey, requestId, signal) {
+  async _fetchSparklineAsync(spec, period, requestId, signal) {
     try {
-      let itemid = itemRef.itemid || null;
-      let valueType = itemRef.value_type != null ? parseInt(itemRef.value_type, 10) : NaN;
-      let resolvedRef = { ...itemRef };
+      const result = await this._fetchSparklineData(spec, period, signal);
+      const data = this._normalizeSparklineResult(result);
 
-      if (!itemid || Number.isNaN(valueType)) {
-        const hostid = (this._getFields().hostid || [])[0];
-        if (!hostid) {
-          if (requestId === this._requestId && this.state.open) {
-            this.state.data = null;
-            this.state.message = 'No host';
-            this.scheduleRedraw();
-          }
-          return;
+      if (requestId === this._requestId && this.state.open && this.state.period === period) {
+        if (result?.item_ref) {
+          this.state.spec = {
+            ...this.state.spec,
+            item_ref: this._normalizeRef(result.item_ref),
+          };
         }
 
-        const items = await this._apiCall('item.get', {
-          output: ['itemid', 'name', 'value_type'],
-          hostids: [hostid],
-          search: { name: itemRef.name },
-          limit: 1,
-        }, signal);
-
-        if (!items || items.length === 0) {
-          if (requestId === this._requestId && this.state.open) {
-            this.state.data = null;
-            this.state.message = 'Item not found';
-            this.scheduleRedraw();
-          }
-          return;
-        }
-
-        itemid = items[0].itemid;
-        valueType = parseInt(items[0].value_type, 10);
-        resolvedRef = {
-          itemid,
-          name: items[0].name ?? itemRef.name,
-          value_type: valueType,
-        };
-      }
-
-      const seconds = HostOverviewSparkline.PERIODS[period] || 43200;
-      const timeTill = Math.floor(Date.now() / 1000);
-      const timeFrom = timeTill - seconds;
-
-      const { points: loadedPoints, gapThresholdFloor } =
-        await this._loadPoints(itemid, valueType, timeFrom, timeTill, seconds, signal);
-      let points = loadedPoints;
-
-      if (metricKey === 'swap' && this._getFields().item_swap_invert == 1) {
-        points = points.map((point) => ({ t: point.t, v: 100 - point.v }));
-      }
-
-      if (points.length > 200) {
-        const stride = points.length / 200;
-        const downsampled = [];
-
-        for (let i = 0; i < 200; i++) {
-          downsampled.push(points[Math.floor(i * stride)]);
-        }
-
-        downsampled.push(points[points.length - 1]);
-        points = downsampled;
-      }
-
-      let min = Infinity;
-      let max = -Infinity;
-      for (const point of points) {
-        if (point.v < min) {
-          min = point.v;
-        }
-        if (point.v > max) {
-          max = point.v;
-        }
-      }
-
-      if (points.length === 0) {
-        min = 0;
-        max = 0;
-      }
-
-      if (metricKey?.startsWith('iface:')) {
-        const fields = this._getFields();
-        const high = parseInt(fields.interfaces_high, 10) || 0;
-        const unit = parseInt(fields.interfaces_unit, 10) || 0;
-        if (high > 0) {
-          const factors = { 2: 1e9, 1: 1e6, 0: 1e3 };
-          max = high * (factors[unit] || 1e3);
-        }
-      }
-
-      if (metricKey === 'load') {
-        const loadHigh = parseFloat(this._getFields().load_high) || 0;
-        if (loadHigh > 0) {
-          max = loadHigh;
-        }
-      }
-
-      const result = { points, min, max, timeFrom, timeTill, gapThresholdFloor };
-      if (requestId === this._requestId
-          && this.state.open
-          && this.state.period === period) {
-        this.state.itemRef = resolvedRef;
-        this.state.data = result;
+        this.state.data = data;
         this.state.message = '';
         this._updateChrome();
         this.scheduleRedraw();
@@ -344,7 +249,9 @@ class HostOverviewSparkline {
 
       if (requestId === this._requestId && this.state.open) {
         this.state.data = null;
-        this.state.message = 'Error loading data';
+        this.state.message = error instanceof Error && error.message
+          ? error.message
+          : 'Error loading data';
         this.scheduleRedraw();
       }
     } finally {
@@ -354,177 +261,129 @@ class HostOverviewSparkline {
     }
   }
 
-  async _apiCall(method, params, signal = undefined) {
-    const response = await fetch('api_jsonrpc.php', {
+  async _fetchSparklineData(spec, period, signal) {
+    const curl = new Curl('zabbix.php');
+    curl.setArgument('action', HostOverviewSparkline.ACTION);
+
+    const response = await fetch(curl.getUrl(), {
       method: 'POST',
       signal,
-      headers: { 'Content-Type': 'application/json-rpc' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method,
-        params,
-        id: 1,
-      }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(this._buildSparklineRequest(spec, period)),
     });
-    const data = await response.json();
-    if (data.error) {
-      throw new Error(data.error.data || data.error.message || 'API error');
-    }
-    return data.result;
+
+    return this._parseSparklineResponse(response);
   }
 
-  async _loadPoints(itemid, valueType, timeFrom, timeTill, seconds, signal) {
-    const supportsTrends = valueType === 0 || valueType === 3;
-    const useTrendBlend = supportsTrends && seconds > 43200;
-
-    if (!useTrendBlend) {
-      let points = await this._fetchHistory(itemid, valueType, timeFrom, timeTill, { signal });
-
-      if (points.length === 0 && supportsTrends) {
-        points = await this._fetchTrends(itemid, valueType, timeFrom, timeTill, signal);
-      }
-
-      return {
-        points,
-        gapThresholdFloor: 300,
-      };
-    }
-
-    const [trendPoints, historyTail] = await Promise.all([
-      this._fetchTrends(itemid, valueType, timeFrom, timeTill, signal),
-      this._fetchHistory(itemid, valueType, timeFrom, timeTill, {
-        sortorder: 'DESC',
-        limit: 500,
-        signal,
-      }),
-    ]);
-
-    if (historyTail.length > 0) {
-      const historyStart = historyTail[0].t;
-
-      return {
-        points: trendPoints.filter((point) => point.t < historyStart).concat(historyTail),
-        gapThresholdFloor: 3600,
-      };
-    }
-
-    if (trendPoints.length > 0) {
-      return {
-        points: trendPoints,
-        gapThresholdFloor: 3600,
-      };
-    }
+  _buildSparklineRequest(spec, period) {
+    const fields = this._getFields();
+    const hostid = Array.isArray(fields.hostid)
+      ? ((fields.hostid[0] || '').toString())
+      : ((fields.hostid || '').toString());
 
     return {
-      points: await this._fetchHistory(itemid, valueType, timeFrom, timeTill, { signal }),
-      gapThresholdFloor: 300,
+      hostid,
+      period,
+      itemid: spec.item_ref?.itemid ?? '',
+      item_name: spec.item_ref?.name ?? '',
+      value_type: spec.item_ref?.value_type ?? '',
+      display_kind: spec.display_kind ?? 'percent',
+      axis_min: spec.axis?.min ?? '',
+      axis_max: spec.axis?.max ?? '',
+      invert_percent: spec.transform?.invert_percent ? '1' : '0',
     };
   }
 
-  async _fetchHistory(itemid, valueType, timeFrom, timeTill, options = {}) {
-    const sortorder = options.sortorder || 'ASC';
-    const limit = options.limit || 500;
-    const signal = options.signal;
-    const records = await this._apiCall('history.get', {
-      output: ['value', 'clock'],
-      history: valueType,
-      itemids: [itemid],
-      time_from: timeFrom,
-      time_till: timeTill,
-      sortfield: 'clock',
-      sortorder,
-      limit,
-    }, signal);
+  async _parseSparklineResponse(response) {
+    const raw = await response.text();
 
-    const points = records.map((record) => ({
-      t: parseInt(record.clock, 10),
-      v: parseFloat(record.value),
-    }));
+    if (raw === '') {
+      throw new Error('The sparkline endpoint returned an empty response.');
+    }
 
-    return sortorder === 'DESC'
-      ? points.sort((a, b) => a.t - b.t)
-      : points;
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (_error) {
+      const contentType = response.headers.get('content-type') ?? '';
+
+      if (contentType.includes('text/html') || this._looksLikeHtmlDocument(raw)) {
+        throw new Error('The sparkline endpoint returned an HTML page instead of JSON.');
+      }
+
+      throw new Error('Could not read the sparkline response.');
+    }
+
+    if ('error' in parsed) {
+      const messages = Array.isArray(parsed.error?.messages)
+        ? parsed.error.messages.filter(Boolean)
+        : [];
+
+      throw new Error(messages[0] ?? 'Could not load sparkline data.');
+    }
+
+    return parsed;
   }
 
-  async _fetchTrends(itemid, valueType, timeFrom, timeTill, signal = undefined) {
-    const records = await this._apiCall('trend.get', {
-      output: ['value_avg', 'clock'],
-      history: valueType,
-      itemids: [itemid],
-      time_from: timeFrom,
-      time_till: timeTill,
-      limit: 500,
-    }, signal);
+  _normalizeSparklineResult(result) {
+    const points = Array.isArray(result?.points)
+      ? result.points
+        .map((point) => ({
+          t: parseInt(point?.t, 10),
+          v: Number(point?.v),
+        }))
+        .filter((point) => Number.isFinite(point.t) && Number.isFinite(point.v))
+      : [];
 
-    return records
-      .map((record) => ({
-        t: parseInt(record.clock, 10),
-        v: parseFloat(record.value_avg),
-      }))
-      .sort((a, b) => a.t - b.t);
+    const min = Number(result?.min);
+    const max = Number(result?.max);
+    const timeFrom = Number(result?.timeFrom);
+    const timeTill = Number(result?.timeTill);
+    const gapThresholdFloor = Number(result?.gapThresholdFloor);
+
+    return {
+      points,
+      min: Number.isFinite(min) ? min : 0,
+      max: Number.isFinite(max) ? max : 0,
+      timeFrom: Number.isFinite(timeFrom) ? timeFrom : 0,
+      timeTill: Number.isFinite(timeTill) ? timeTill : 0,
+      gapThresholdFloor: Number.isFinite(gapThresholdFloor) ? gapThresholdFloor : 300,
+    };
   }
 
-  _onBodyClick(e) {
-    const body = this._getBody();
-    if (!body) {
+  _looksLikeHtmlDocument(text) {
+    return /^\s*<!DOCTYPE html/i.test(text) || /^\s*<html[\s>]/i.test(text);
+  }
+
+  _onOverlayClick(event) {
+    const overlay = this._getOverlayRoot();
+    if (!overlay) {
       return;
     }
 
-    const closeBtn = e.target.closest('.js-sparkline-close');
+    const closeBtn = event.target.closest('.js-sparkline-close');
     if (closeBtn) {
-      e.preventDefault();
+      event.preventDefault();
       this.close();
       return;
     }
 
-    const periodBtn = e.target.closest('.sparkline-periods [data-period]');
-    if (periodBtn) {
-      e.preventDefault();
+    const periodBtn = event.target.closest('.sparkline-periods [data-period]');
+    if (periodBtn && overlay.contains(periodBtn)) {
+      event.preventDefault();
       const period = periodBtn.getAttribute('data-period');
-      if (!period || this.state.itemRef === null) {
+      if (!period || this.state.spec === null) {
         return;
       }
 
       this.state.period = period;
       this._updateChrome();
-      this.fetchSparkline(this.state.itemRef, period);
-      return;
+      this.fetchSparkline(this.state.spec, period);
     }
-
-    const bar = e.target.closest('.metric-bar');
-    if (!bar) {
-      return;
-    }
-
-    const overlay = body.querySelector('.sparkline-overlay');
-    if (overlay && overlay.contains(bar)) {
-      return;
-    }
-
-    const metric = this._getMetricFromBar(bar);
-    if (!metric) {
-      return;
-    }
-
-    e.preventDefault();
-    this.toggle(metric.key, metric.title);
-  }
-
-  _getMetricFromBar(bar) {
-    const cell = bar.closest('.metric-cell[data-metric-key]');
-    if (!cell) {
-      return null;
-    }
-
-    const key = cell.getAttribute('data-metric-key');
-    if (!key) {
-      return null;
-    }
-
-    return {
-      key,
-      title: cell.getAttribute('data-label') || key,
-    };
   }
 
   _setupResizeObserver() {
@@ -560,20 +419,19 @@ class HostOverviewSparkline {
       return;
     }
 
-    const overlay = this._getBody()?.querySelector('.sparkline-overlay');
+    const overlay = this._getOverlayRoot();
     if (!overlay || !overlay.classList.contains('visible')) {
       return;
     }
 
-    const data = this.state.data;
-    if (data) {
+    if (this.state.data) {
       this._drawSparkline(
-        data.points,
-        data.min,
-        data.max,
-        data.timeFrom,
-        data.timeTill,
-        data.gapThresholdFloor
+        this.state.data.points,
+        this.state.data.min,
+        this.state.data.max,
+        this.state.data.timeFrom,
+        this.state.data.timeTill,
+        this.state.data.gapThresholdFloor
       );
       return;
     }
@@ -601,21 +459,17 @@ class HostOverviewSparkline {
   }
 
   _drawSparkline(points, min, max, timeFrom, timeTill, gapThresholdFloor = 300) {
-    const metricKey = this.state.metricKey || '';
-    const isInterface = metricKey.startsWith('iface:');
-    const isLoad = metricKey === 'load';
+    const displayKind = this._getDisplayKind();
 
     if (!points || points.length === 0) {
       this._drawMessage('No data');
       return;
     }
 
-    min = 0;
-    if (!isInterface && !isLoad) {
-      max = Math.max(100, max);
-    }
-    max = Math.max(max, 1);
-    this._updateYLabels(max, isInterface, isLoad);
+    min = Number.isFinite(min) ? min : 0;
+    max = Number.isFinite(max) ? max : 0;
+    max = Math.max(max, min + 1);
+    this._updateYLabels(max, displayKind);
 
     const canvasState = this._prepareCanvas();
     if (!canvasState) {
@@ -644,14 +498,13 @@ class HostOverviewSparkline {
     }
     ctx.stroke();
 
-    const fields = this._getFields();
-    const fillColor = fields.fill_color ? `#${fields.fill_color}` : '#458ADC';
+    const fillColor = this._getSparklineColor();
 
     const intervals = [];
     for (let i = 1; i < points.length; i++) {
       intervals.push(points[i].t - points[i - 1].t);
     }
-    intervals.sort((a, b) => a - b);
+    intervals.sort((left, right) => left - right);
     const medianInterval = intervals.length > 0
       ? intervals[Math.floor(intervals.length / 2)]
       : 0;
@@ -700,27 +553,26 @@ class HostOverviewSparkline {
       drawW,
       drawH,
       fillColor,
-      isInterface,
-      isLoad,
+      displayKind,
     };
     this._snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
     this._setYLabelsVisible(true);
   }
 
-  _onMouseMove(e) {
+  _onMouseMove(event) {
     const state = this._drawState;
     if (!state) {
       return;
     }
 
-    const canvas = this._getBody()?.querySelector('.sparkline-canvas');
+    const canvas = this._getOverlayRoot()?.querySelector('.sparkline-canvas');
     if (!canvas) {
       return;
     }
 
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    const mouseX = (e.clientX - rect.left) * dpr;
+    const mouseX = (event.clientX - rect.left) * dpr;
 
     let nearest = 0;
     let minDist = Math.abs(state.coords[0].x - mouseX);
@@ -768,7 +620,7 @@ class HostOverviewSparkline {
     ctx.fillStyle = fillColor;
     ctx.fill();
 
-    const valueText = this._formatSeekerValue(state.points[nearest].v, state);
+    const valueText = this._formatSeekerValue(state.points[nearest].v, state.displayKind);
     const timeText = this._formatSeekerTime(state.points[nearest].t, state.tRange);
 
     const textColor = 'rgba(255,255,255,0.95)';
@@ -776,7 +628,7 @@ class HostOverviewSparkline {
     const pad = Math.round(5 * dpr);
     const boxH = Math.round(18 * dpr);
     const gap = Math.round(10 * dpr);
-    const cornerR = this._getFields().corners == 1 ? 0 : Math.round(3 * dpr);
+    const cornerR = this._hasSquareCorners() ? 0 : Math.round(3 * dpr);
     const inset = Math.round(3 * dpr);
 
     ctx.font = `${fontSize}px sans-serif`;
@@ -834,20 +686,24 @@ class HostOverviewSparkline {
   }
 
   _onMouseLeave() {
-    const canvas = this._getBody()?.querySelector('.sparkline-canvas');
+    const canvas = this._getOverlayRoot()?.querySelector('.sparkline-canvas');
     if (canvas && this._snapshot) {
       canvas.getContext('2d')?.putImageData(this._snapshot, 0, 0);
     }
   }
 
-  _formatSeekerValue(value, state) {
-    if (state.isInterface) {
-      return this._formatBps(value);
+  _formatSeekerValue(value, displayKind) {
+    switch (displayKind) {
+      case 'interface':
+        return this._formatBps(value);
+
+      case 'load':
+        return value % 1 === 0 ? value.toFixed(0) : value.toFixed(2);
+
+      case 'percent':
+      default:
+        return value.toFixed(1) + '%';
     }
-    if (state.isLoad) {
-      return value % 1 === 0 ? value.toFixed(0) : value.toFixed(2);
-    }
-    return value.toFixed(1) + '%';
   }
 
   _formatSeekerTime(timestamp, tRange) {
@@ -875,8 +731,8 @@ class HostOverviewSparkline {
     ctx.closePath();
   }
 
-  _updateYLabels(max, isInterface, isLoad) {
-    const labels = this._getBody()?.querySelector('.sparkline-y-labels');
+  _updateYLabels(max, displayKind) {
+    const labels = this._getOverlayRoot()?.querySelector('.sparkline-y-labels');
     if (!labels) {
       return;
     }
@@ -886,14 +742,14 @@ class HostOverviewSparkline {
       return;
     }
 
-    if (isInterface) {
+    if (displayKind === 'interface') {
       spans[0].textContent = this._formatBps(max);
       spans[1].textContent = this._formatBps(max * 0.5);
       spans[2].textContent = '0';
       return;
     }
 
-    if (isLoad) {
+    if (displayKind === 'load') {
       spans[0].textContent = max % 1 === 0 ? max.toFixed(0) : max.toFixed(1);
       spans[1].textContent = (max * 0.5) % 1 === 0
         ? (max * 0.5).toFixed(0)
@@ -908,46 +764,33 @@ class HostOverviewSparkline {
   }
 
   _primeYLabels() {
-    const metricKey = this.state.metricKey || '';
-    const fields = this._getFields();
-    const isInterface = metricKey.startsWith('iface:');
-    const isLoad = metricKey === 'load';
+    const displayKind = this._getDisplayKind();
+    const axisMax = Number(this.state.spec?.axis?.max);
 
-    if (isInterface) {
-      const high = parseInt(fields.interfaces_high, 10);
-      const unit = parseInt(fields.interfaces_unit, 10);
-      const safeHigh = Number.isFinite(high) && high > 0 ? high : 1;
-      const safeUnit = Number.isFinite(unit) ? unit : 2;
-      const factors = { 2: 1e9, 1: 1e6, 0: 1e3 };
-      this._updateYLabels(safeHigh * (factors[safeUnit] || 1e9), true, false);
+    if (displayKind === 'percent') {
+      this._updateYLabels(Number.isFinite(axisMax) && axisMax > 0 ? axisMax : 100, displayKind);
       this._setYLabelsVisible(true);
       return;
     }
 
-    if (isLoad) {
-      const loadHigh = parseFloat(fields.load_high);
-      this._updateYLabels(
-        Number.isFinite(loadHigh) && loadHigh > 0 ? loadHigh : 2,
-        false,
-        true
-      );
+    if (Number.isFinite(axisMax) && axisMax > 0) {
+      this._updateYLabels(axisMax, displayKind);
       this._setYLabelsVisible(true);
       return;
     }
 
-    this._updateYLabels(100, false, false);
-    this._setYLabelsVisible(true);
+    this._setYLabelsVisible(false);
   }
 
   _setYLabelsVisible(visible) {
-    const labels = this._getBody()?.querySelector('.sparkline-y-labels');
+    const labels = this._getOverlayRoot()?.querySelector('.sparkline-y-labels');
     if (labels) {
       labels.style.visibility = visible ? '' : 'hidden';
     }
   }
 
   _prepareCanvas() {
-    const canvas = this._getBody()?.querySelector('.sparkline-canvas');
+    const canvas = this._getOverlayRoot()?.querySelector('.sparkline-canvas');
     if (!canvas) {
       return null;
     }
@@ -972,18 +815,15 @@ class HostOverviewSparkline {
   }
 
   _updateChrome() {
-    const body = this._getBody();
-    const fields = this._getFields();
-    const fillColor = fields.fill_color ? `#${fields.fill_color}` : '#458ADC';
+    const fillColor = this._getSparklineColor();
 
-    body?.querySelectorAll('.sparkline-periods [data-period]').forEach((btn) => {
+    this._getOverlayRoot()?.querySelectorAll('.sparkline-periods [data-period]').forEach((btn) => {
       btn.style.setProperty('--sparkline-active-color', fillColor);
       const isActive = btn.getAttribute('data-period') === this.state.period;
       btn.classList.toggle('active', isActive);
       if (isActive) {
         btn.setAttribute('aria-current', 'true');
-      }
-      else {
+      } else {
         btn.removeAttribute('aria-current');
       }
     });
@@ -1028,9 +868,9 @@ class HostOverviewSparkline {
       return;
     }
 
-    this._keydownHandler = (e) => {
-      if (e.key === 'Escape' && this.state.open) {
-        e.preventDefault();
+    this._keydownHandler = (event) => {
+      if (event.key === 'Escape' && this.state.open) {
+        event.preventDefault();
         this.close();
       }
     };
@@ -1067,6 +907,24 @@ class HostOverviewSparkline {
     this._setYLabelsVisible(false);
   }
 
+  _normalizeSpec(spec) {
+    if (!spec || typeof spec !== 'object') {
+      return null;
+    }
+
+    return {
+      item_ref: this._normalizeRef(spec.item_ref),
+      display_kind: spec.display_kind || 'percent',
+      axis: {
+        min: spec.axis?.min ?? 0,
+        max: spec.axis?.max ?? null,
+      },
+      transform: {
+        invert_percent: Boolean(spec.transform?.invert_percent),
+      },
+    };
+  }
+
   _normalizeRef(itemRef) {
     if (!itemRef) {
       return null;
@@ -1091,8 +949,33 @@ class HostOverviewSparkline {
     return null;
   }
 
-  _getTitle(ref, fallbackTitle = '') {
-    return ref?.name ? ref.name : fallbackTitle;
+  _getDisplayKind() {
+    return this.state.spec?.display_kind || 'percent';
+  }
+
+  _getSparklineColor() {
+    for (const element of [this._getOverviewRoot(), this._getOverlayRoot(), this._getWidgetRoot()]) {
+      if (!element) {
+        continue;
+      }
+
+      const color = getComputedStyle(element).getPropertyValue('--sparkline-color').trim();
+
+      if (color !== '') {
+        return color;
+      }
+    }
+
+    const fields = this._getFields();
+    return fields.fill_color ? `#${fields.fill_color}` : '#458ADC';
+  }
+
+  _hasSquareCorners() {
+    if (typeof this.options.hasSquareCorners === 'function') {
+      return this.options.hasSquareCorners() === true;
+    }
+
+    return this._getWidgetRoot()?.classList.contains('square-corners') ?? false;
   }
 
   _getBody() {
@@ -1101,16 +984,22 @@ class HostOverviewSparkline {
       : null;
   }
 
+  _getOverlayRoot() {
+    return (typeof this.options.getOverlayRoot === 'function'
+      ? this.options.getOverlayRoot()
+      : null) || this._getBody()?.querySelector('[data-host-overview-role="sparkline"]');
+  }
+
+  _getOverviewRoot() {
+    return (typeof this.options.getOverviewRoot === 'function'
+      ? this.options.getOverviewRoot()
+      : null) || this._getBody()?.querySelector('[data-host-overview-role="overview"]');
+  }
+
   _getFields() {
     return typeof this.options.getFields === 'function'
       ? this.options.getFields() || {}
       : {};
-  }
-
-  _getItemRef(metricKey) {
-    return typeof this.options.getItemRef === 'function'
-      ? this.options.getItemRef(metricKey)
-      : null;
   }
 
   _getWidgetRoot() {

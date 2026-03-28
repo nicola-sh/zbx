@@ -19,6 +19,10 @@
       "class": "MetricLookup",
       "layout": "layout.json"
     },
+    "widget.host_overview.sparkline": {
+      "class": "SparklineHistory",
+      "layout": "layout.json"
+    },
     "widget.host_overview.view": {
       "class": "WidgetView"
     }
