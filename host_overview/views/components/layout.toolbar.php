@@ -22,11 +22,18 @@ const SIDE_RIGHT = CWidgetFieldBadgesList::SIDE_RIGHT;
 // =============================================================================
 
 /**
- * Render a toolbar from left and right badge model arrays.
- * Each badge model should have: type, text, id, hidden, and type-specific fields.
+ * Render a toolbar from badge models.
+ * Each badge model should have: type, text, id, hidden, side, and type-specific fields.
  */
-function render_toolbar(array $left_badges, array $right_badges): ?CDiv
+function render_toolbar(array $badges): ?CDiv
 {
+    if ($badges === []) {
+        return null;
+    }
+
+    $left_badges = _filter_badges_by_side($badges, SIDE_LEFT);
+    $right_badges = _filter_badges_by_side($badges, SIDE_RIGHT);
+
     if ($left_badges === [] && $right_badges === []) {
         return null;
     }
@@ -55,6 +62,14 @@ function render_toolbar(array $left_badges, array $right_badges): ?CDiv
 // =============================================================================
 // Internal helper
 // =============================================================================
+
+function _filter_badges_by_side(array $badges, string $side): array
+{
+    return array_values(array_filter(
+        $badges,
+        static fn(array $badge): bool => ($badge['side'] ?? SIDE_LEFT) === $side
+    ));
+}
 
 function _render_badge_with_attrs(array $badge): CTag|CLinkAction
 {

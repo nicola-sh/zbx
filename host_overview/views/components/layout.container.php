@@ -8,13 +8,7 @@
 
 namespace Modules\HostOverview\Includes;
 
-require_once __DIR__ . '/layout.icons.php';
-require_once __DIR__ . '/layout.toolbar.php';
-require_once __DIR__ . '/layout.metric.php';
-require_once __DIR__ . '/layout.sparkline.php';
-
 use CDiv;
-use CTag;
 
 // =============================================================================
 // Container rendering
@@ -37,13 +31,6 @@ function render_overview_container(array $config): CDiv
         ->addClass('host-overview-container')
         ->setAttribute('data-host-overview-role', 'overview')
         ->setAttribute('style', $style);
-
-    // Icon template for JS.
-    $container->addItem(
-        (new CTag('template', true))
-            ->setAttribute('data-host-overview-icon-template', 'trend-arrow')
-            ->addItem(render_icon('trend-arrow', ['dir-arrow']))
-    );
 
     return $container;
 }

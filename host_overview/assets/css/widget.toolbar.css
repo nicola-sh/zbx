@@ -5,15 +5,15 @@
  */
 
 /* Toolbar layout */
-.toolbar {
+.dashboard-widget-host_overview .toolbar {
   display: flex;
   align-items: center;
   gap: var(--gap-2);
-  margin: 5px 0 10px;
+  margin: var(--toolbar-margin-top) 0 var(--toolbar-margin-bottom);
 }
 
-.toolbar .left,
-.toolbar .right {
+.dashboard-widget-host_overview .toolbar .left,
+.dashboard-widget-host_overview .toolbar .right {
   display: flex;
   align-items: center;
   gap: var(--gap-2);
@@ -21,14 +21,15 @@
   min-width: 0;
 }
 
-.toolbar .right {
+.dashboard-widget-host_overview .toolbar .right {
   margin-left: auto;
 }
 
 /* Badge */
-.toolbar .badge {
+.dashboard-widget-host_overview .toolbar .badge {
   display: inline-flex;
   align-items: center;
+  gap: var(--badge-icon-gap);
   height: var(--badge-height);
   padding: 0 var(--badge-padding-x);
   background: var(--bg, var(--badge-bg));
@@ -37,95 +38,83 @@
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
-  /* Strip Zabbix styling */
   border-bottom: 0;
   margin-bottom: 0;
   color: inherit;
 }
 
 /* Link badge states */
-.toolbar .badge.link:hover:not(.problems-severity) {
+.dashboard-widget-host_overview .toolbar .badge.link:hover:not(.problems-severity) {
   background: var(--badge-hover-bg);
-  /* Strip Zabbix styling */
   color: inherit;
 }
 
-.toolbar .badge.link:visited {
-  /* Strip Zabbix styling */
+.dashboard-widget-host_overview .toolbar .badge.link:visited {
   color: inherit;
 }
 
-.toolbar .badge.active {
+.dashboard-widget-host_overview .toolbar .badge.active {
   color: var(--sparkline-active-fg);
   background: var(--sparkline-active-color);
 }
 
-.toolbar .badge[hidden] {
+.dashboard-widget-host_overview .toolbar .badge[hidden] {
   display: none;
 }
 
 /* Badge icons */
-.toolbar .badge-icon {
+.dashboard-widget-host_overview .toolbar .badge-icon {
   width: var(--badge-icon-size);
   height: var(--badge-icon-size);
   flex-shrink: 0;
 }
 
-.toolbar .badge>.badge-icon+* {
-  margin-left: var(--badge-icon-gap);
-}
-
-.toolbar .badge>*+.badge-icon {
-  margin-left: var(--badge-icon-gap);
-}
-
 /* Badge specific styles */
-.freshness-warn {
+.dashboard-widget-host_overview .freshness-warn {
   --bg: var(--orange-bg);
 }
 
-.freshness-stale {
+.dashboard-widget-host_overview .freshness-stale {
   --bg: var(--red-bg);
 }
 
-.maintenance {
+.dashboard-widget-host_overview .maintenance {
   --bg: var(--blue-bg);
 }
 
 /* Problem severity base */
-.problems-severity {
+.dashboard-widget-host_overview .problems-severity {
   --pulse: var(--bg);
 }
 
 /* Problem severity variants */
-.problems-info {
+.dashboard-widget-host_overview .problems-info {
   --bg: var(--blue-bg);
   --pulse: var(--blue-pulse-bg);
 }
 
-.problems-warning {
+.dashboard-widget-host_overview .problems-warning {
   --bg: var(--yellow-bg);
   --pulse: var(--yellow-pulse-bg);
 }
 
-.problems-average {
+.dashboard-widget-host_overview .problems-average {
   --bg: var(--orange-bg);
   --pulse: var(--orange-pulse-bg);
 }
 
-.problems-high {
+.dashboard-widget-host_overview .problems-high {
   --bg: var(--lightred-bg);
   --pulse: var(--lightred-pulse-bg);
 }
 
-.problems-disaster {
+.dashboard-widget-host_overview .problems-disaster {
   --bg: var(--red-bg);
   --pulse: var(--red-pulse-bg);
 }
 
 /* Problem pulse animation */
 @keyframes pulse-bg {
-
   0%,
   100% {
     background: var(--bg, var(--badge-bg));
@@ -136,6 +125,6 @@
   }
 }
 
-.problems-pulse-enabled .problems-severity {
-  animation: pulse-bg 1.5s ease-in-out infinite;
+.dashboard-widget-host_overview.problems-pulse-enabled .problems-severity {
+  animation: pulse-bg var(--problems-pulse-duration) ease-in-out infinite;
 }
