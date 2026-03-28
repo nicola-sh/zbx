@@ -73,42 +73,6 @@ function render_metric_cell(array $cell): CDiv
 }
 
 // =============================================================================
-// Cell patch values
-// =============================================================================
-
-function build_cell_patch_values(array $rows): array
-{
-    $values = [];
-
-    foreach ($rows as $row) {
-        foreach ((array) ($row['cells'] ?? []) as $cell) {
-            $cell_id = (string) ($cell['cell_id'] ?? '');
-
-            if ($cell_id === '') {
-                continue;
-            }
-
-            $values[$cell_id] = [
-                'state' => (string) ($cell['state'] ?? 'ok'),
-                'display' => [
-                    'kind' => (string) ($cell['display']['kind'] ?? 'percent'),
-                    'value' => $cell['display']['value'] ?? null,
-                    'prefix' => $cell['display']['prefix'] ?? null,
-                    'text' => (string) ($cell['display']['text'] ?? ''),
-                    'empty_text' => (string) ($cell['display']['empty_text'] ?? 'No data'),
-                ],
-                'bar' => [
-                    'percent' => $cell['bar']['percent'] ?? null,
-                    'color' => $cell['bar']['color'] ?? null,
-                ],
-            ];
-        }
-    }
-
-    return $values;
-}
-
-// =============================================================================
 // Internal helpers (prefixed with _)
 // =============================================================================
 

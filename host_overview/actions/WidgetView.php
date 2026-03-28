@@ -8,7 +8,6 @@
 
 namespace Modules\HostOverview\Actions;
 
-require_once __DIR__ . '/../includes/badge.func.php';
 require_once __DIR__ . '/../includes/format.func.php';
 
 use API;
@@ -19,14 +18,6 @@ use Modules\HostOverview\Includes\MetricMatcher;
 use Modules\HostOverview\Includes\WildcardMetricResolver;
 use Modules\HostOverview\Includes\WidgetForm;
 
-use function Modules\HostOverview\Includes\badge_hostname;
-use function Modules\HostOverview\Includes\badge_uptime;
-use function Modules\HostOverview\Includes\badge_freshness;
-use function Modules\HostOverview\Includes\badge_maintenance;
-use function Modules\HostOverview\Includes\badge_tags;
-use function Modules\HostOverview\Includes\badge_problems;
-use function Modules\HostOverview\Includes\badge_link;
-use function Modules\HostOverview\Includes\badge_text;
 use function Modules\HostOverview\Includes\format_freshness;
 use function Modules\HostOverview\Includes\format_problems;
 use function Modules\HostOverview\Includes\format_uptime;
@@ -61,9 +52,79 @@ class WidgetView extends CControllerDashboardWidgetView
             'config' => $this->fields_values,
             'badges' => $badges,
             'rows' => $rows,
+            'patch_values' => $this->buildPatchValues($badges, $rows),
             'layout_signature' => $this->buildLayoutSignature($badges, $rows),
         ]));
     }
+
+    // =============================================================================
+    // Patch value builders (for JS dynamic updates)
+    // =============================================================================
+
+    private function buildPatchValues(array $badges, array $rows): array
+    {
+        return [
+            'badges' => $this->buildBadgePatchValues($badges),
+            'cells' => $this->buildCellPatchValues($rows),
+        ];
+    }
+
+    private function buildBadgePatchValues(array $badges): array
+    {
+        $values = [];
+
+        foreach ($badges as $badge) {
+            $id = (string) ($badge['id'] ?? '');
+
+            if ($id === '') {
+                continue;
+            }
+
+            $values[$id] = [
+                'text' => (string) ($badge['text'] ?? ''),
+                'hidden' => (bool) ($badge['hidden'] ?? false),
+                'state_classes' => array_values(array_filter((array) ($badge['state_classes'] ?? []), 'is_string')),
+            ];
+        }
+
+        return $values;
+    }
+
+    private function buildCellPatchValues(array $rows): array
+    {
+        $values = [];
+
+        foreach ($rows as $row) {
+            foreach ((array) ($row['cells'] ?? []) as $cell) {
+                $cell_id = (string) ($cell['cell_id'] ?? '');
+
+                if ($cell_id === '') {
+                    continue;
+                }
+
+                $values[$cell_id] = [
+                    'state' => (string) ($cell['state'] ?? 'ok'),
+                    'display' => [
+                        'kind' => (string) ($cell['display']['kind'] ?? 'percent'),
+                        'value' => $cell['display']['value'] ?? null,
+                        'prefix' => $cell['display']['prefix'] ?? null,
+                        'text' => (string) ($cell['display']['text'] ?? ''),
+                        'empty_text' => (string) ($cell['display']['empty_text'] ?? 'No data'),
+                    ],
+                    'bar' => [
+                        'percent' => $cell['bar']['percent'] ?? null,
+                        'color' => $cell['bar']['color'] ?? null,
+                    ],
+                ];
+            }
+        }
+
+        return $values;
+    }
+
+    // =============================================================================
+    // Badge model builders (data only, no DOM)
+    // =============================================================================
 
     private function buildBadgeModels(): array
     {
@@ -84,59 +145,70 @@ class WidgetView extends CControllerDashboardWidgetView
     {
         $type = (int) ($badge['type'] ?? CWidgetFieldBadgesList::BADGE_HOSTNAME);
         $side = $this->normalizeSide($badge['side'] ?? CWidgetFieldBadgesList::SIDE_LEFT);
-        $hostid = $this->getPrimaryHostId();
         $id = 'badge:' . $index;
 
         return match ($type) {
             CWidgetFieldBadgesList::BADGE_HOSTNAME => [
                 'id' => $id,
+                'type' => $type,
                 'side' => $side,
                 'text' => trim((string) ($this->fetchHostDetails()['name'] ?? '')) ?: 'Hostname missing',
-                'element' => badge_hostname(
-                    trim((string) ($this->fetchHostDetails()['name'] ?? '')) ?: 'Hostname missing',
-                    $hostid
-                ),
+                'hostid' => $this->getPrimaryHostId(),
             ],
 
-            CWidgetFieldBadgesList::BADGE_UPTIME => $this->buildUptimeBadge($id, $side),
+            CWidgetFieldBadgesList::BADGE_UPTIME => $this->buildUptimeBadgeModel($id, $type, $side),
 
-            CWidgetFieldBadgesList::BADGE_LIVELINESS => $this->buildFreshnessBadge($index, $side),
+            CWidgetFieldBadgesList::BADGE_LIVELINESS => $this->buildFreshnessBadgeModel($id, $type, $side),
 
-            CWidgetFieldBadgesList::BADGE_MAINTENANCE => $this->buildMaintenanceBadge($index, $side),
+            CWidgetFieldBadgesList::BADGE_MAINTENANCE => $this->buildMaintenanceBadgeModel($id, $type, $side),
 
             CWidgetFieldBadgesList::BADGE_TAGS => [
                 'id' => $id,
+                'type' => $type,
                 'side' => $side,
                 'text' => format_tags($this->fetchHostDetails()['tags'] ?? []),
-                'element' => badge_tags(format_tags($this->fetchHostDetails()['tags'] ?? [])),
             ],
 
-            CWidgetFieldBadgesList::BADGE_PROBLEMS => $this->buildProblemsBadge($index, $side),
+            CWidgetFieldBadgesList::BADGE_PROBLEMS => $this->buildProblemsBadgeModel($id, $type, $side),
 
             CWidgetFieldBadgesList::BADGE_TEXT => [
                 'id' => $id,
+                'type' => $type,
                 'side' => $side,
                 'text' => (string) ($badge['text'] ?? ''),
-                'element' => badge_text((string) ($badge['text'] ?? '')),
             ],
 
             CWidgetFieldBadgesList::BADGE_LINK => [
                 'id' => $id,
+                'type' => $type,
                 'side' => $side,
                 'text' => (string) ($badge['text'] ?? ''),
-                'element' => badge_link(
-                    (string) ($badge['text'] ?? ''),
-                    ($url = CWidgetFieldBadgesList::sanitizeLinkUrl($badge['url'] ?? null)) !== null
-                        ? $this->buildLinkModel($url)
-                        : null
-                ),
+                'link' => ($url = CWidgetFieldBadgesList::sanitizeLinkUrl($badge['url'] ?? null)) !== null
+                    ? $this->buildLinkModel($url)
+                    : null,
             ],
 
             default => null,
         };
     }
 
-    private function buildFreshnessBadge(int $index, string $side): array
+    private function buildUptimeBadgeModel(string $id, int $type, string $side): array
+    {
+        $metric = $this->findMetric(
+            trim((string) ($this->fields_values['badge_uptime_item_name']
+                ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME))
+        );
+        $seconds = $metric['value'] ?? null;
+
+        return [
+            'id' => $id,
+            'type' => $type,
+            'side' => $side,
+            'text' => format_uptime($seconds !== null ? (int) $seconds : null) ?? '—',
+        ];
+    }
+
+    private function buildFreshnessBadgeModel(string $id, int $type, string $side): array
     {
         $freshness = $this->computeFreshness();
         $warn_threshold = max(0, (int) ($this->fields_values['freshness_warn'] ?? WidgetForm::DEFAULT_FRESHNESS_WARN));
@@ -144,51 +216,46 @@ class WidgetView extends CControllerDashboardWidgetView
             $warn_threshold,
             (int) ($this->fields_values['freshness_stale'] ?? WidgetForm::DEFAULT_FRESHNESS_STALE)
         );
-        $text = format_freshness($freshness);
-        $state_classes = freshness_state_classes($freshness, $warn_threshold, $stale_threshold);
 
         return [
-            'id' => 'badge:' . $index,
+            'id' => $id,
+            'type' => $type,
             'side' => $side,
-            'text' => $text,
-            'state_classes' => $state_classes,
-            'element' => badge_freshness($text, $state_classes),
+            'text' => format_freshness($freshness),
+            'state_classes' => freshness_state_classes($freshness, $warn_threshold, $stale_threshold),
         ];
     }
 
-    private function buildMaintenanceBadge(int $index, string $side): array
+    private function buildMaintenanceBadgeModel(string $id, int $type, string $side): array
     {
         $status = (int) ($this->fetchHostDetails()['maintenance_status'] ?? 0);
-        $text = $status === 1 ? _('Maintenance') : '';
 
         return [
-            'id' => 'badge:' . $index,
+            'id' => $id,
+            'type' => $type,
             'side' => $side,
-            'text' => $text,
+            'text' => $status === 1 ? _('Maintenance') : '',
             'hidden' => $status !== 1,
-            'element' => badge_maintenance($text),
         ];
     }
 
-    private function buildProblemsBadge(int $index, string $side): array
+    private function buildProblemsBadgeModel(string $id, int $type, string $side): array
     {
         $hostid = $this->getPrimaryHostId();
         $problems = $this->fetchProblems();
         $total = (int) ($problems['total'] ?? 0);
         $max_severity = (int) ($problems['max_severity'] ?? -1);
-        $text = format_problems($total);
-        $state_classes = problems_state_classes($total, $max_severity);
-        $link = $hostid !== null
-            ? $this->buildLinkModel('zabbix.php?action=problem.view&hostids%5B%5D=' . urlencode($hostid))
-            : null;
 
         return [
-            'id' => 'badge:' . $index,
+            'id' => $id,
+            'type' => $type,
             'side' => $side,
-            'text' => $text,
+            'text' => format_problems($total),
             'hidden' => $total === 0,
-            'state_classes' => $state_classes,
-            'element' => badge_problems($text, $link, $state_classes),
+            'state_classes' => problems_state_classes($total, $max_severity),
+            'link' => $hostid !== null
+                ? $this->buildLinkModel('zabbix.php?action=problem.view&hostids%5B%5D=' . urlencode($hostid))
+                : null,
         ];
     }
 
@@ -198,6 +265,10 @@ class WidgetView extends CControllerDashboardWidgetView
             ? CWidgetFieldBadgesList::SIDE_RIGHT
             : CWidgetFieldBadgesList::SIDE_LEFT;
     }
+
+    // =============================================================================
+    // Row/cell model builders (data only, no DOM)
+    // =============================================================================
 
     private function buildOverviewRows(): array
     {
@@ -457,6 +528,10 @@ class WidgetView extends CControllerDashboardWidgetView
         ];
     }
 
+    // =============================================================================
+    // Link builders
+    // =============================================================================
+
     private function buildLatestDataLink(?array $item_ref): ?array
     {
         $hostid = $this->getPrimaryHostId();
@@ -497,6 +572,10 @@ class WidgetView extends CControllerDashboardWidgetView
     {
         return (int) ($this->fields_values['open_links_same_window'] ?? 0) === 1 ? '_self' : '_blank';
     }
+
+    // =============================================================================
+    // Data fetchers and computations
+    // =============================================================================
 
     private function decodeBadges(): array
     {
@@ -601,23 +680,6 @@ class WidgetView extends CControllerDashboardWidgetView
         return $this->host_details;
     }
 
-    private function buildUptimeBadge(string $id, string $side): array
-    {
-        $metric = $this->findMetric(
-            trim((string) ($this->fields_values['badge_uptime_item_name']
-                ?? CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME))
-        );
-        $seconds = $metric['value'] ?? null;
-        $text = format_uptime($seconds !== null ? (int) $seconds : null) ?? '—';
-
-        return [
-            'id' => $id,
-            'side' => $side,
-            'text' => $text,
-            'element' => badge_uptime($text),
-        ];
-    }
-
     private function computeFreshness(): ?int
     {
         if ($this->latest_clock <= 0) {
@@ -679,6 +741,9 @@ class WidgetView extends CControllerDashboardWidgetView
         return $this->problems;
     }
 
+    // =============================================================================
+    // Threshold and color resolution
+    // =============================================================================
 
     private function resolveBarColor(mixed $bar_percent, string $threshold_group): string
     {
@@ -712,6 +777,10 @@ class WidgetView extends CControllerDashboardWidgetView
 
         return is_numeric($value) ? (int) $value : 0;
     }
+
+    // =============================================================================
+    // Utility methods
+    // =============================================================================
 
     private function calculateLoadBarPercent(float|int|null $load): ?int
     {
@@ -813,10 +882,10 @@ class WidgetView extends CControllerDashboardWidgetView
             ],
             'toolbar' => array_map(static function(array $badge): array {
                 return [
-                    'badge_id' => $badge['badge_id'] ?? '',
+                    'id' => $badge['id'] ?? '',
                     'type' => $badge['type'] ?? '',
                     'side' => $badge['side'] ?? '',
-                    'menu' => $badge['menu'] ?? null,
+                    'hostid' => $badge['hostid'] ?? null,
                     'link' => $badge['link'] ?? null,
                 ];
             }, $badges),

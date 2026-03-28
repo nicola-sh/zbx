@@ -8,11 +8,39 @@
 
 namespace Modules\HostOverview\Includes;
 
-require_once __DIR__ . '/icons.func.php';
+require_once __DIR__ . '/layout.icons.php';
 
 use CLinkAction;
 use CMenuPopupHelper;
 use CTag;
+
+// =============================================================================
+// Badge rendering - takes model, returns DOM
+// =============================================================================
+
+/**
+ * Render a badge from its model.
+ * Model should contain: type, text, and type-specific fields (hostid, link, state_classes, etc.)
+ */
+function render_badge(array $model): CTag|CLinkAction
+{
+    $type = (int) ($model['type'] ?? -1);
+    $text = (string) ($model['text'] ?? '');
+    $state_classes = (array) ($model['state_classes'] ?? []);
+    $link = $model['link'] ?? null;
+
+    return match ($type) {
+        CWidgetFieldBadgesList::BADGE_HOSTNAME => badge_hostname($text, $model['hostid'] ?? null),
+        CWidgetFieldBadgesList::BADGE_UPTIME => badge_uptime($text, $state_classes),
+        CWidgetFieldBadgesList::BADGE_LIVELINESS => badge_freshness($text, $state_classes),
+        CWidgetFieldBadgesList::BADGE_MAINTENANCE => badge_maintenance($text),
+        CWidgetFieldBadgesList::BADGE_TAGS => badge_tags($text),
+        CWidgetFieldBadgesList::BADGE_PROBLEMS => badge_problems($text, $link, $state_classes),
+        CWidgetFieldBadgesList::BADGE_LINK => badge_link($text, $link),
+        CWidgetFieldBadgesList::BADGE_TEXT => badge_text($text),
+        default => badge_text($text),
+    };
+}
 
 // =============================================================================
 // Badge creators - each returns a ready-to-use element

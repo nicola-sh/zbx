@@ -8,10 +8,10 @@
 
 namespace Modules\HostOverview\Includes;
 
-require_once __DIR__ . '/icons.func.php';
-require_once __DIR__ . '/toolbar.func.php';
-require_once __DIR__ . '/metric.func.php';
-require_once __DIR__ . '/sparkline.func.php';
+require_once __DIR__ . '/layout.icons.php';
+require_once __DIR__ . '/layout.toolbar.php';
+require_once __DIR__ . '/layout.metric.php';
+require_once __DIR__ . '/layout.sparkline.php';
 
 use CDiv;
 use CTag;
@@ -46,16 +46,4 @@ function render_overview_container(array $config): CDiv
     );
 
     return $container;
-}
-
-// =============================================================================
-// Patch values aggregation
-// =============================================================================
-
-function build_all_patch_values(array $badges, array $rows): array
-{
-    return [
-        'badges' => build_badge_patch_values($badges),
-        'cells' => build_cell_patch_values($rows),
-    ];
 }
