@@ -506,11 +506,19 @@ class CWidgetHostOverview extends CWidget {
         title: cellEl.getAttribute('data-cell-label')
           || cellId,
         spec,
+        color: this._readSparklineColor(cellEl),
       };
     }
     catch (_) {
       return null;
     }
+  }
+
+  _readSparklineColor(cellEl) {
+    const fillEl = cellEl?.querySelector('.metric-fill');
+    const color = fillEl ? getComputedStyle(fillEl).backgroundColor.trim() : '';
+
+    return color !== '' ? color : null;
   }
 
   _getRuntimeFields() {

@@ -23,6 +23,7 @@ class HostOverviewSparkline {
       open: false,
       cellId: null,
       spec: null,
+      color: '',
       title: '',
       period: '1h',
       data: null,
@@ -94,6 +95,7 @@ class HostOverviewSparkline {
     this.state.open = true;
     this.state.cellId = cellId;
     this.state.spec = spec;
+    this.state.color = typeof metric?.color === 'string' ? metric.color : '';
     this.state.title = metric?.title ?? '';
     this.state.data = null;
     this.state.message = 'Loading...';
@@ -135,6 +137,7 @@ class HostOverviewSparkline {
     this.state.open = false;
     this.state.cellId = null;
     this.state.spec = null;
+    this.state.color = '';
     this.state.title = '';
     this.state.data = null;
     this.state.message = '';
@@ -538,8 +541,11 @@ class HostOverviewSparkline {
       path.lineTo(coords[currentSegment[currentSegment.length - 1]].x, drawH);
       path.lineTo(coords[currentSegment[0]].x, drawH);
       path.closePath();
-      ctx.fillStyle = fillColor + '26';
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = fillColor;
       ctx.fill(path);
+      ctx.restore();
     }
 
     this._drawState = {
@@ -608,12 +614,14 @@ class HostOverviewSparkline {
 
     ctx.beginPath();
     ctx.setLineDash([Math.round(4 * dpr), Math.round(3 * dpr)]);
-    ctx.strokeStyle = fillColor + '66';
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = fillColor;
     ctx.lineWidth = Math.round(dpr);
     ctx.moveTo(sx + 0.5, 0);
     ctx.lineTo(sx + 0.5, drawH);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
 
     ctx.beginPath();
     ctx.arc(sx, sy, dotR, 0, Math.PI * 2);
@@ -954,16 +962,8 @@ class HostOverviewSparkline {
   }
 
   _getSparklineColor() {
-    for (const element of [this._getOverviewRoot(), this._getOverlayRoot(), this._getWidgetRoot()]) {
-      if (!element) {
-        continue;
-      }
-
-      const color = getComputedStyle(element).getPropertyValue('--sparkline-color').trim();
-
-      if (color !== '') {
-        return color;
-      }
+    if (this.state.color) {
+      return this.state.color;
     }
 
     const fields = this._getFields();

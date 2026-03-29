@@ -22,9 +22,6 @@ function render_overview_container(array $config): CDiv
     $style = implode('; ', [
         '--bar-height: ' . (int) ($config['bar_height'] ?? WidgetForm::DEFAULT_BAR_HEIGHT) . 'px',
         '--label-width: ' . $label_width . 'px',
-        '--sparkline-color: ' . htmlspecialchars(
-            '#' . (string) ($config['fill_color'] ?? WidgetForm::DEFAULT_COLOR_FILL)
-        ),
     ]) . ';';
 
     $container = (new CDiv())
