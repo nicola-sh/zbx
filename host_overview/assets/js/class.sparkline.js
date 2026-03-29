@@ -7,15 +7,6 @@
 class HostOverviewSparkline {
 
   static ACTION = 'widget.host_overview.sparkline';
-  static PERIODS = {
-    '1h': 3600,
-    '3h': 10800,
-    '12h': 43200,
-    '1d': 86400,
-    '3d': 259200,
-    '1w': 604800,
-    '30d': 2592000,
-  };
 
   constructor(options = {}) {
     this.options = options;
@@ -24,7 +15,6 @@ class HostOverviewSparkline {
       cellId: null,
       spec: null,
       color: '',
-      title: '',
       period: '1h',
       data: null,
       message: '',
@@ -96,7 +86,6 @@ class HostOverviewSparkline {
     this.state.cellId = cellId;
     this.state.spec = spec;
     this.state.color = typeof metric?.color === 'string' ? metric.color : '';
-    this.state.title = metric?.title ?? '';
     this.state.data = null;
     this.state.message = 'Loading...';
     this._pauseUpdating();
@@ -138,7 +127,6 @@ class HostOverviewSparkline {
     this.state.cellId = null;
     this.state.spec = null;
     this.state.color = '';
-    this.state.title = '';
     this.state.data = null;
     this.state.message = '';
     this._clearDrawState();
@@ -293,7 +281,6 @@ class HostOverviewSparkline {
       period,
       itemid: spec.item_ref?.itemid ?? '',
       item_name: spec.item_ref?.name ?? '',
-      value_type: spec.item_ref?.value_type ?? '',
       display_kind: spec.display_kind ?? 'percent',
       axis_min: spec.axis?.min ?? '',
       axis_max: spec.axis?.max ?? '',
@@ -934,27 +921,14 @@ class HostOverviewSparkline {
   }
 
   _normalizeRef(itemRef) {
-    if (!itemRef) {
+    if (!itemRef || typeof itemRef !== 'object') {
       return null;
     }
 
-    if (typeof itemRef === 'string') {
-      return {
-        itemid: null,
-        name: itemRef,
-        value_type: null,
-      };
-    }
-
-    if (typeof itemRef === 'object') {
-      return {
-        itemid: itemRef.itemid ?? null,
-        name: itemRef.name ?? null,
-        value_type: itemRef.value_type ?? null,
-      };
-    }
-
-    return null;
+    return {
+      itemid: itemRef.itemid ?? null,
+      name: itemRef.name ?? null,
+    };
   }
 
   _getDisplayKind() {

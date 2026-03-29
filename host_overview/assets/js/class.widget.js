@@ -503,8 +503,6 @@ class CWidgetHostOverview extends CWidget {
 
       return {
         cellId,
-        title: cellEl.getAttribute('data-cell-label')
-          || cellId,
         spec,
         color: this._readSparklineColor(cellEl),
       };
