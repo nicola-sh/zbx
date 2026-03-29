@@ -9,6 +9,8 @@
 namespace Modules\HostOverview\Includes;
 
 use CDiv;
+use CLinkAction;
+use CMenuPopupHelper;
 use CTag;
 
 // =============================================================================
@@ -84,7 +86,6 @@ function _render_row_label(array $row): CTag
 function _render_metric_text(array $cell, bool $is_multi = false): CTag
 {
     $latest_data_link = $cell['links']['latest_data'] ?? null;
-    $tag = _has_link_href($latest_data_link) ? 'a' : 'span';
     $prefix = trim((string) ($cell['display']['prefix'] ?? ''));
     $value_text = (string) ($cell['display']['value_text'] ?? '');
     $content = (new CTag('span', true))
@@ -102,20 +103,12 @@ function _render_metric_text(array $cell, bool $is_multi = false): CTag
         );
     }
 
-    $text = (new CTag($tag, true))
-        ->addClass('metric-value-link')
-        ->addItem(
-            (new CTag('span', true))
-                ->addClass('metric-value-label')
-                ->addItem($value_text !== '' ? $value_text : (string) ($cell['display']['text'] ?? ''))
-        );
+    $text = _render_metric_action($cell, $latest_data_link, $value_text !== ''
+        ? $value_text
+        : (string) ($cell['display']['text'] ?? ''));
 
     if (($cell['state'] ?? 'ok') === 'empty') {
         $text->addClass('empty');
-    }
-
-    if ($tag === 'a') {
-        _apply_link_attrs($text, $latest_data_link, _('Open latest data'));
     }
 
     $content->addItem($text);
@@ -177,6 +170,42 @@ function _apply_link_attrs(CTag $element, ?array $link, ?string $title = null): 
 
         return;
     }
+}
+
+function _render_metric_action(array $cell, ?array $latest_data_link, string $text): CTag|CLinkAction
+{
+    $itemid = trim((string) (($cell['item_ref']['itemid'] ?? '')));
+    $backurl = is_array($latest_data_link) ? (string) ($latest_data_link['href'] ?? '') : '';
+
+    if ($itemid !== '' && $backurl !== '') {
+        return (new CLinkAction(
+            (new CTag('span', true))
+                ->addClass('metric-value-label')
+                ->addItem($text)
+        ))
+            ->addClass('metric-value-link')
+            ->setAttribute('title', _('Open item menu'))
+            ->setMenuPopup(CMenuPopupHelper::getItem([
+                'itemid' => $itemid,
+                'context' => 'host',
+                'backurl' => $backurl,
+            ]));
+    }
+
+    $tag = _has_link_href($latest_data_link) ? 'a' : 'span';
+    $element = (new CTag($tag, true))
+        ->addClass('metric-value-link')
+        ->addItem(
+            (new CTag('span', true))
+                ->addClass('metric-value-label')
+                ->addItem($text)
+        );
+
+    if ($tag === 'a') {
+        _apply_link_attrs($element, $latest_data_link, _('Open latest data'));
+    }
+
+    return $element;
 }
 
 function _has_link_href(?array $link): bool

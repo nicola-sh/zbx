@@ -508,6 +508,7 @@ class WidgetView extends CControllerDashboardWidgetView
         return [
             'cell_id' => (string) ($options['cell_id'] ?? ''),
             'cell_label' => (string) ($options['cell_label'] ?? ''),
+            'item_ref' => is_array($item_ref) ? $item_ref : null,
             'display' => [
                 'kind' => $display_kind,
                 'value' => $value === null ? null : (float) $value,
