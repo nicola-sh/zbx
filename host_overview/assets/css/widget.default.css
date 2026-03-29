@@ -43,6 +43,7 @@
 .dashboard-widget-host_overview .metric-value-link {
   display: inline-flex;
   align-items: center;
+  margin-bottom: 0;
 }
 
 .dashboard-widget-host_overview .metric-value-content {
