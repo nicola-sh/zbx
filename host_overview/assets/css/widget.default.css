@@ -1,0 +1,151 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 ObviousAIChicken
+ * github.com/obviousaichicken/zabbix_widgets
+ */
+
+/* Default View Container */
+.dashboard-widget-host_overview .host-overview-container {
+  margin: 0 var(--widget-inline-spacing);
+  position: relative;
+  display: grid;
+  container-type: inline-size;
+}
+
+/* Default View Metrics */
+.dashboard-widget-host_overview .metric-row {
+  display: grid;
+  grid-template-columns: var(--label-width, var(--label-width-default)) minmax(0, 1fr);
+  gap: var(--metric-row-gap);
+  padding: var(--metric-row-padding-y) 0;
+}
+
+.dashboard-widget-host_overview .metric-value-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: none;
+}
+
+.dashboard-widget-host_overview .metric-value-link[href] {
+  cursor: pointer;
+}
+
+.dashboard-widget-host_overview .metric-value-link[href]:hover,
+.dashboard-widget-host_overview .metric-value-link[href]:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.dashboard-widget-host_overview .metric-label {
+  opacity: var(--muted-opacity);
+}
+
+.dashboard-widget-host_overview .metric-value-link {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.dashboard-widget-host_overview .metric-value-content {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.dashboard-widget-host_overview .metric-value-prefix {
+  min-width: 0;
+  opacity: var(--muted-opacity);
+  padding-right: 15px;
+}
+
+.dashboard-widget-host_overview .metric-value-label {
+  min-width: 0;
+}
+
+.dashboard-widget-host_overview .metric-list,
+.dashboard-widget-host_overview .metric-cell {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.dashboard-widget-host_overview .metric-row-single .metric-list {
+  align-items: center;
+}
+
+.dashboard-widget-host_overview .metric-row-single .metric-cell {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.dashboard-widget-host_overview .metric-value-single {
+  width: var(--text-col-width);
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.dashboard-widget-host_overview .metric-row-multi .metric-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--metric-multi-min-width)), 1fr));
+  gap: var(--metric-multi-gap);
+  align-items: start;
+}
+
+.dashboard-widget-host_overview .metric-row-multi .metric-cell {
+  grid-template-columns: var(--cell-label-width) minmax(0, 1fr);
+}
+
+.dashboard-widget-host_overview .metric-cell.is-empty {
+  grid-template-columns: 1fr;
+}
+
+.dashboard-widget-host_overview .metric-cell.is-empty > .metric-value-content {
+  width: auto;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.dashboard-widget-host_overview .metric-cell.is-empty .metric-value-link.empty {
+  width: auto;
+  text-align: left;
+}
+
+.dashboard-widget-host_overview .empty {
+  font-style: italic;
+}
+
+.dashboard-widget-host_overview .metric-bar {
+  width: 100%;
+  height: var(--bar-height);
+  margin-top: var(--metric-bar-offset-y);
+  align-self: center;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bar-bg);
+  border-radius: var(--bar-radius);
+}
+
+.dashboard-widget-host_overview .metric-fill {
+  width: 0;
+  height: var(--bar-height);
+  border-radius: var(--bar-radius) 0 0 var(--bar-radius);
+  transition:
+    width var(--metric-fill-transition-duration) ease-out,
+    background-color var(--metric-fill-transition-duration) ease-out;
+}
+
+/* Direction Arrows */
+.dashboard-widget-host_overview .dir-arrow {
+  display: block;
+  width: var(--trend-arrow-size);
+  height: var(--trend-arrow-size);
+  flex: 0 0 auto;
+  margin-inline-start: 5px;
+  color: currentColor;
+}
+
+.dashboard-widget-host_overview .dir-arrow.dir-down {
+  transform: rotate(180deg);
+}
