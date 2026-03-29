@@ -2,34 +2,30 @@ These widgets have been tested on Zabbix 7.0.24, 7.2.15 and 7.4.8.
 
 ## Host overview
 
-A compact but highly configurable host summary widget for Zabbix dashboards. It turns the default Linux and Windows template items into a clean overview with badges, single-metric bars, grouped multi-row metrics, sparkline history, and direct drill-down links into Latest data. It is designed for quick at-a-glance monitoring, but the configuration dialog also includes built-in testing and preview tools so item mapping is much easier to validate.
+A compact, flexible host summary widget for Zabbix dashboards. It turns standard Linux and Windows template items into a clear at-a-glance overview with badges, status bars, grouped metrics, sparkline history, and quick links to Latest data. The configuration dialog also includes built-in preview and testing tools, so item mapping is easier to validate before you save.
 
 **Features**
 
-- Show any mix of Processor, Memory, Load, Swap, Interfaces, Disk utilization, and Partitions.
-- Sensible default item names and wildcard patterns for standard Zabbix Linux and Windows templates, with easy per-widget remapping in the config dialog.
-- Configurable host badges on the left and right sides: Hostname, Uptime, Liveliness, Problems, Maintenance, Tags, free text, and custom links.
-- Per-metric Medium and High thresholds for CPU, Memory, Load, Swap, Interfaces, Disks, and Partitions.
-- Threshold or solid color schemes, configurable colors, adjustable bar height, full or short labels, and rounded or square corners.
-- Load is displayed as a raw value with a configurable Load ceiling for bar and sparkline scaling.
-- Interfaces use a configurable ceiling and unit (Kbps, Mbps, or Gbps), and long interface names are shortened automatically in the widget.
-- Swap can be inverted for hosts that report free % instead of used %.
-- Sparkline overlays for quick historical context directly from the widget.
-- Direct links from metric labels and values into Zabbix Latest data for drill-down.
-- Live frontend updates for percentage and bitrate changes with animated tickers.
-- Multi-item metrics are grouped into clean, uniform layouts for interfaces, disks, and partitions.
-- Built-in config dialog test tools for CPU, Memory, Load, Swap, and Uptime exact-name matching.
-- Wildcard preview tools for Interfaces, Disks, and Partitions, including previews of filtered-out matches.
-- Problems badge options to hide acknowledged or suppressed problems and optionally pulse when active.
+- Display any combination of Processor, Memory, Load, Swap, Interfaces, Disk utilization, and Partitions.
+- Works out of the box with common Zabbix Linux and Windows templates, with default item names and wildcard matching that can be remapped per widget.
+- Add useful host badges such as Hostname, Uptime, Liveliness, Problems, Maintenance, Tags, free text, or custom links.
+- Set medium and high thresholds for each metric.
+- Choose threshold-based or solid colors, adjust bar height, pick full or short labels, and use rounded or square corners.
+- Show interface traffic with a configurable ceiling and unit (Kbps, Mbps, or Gbps), while long interface names are shortened automatically.
+- Add sparklines for quick historical context directly in the widget.
+- Open built-in Zabbix host and item popup menus from the widget.
+- See live frontend updates for percentage and bitrate changes with animated tickers.
+- Keep interfaces, disks, and partitions organized in consistent multi-row layouts.
+- Test exact-name matching for CPU, Memory, Load, Swap, and Uptime directly in the config dialog.
+- Preview wildcard matches for Interfaces, Disks, and Partitions, including items filtered out by your rules.
+- Customize the Problems badge to hide acknowledged or suppressed issues and optionally pulse when active.
 - Supports all Zabbix themes.
 
 **Screenshots**
 
-![](https://i.imgur.com/EFkPox8.png)
+![](https://i.imgur.com/EMDHCrm.png)
 
-![](https://i.imgur.com/JOHq1fB.png)
-
-![](https://i.imgur.com/phu19Br.png)
+![](https://i.imgur.com/k5nBeF7.png)
 
 ## Banner
 
