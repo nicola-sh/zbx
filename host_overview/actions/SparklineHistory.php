@@ -27,9 +27,9 @@ class SparklineHistory extends CController
         '30d' => 2592000,
     ];
 
-    private const HISTORY_LIMIT = 500;
     private const MAX_POINTS = 200;
     private const TREND_BLEND_SECONDS = 43200;
+    private const RECENT_HISTORY_SECONDS = 7200;
     private const HISTORY_GAP_FLOOR = 300;
     private const TREND_GAP_FLOOR = 3600;
     private const VALUE_TYPE_FLOAT = 0;
@@ -208,46 +208,40 @@ class SparklineHistory extends CController
         int $seconds
     ): array {
         $supports_trends = in_array($value_type, [self::VALUE_TYPE_FLOAT, self::VALUE_TYPE_UINT64], true);
-        $use_trend_blend = $supports_trends && $seconds > self::TREND_BLEND_SECONDS;
 
-        if (!$use_trend_blend) {
-            $points = $this->fetchHistory($itemid, $value_type, $time_from, $time_till);
-
-            if ($points === [] && $supports_trends) {
-                $points = $this->fetchTrends($itemid, $time_from, $time_till);
-            }
-
+        if (!$supports_trends) {
             return [
-                'points' => $points,
+                'points' => $this->fetchHistory($itemid, $value_type, $time_from, $time_till),
                 'gapThresholdFloor' => self::HISTORY_GAP_FLOOR,
             ];
         }
 
-        $trend_points = $this->fetchTrends($itemid, $time_from, $time_till);
-        $history_tail = $this->fetchHistory(
-            $itemid,
-            $value_type,
-            $time_from,
-            $time_till,
-            'DESC',
-            self::HISTORY_LIMIT
-        );
+        if ($seconds <= self::TREND_BLEND_SECONDS) {
+            $points = $this->fetchHistory($itemid, $value_type, $time_from, $time_till);
+            $used_trends = false;
 
-        if ($history_tail !== []) {
-            $history_start = $history_tail[0]['t'];
+            if ($points === []) {
+                $points = $this->fetchTrends($itemid, $time_from, $time_till);
+                $used_trends = true;
+            }
 
             return [
-                'points' => array_values(array_merge(
-                    array_filter($trend_points, static fn(array $point): bool => $point['t'] < $history_start),
-                    $history_tail
-                )),
-                'gapThresholdFloor' => self::TREND_GAP_FLOOR,
+                'points' => $points,
+                'gapThresholdFloor' => $used_trends ? self::TREND_GAP_FLOOR : self::HISTORY_GAP_FLOOR,
             ];
         }
 
+        // Trend rows can lag behind raw history by up to two hours, so keep the recent slice on history.
+        $history_from = max($time_from, $time_till - self::RECENT_HISTORY_SECONDS);
+        $trend_till = $history_from - 1;
+        $history_points = $this->fetchHistory($itemid, $value_type, $history_from, $time_till);
+        $trend_points = $trend_till >= $time_from
+            ? $this->fetchTrends($itemid, $time_from, $trend_till)
+            : [];
+
         if ($trend_points !== []) {
             return [
-                'points' => $trend_points,
+                'points' => array_values(array_merge($trend_points, $history_points)),
                 'gapThresholdFloor' => self::TREND_GAP_FLOOR,
             ];
         }
@@ -264,18 +258,23 @@ class SparklineHistory extends CController
         int $time_from,
         int $time_till,
         string $sortorder = 'ASC',
-        int $limit = self::HISTORY_LIMIT
+        ?int $limit = null
     ): array {
-        $records = API::History()->get([
+        $params = [
             'output' => ['value', 'clock'],
             'history' => $value_type,
             'itemids' => [$itemid],
             'time_from' => $time_from,
             'time_till' => $time_till,
             'sortfield' => 'clock',
-            'sortorder' => $sortorder,
-            'limit' => $limit,
-        ]);
+            'sortorder' => $sortorder
+        ];
+
+        if ($limit !== null) {
+            $params['limit'] = $limit;
+        }
+
+        $records = API::History()->get($params);
 
         $points = array_map(static function(array $record): array {
             return [
@@ -300,7 +299,6 @@ class SparklineHistory extends CController
             'time_till' => $time_till,
             'sortfield' => 'clock',
             'sortorder' => 'ASC',
-            'limit' => self::HISTORY_LIMIT,
         ]);
 
         return array_map(static function(array $record): array {
