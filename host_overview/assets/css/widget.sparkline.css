@@ -33,7 +33,7 @@
 .dashboard-widget-host_overview .sparkline-overlay .sparkline-stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: var(--gap-3);
+  column-gap: 10px;
   min-height: 0;
 }
 

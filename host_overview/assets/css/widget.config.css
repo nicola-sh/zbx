@@ -6,10 +6,6 @@
 
 /* Runtime Config */
 .dashboard-widget-host_overview {
-  --gap-2: 6px;
-  --gap-3: 8px;
-  --gap-4: 10px;
-  --gap-5: 15px;
   --widget-inline-spacing: 10px;
   --label-width-default: 90px;
   --metric-row-gap: 25px;
