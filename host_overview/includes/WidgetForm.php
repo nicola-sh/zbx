@@ -49,12 +49,12 @@ class WidgetForm extends CWidgetForm
     public const DEFAULT_COLOR_THRESHOLD_MEDIUM = 'FF851B';
     public const DEFAULT_COLOR_THRESHOLD_LOW    = '4C9F38';
 
-    public const DEFAULT_THRESHOLD_HIGH   = 85;
-    public const DEFAULT_THRESHOLD_MEDIUM = 70;
-    public const DEFAULT_THRESHOLD_SWAP_HIGH = 10;
+    public const DEFAULT_THRESHOLD_HIGH        = 85;
+    public const DEFAULT_THRESHOLD_MEDIUM      = 70;
+    public const DEFAULT_THRESHOLD_SWAP_HIGH   = 10;
     public const DEFAULT_THRESHOLD_SWAP_MEDIUM = 5;
-    public const DEFAULT_FRESHNESS_WARN   = 90;
-    public const DEFAULT_FRESHNESS_STALE  = 300;
+    public const DEFAULT_FRESHNESS_WARN        = 90;
+    public const DEFAULT_FRESHNESS_STALE       = 300;
 
     public const DEFAULT_LOAD_HIGH       = 2;
     public const DEFAULT_INTERFACES_HIGH = 1;

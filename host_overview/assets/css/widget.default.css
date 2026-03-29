@@ -68,7 +68,7 @@
 .dashboard-widget-host_overview .metric-list,
 .dashboard-widget-host_overview .metric-cell {
   display: grid;
-  gap: var(--gap-5);
+  gap: 20px;
   min-width: 0;
 }
 
@@ -142,6 +142,7 @@
   width: var(--trend-arrow-size);
   height: var(--trend-arrow-size);
   flex: 0 0 auto;
+  margin-inline-start: 5px;
   color: currentColor;
 }
 

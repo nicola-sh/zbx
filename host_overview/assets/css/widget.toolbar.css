@@ -8,7 +8,7 @@
 .dashboard-widget-host_overview .toolbar {
   display: flex;
   align-items: center;
-  gap: var(--gap-2);
+  gap: 5px;
   margin: var(--toolbar-margin-top) 0 var(--toolbar-margin-bottom);
 }
 
@@ -20,7 +20,7 @@
 .dashboard-widget-host_overview .toolbar .right {
   display: flex;
   align-items: center;
-  gap: var(--gap-2);
+  gap: 5px;
   flex-wrap: wrap;
   min-width: 0;
 }
