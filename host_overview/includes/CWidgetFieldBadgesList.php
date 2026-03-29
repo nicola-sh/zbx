@@ -12,38 +12,39 @@ use Zabbix\Widgets\CWidgetField;
 
 class CWidgetFieldBadgesList extends CWidgetField {
 
-    public const BADGE_HOSTNAME   = 0;
-    public const BADGE_UPTIME     = 1;
-    public const BADGE_LIVELINESS = 2;
-    public const BADGE_PROBLEMS   = 3;
-    public const BADGE_TEXT       = 4;
-    public const BADGE_LINK       = 5;
+    public const BADGE_HOSTNAME    = 0;
+    public const BADGE_UPTIME      = 1;
+    public const BADGE_LIVELINESS  = 2;
+    public const BADGE_PROBLEMS    = 3;
+    public const BADGE_TEXT        = 4;
+    public const BADGE_LINK        = 5;
     public const BADGE_MAINTENANCE = 6;
     public const BADGE_TAGS        = 7;
 
     public const BADGE_TYPE_LABELS = [
-        self::BADGE_HOSTNAME   => 'Hostname',
-        self::BADGE_UPTIME     => 'Uptime',
-        self::BADGE_LIVELINESS => 'Liveliness',
-        self::BADGE_PROBLEMS   => 'Problems',
-        self::BADGE_TEXT       => 'Text',
-        self::BADGE_LINK       => 'Link',
+        self::BADGE_HOSTNAME    => 'Hostname',
+        self::BADGE_UPTIME      => 'Uptime',
+        self::BADGE_LIVELINESS  => 'Liveliness',
+        self::BADGE_PROBLEMS    => 'Problems',
+        self::BADGE_TEXT        => 'Text',
+        self::BADGE_LINK        => 'Link',
         self::BADGE_MAINTENANCE => 'Maintenance',
-        self::BADGE_TAGS       => 'Tags',
+        self::BADGE_TAGS        => 'Tags',
     ];
 
     public const SIDE_LEFT  = 'left';
     public const SIDE_RIGHT = 'right';
 
     public const DEFAULT_ITEM_UPTIME = 'System uptime';
+    public const DEFAULT_ITEM_LIVELINESS = 'Zabbix agent ping';
 
     private const LINK_BADGE_ALLOWED_SCHEMES = ['http', 'https'];
 
     private const DEFAULT_BADGES = [
-        ['type' => self::BADGE_HOSTNAME,   'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
-        ['type' => self::BADGE_UPTIME,     'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
-        ['type' => self::BADGE_LIVELINESS, 'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
-        ['type' => self::BADGE_PROBLEMS,   'text' => '', 'url' => '', 'side' => self::SIDE_RIGHT],
+        ['type' => self::BADGE_HOSTNAME,    'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
+        ['type' => self::BADGE_UPTIME,      'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
+        ['type' => self::BADGE_LIVELINESS,  'text' => '', 'url' => '', 'side' => self::SIDE_LEFT],
+        ['type' => self::BADGE_PROBLEMS,    'text' => '', 'url' => '', 'side' => self::SIDE_RIGHT],
         ['type' => self::BADGE_MAINTENANCE, 'text' => '', 'url' => '', 'side' => self::SIDE_RIGHT],
     ];
 

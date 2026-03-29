@@ -15,6 +15,7 @@ use Zabbix\Widgets\Fields\CWidgetFieldColor;
 use Zabbix\Widgets\Fields\CWidgetFieldIntegerBox;
 use Zabbix\Widgets\Fields\CWidgetFieldCheckBox;
 use Zabbix\Widgets\Fields\CWidgetFieldMultiSelectHost;
+use Zabbix\Widgets\Fields\CWidgetFieldMultiSelectOverrideHost;
 use Zabbix\Widgets\Fields\CWidgetFieldRadioButtonList;
 use Zabbix\Widgets\Fields\CWidgetFieldTextBox;
 
@@ -48,12 +49,12 @@ class WidgetForm extends CWidgetForm
     public const DEFAULT_COLOR_THRESHOLD_MEDIUM = 'FF851B';
     public const DEFAULT_COLOR_THRESHOLD_LOW    = '4C9F38';
 
-    public const DEFAULT_THRESHOLD_HIGH   = 85;
-    public const DEFAULT_THRESHOLD_MEDIUM = 70;
-    public const DEFAULT_THRESHOLD_SWAP_HIGH = 10;
+    public const DEFAULT_THRESHOLD_HIGH        = 85;
+    public const DEFAULT_THRESHOLD_MEDIUM      = 70;
+    public const DEFAULT_THRESHOLD_SWAP_HIGH   = 10;
     public const DEFAULT_THRESHOLD_SWAP_MEDIUM = 5;
-    public const DEFAULT_FRESHNESS_WARN   = 60;
-    public const DEFAULT_FRESHNESS_STALE  = 300;
+    public const DEFAULT_FRESHNESS_WARN        = 90;
+    public const DEFAULT_FRESHNESS_STALE       = 300;
 
     public const DEFAULT_LOAD_HIGH       = 2;
     public const DEFAULT_INTERFACES_HIGH = 1;
@@ -82,8 +83,10 @@ class WidgetForm extends CWidgetForm
         return $this
             ->addField(
                 (new CWidgetFieldMultiSelectHost('hostid', _('Host')))
-                    ->setFlags(CWidgetField::FLAG_NOT_EMPTY | CWidgetField::FLAG_LABEL_ASTERISK)
                     ->setMultiple(false)
+            )
+            ->addField(
+                new CWidgetFieldMultiSelectOverrideHost()
             )
             ->addField(
                 (new CWidgetFieldBadgesList('badges'))
@@ -91,6 +94,10 @@ class WidgetForm extends CWidgetForm
             ->addField(
                 (new CWidgetFieldTextBox('badge_uptime_item_name', _('Uptime item')))
                     ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME)
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('badge_liveliness_item_name', _('Liveliness item')))
+                    ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_LIVELINESS)
             )
             ->addField(
                 (new CWidgetFieldCheckBox('problems_hide_acknowledged', _('Hide acknowledged problems')))
@@ -246,6 +253,10 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_BAR_HEIGHT)
             )
             ->addField(
+                (new CWidgetFieldCheckBox('open_links_same_window', _('Open in same tab')))
+                    ->setDefault(0)
+            )
+            ->addField(
                 (new CWidgetFieldCheckBox('problems_pulse', _('Pulse problems badge')))
                     ->setDefault(1)
             )
@@ -330,6 +341,11 @@ class WidgetForm extends CWidgetForm
         $errors = parent::validate($strict);
         $enabled_metrics = array_map('intval', (array) $this->getFieldValue('metrics_show'));
 
+        if (!self::hasConfiguredValue($this->getFieldValue('hostid'))
+                && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))) {
+            $this->addFieldError($errors, 'hostid', _('cannot be empty'));
+        }
+
         foreach ([
             self::METRIC_CPU => 'item_name_cpu',
             self::METRIC_RAM => 'item_name_ram',
@@ -355,6 +371,10 @@ class WidgetForm extends CWidgetForm
 
         if ($this->hasBadgeType(CWidgetFieldBadgesList::BADGE_UPTIME)) {
             $this->validateRequiredTextField($errors, 'badge_uptime_item_name');
+        }
+
+        if ($this->hasBadgeType(CWidgetFieldBadgesList::BADGE_LIVELINESS)) {
+            $this->validateRequiredTextField($errors, 'badge_liveliness_item_name');
         }
 
         return $errors;
@@ -392,6 +412,25 @@ class WidgetForm extends CWidgetForm
             $this->getField($field_name)->getErrorLabel(),
             $message
         );
+    }
+
+    private static function hasConfiguredValue($value): bool
+    {
+        if (is_array($value)) {
+            if (array_key_exists(CWidgetField::FOREIGN_REFERENCE_KEY, $value)) {
+                return trim((string) $value[CWidgetField::FOREIGN_REFERENCE_KEY]) !== '';
+            }
+
+            foreach ($value as $entry) {
+                if ((string) $entry !== '') {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return trim((string) $value) !== '';
     }
 
     private function hasBadgeType(int $type): bool

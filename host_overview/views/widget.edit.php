@@ -6,8 +6,12 @@
  * github.com/obviousaichicken/zabbix_widgets
  */
 
+require_once __DIR__ . '/components/layout.icons.php';
+
 use Modules\HostOverview\Includes\CWidgetFieldBadgesList;
 use Modules\HostOverview\Includes\WidgetForm;
+
+use function Modules\HostOverview\Includes\render_icon;
 
 // Backwards compatibility
 // The ZBX_STYLE_COLOR_PICKER constant disappeared in Zabbix 7.4
@@ -19,14 +23,22 @@ $form
     ->addField(
         new CWidgetFieldMultiSelectHostView($data['fields']['hostid'])
     )
+    ->addField($data['templateid'] === null
+        ? new CWidgetFieldMultiSelectOverrideHostView($data['fields']['override_hostid'])
+        : null
+    )
     ->addField(
         (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))
             ->setColumns(3)
     )
+    ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
+        'Open metric and badge links in the current browser tab instead of a new tab.'
+    ))
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Badges')))
             ->addItem(getBadgesListView($data['fields']['badges']))
             ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
+            ->addItem(getBadgeLivelinessItemViews($form, $data['fields']['badge_liveliness_item_name']))
             ->addItem(getFreshnessThresholdViews($form, $data['fields']))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_acknowledged'],
                 'Exclude acknowledged problems from the Problems badge count.'
@@ -380,7 +392,17 @@ function getBadgeUptimeItemViews(CWidgetFormView $form, $field): array
     return getItemNameView(
         $form,
         $field,
-        _('Enter the exact uptime item name, for example "System uptime". Partial names are only used when they match one item uniquely; otherwise the badge shows —.'),
+        _('Enter the exact uptime item name, for example "System uptime". Partial names are only used when they match one item uniquely; otherwise the badge shows No uptime.'),
+        ''
+    );
+}
+
+function getBadgeLivelinessItemViews(CWidgetFormView $form, $field): array
+{
+    return getItemNameView(
+        $form,
+        $field,
+        _('Enter the exact liveliness item name, for example "Zabbix agent ping". Partial names are only used when they match one item uniquely; otherwise the badge shows No ping.'),
         ''
     );
 }
@@ -396,7 +418,7 @@ function getFreshnessThresholdViews(CWidgetFormView $form, array $fields): array
 
     $label = new CLabel(_('Liveliness thresholds'), 'freshness_warn');
     $label->addItem(makeHelpIcon(
-        _('Age in seconds since the host last reported data. Warn applies first, then Stale.')
+        _('Age in seconds since the configured liveliness item last reported data. Warn applies first, then Stale.')
     ));
 
     return [
@@ -495,25 +517,7 @@ function createBadgeRow(array $badge): CDiv
         ->addClass('js-badge-drag')
         ->setAttribute('draggable', 'true')
         ->setAttribute('title', _('Drag to reorder'));
-    $drag_handle->addItem(
-        (new CTag('svg', true))
-            ->setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-            ->setAttribute('width', '24')
-            ->setAttribute('height', '24')
-            ->setAttribute('viewBox', '0 0 24 24')
-            ->setAttribute('fill', 'none')
-            ->setAttribute('stroke', 'currentColor')
-            ->setAttribute('stroke-width', '2')
-            ->setAttribute('stroke-linecap', 'round')
-            ->setAttribute('stroke-linejoin', 'round')
-            ->addClass('lucide lucide-grip-vertical-icon lucide-grip-vertical')
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '9')->setAttribute('cy', '12')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '9')->setAttribute('cy', '5')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '9')->setAttribute('cy', '19')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '15')->setAttribute('cy', '12')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '15')->setAttribute('cy', '5')->setAttribute('r', '1'))
-            ->addItem((new CTag('circle', true))->setAttribute('cx', '15')->setAttribute('cy', '19')->setAttribute('r', '1'))
-    );
+    $drag_handle->addItem(render_icon('grip-vertical'));
     $type_badge = (new CSpan(_($type_label)))
         ->addClass('badge-row-type');
 

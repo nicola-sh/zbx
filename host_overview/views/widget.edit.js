@@ -36,6 +36,7 @@ window.form = new (class {
     this.initColorSchemeToggle();
     this.initFieldDependencies();
     this.initMetricLookupAssistants();
+
   }
 
   initColorPickers(colorPickerClass) {

@@ -25,7 +25,6 @@ class MetricMatcher
         if ($hostids === [] || $name_filters === []) {
             return [
                 'metrics' => [],
-                'latest_clock' => 0,
             ];
         }
 
@@ -37,7 +36,6 @@ class MetricMatcher
         ]);
 
         $metrics = [];
-        $latest_clock = 0;
 
         foreach ($items as $item) {
             $name = $item['name'];
@@ -48,19 +46,16 @@ class MetricMatcher
             $metrics[$name] = [
                 'itemid' => $item['itemid'],
                 'name' => $name,
+                'lastclock' => $clock,
                 'value_type' => (int) ($item['value_type'] ?? 0),
                 'value' => $numeric_value,
                 'raw' => $value,
             ];
 
-            if ($clock > $latest_clock) {
-                $latest_clock = $clock;
-            }
         }
 
         return [
             'metrics' => $metrics,
-            'latest_clock' => $latest_clock,
         ];
     }
 
