@@ -33,6 +33,7 @@
 
 .dashboard-widget-host_overview .toolbar .right {
   margin-left: auto;
+  justify-content: flex-end;
 }
 
 /* Badge */
