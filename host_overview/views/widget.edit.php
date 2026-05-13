@@ -27,6 +27,18 @@ $form
         ? new CWidgetFieldMultiSelectOverrideHostView($data['fields']['override_hostid'])
         : null
     )
+    ->addFieldset(
+        (new CWidgetFormFieldsetCollapsibleView(_('Per-host overrides (JSON)')))
+            ->addItem([
+                (new CLabel($data['fields']['host_profiles']->getLabel(), $data['fields']['host_profiles']->getName()))
+                    ->addItem(makeHelpIcon(_(
+                        'With several hosts selected, the widget shows a summary list and traffic-light status; click a row to expand that host. Optional JSON (same order as hosts): [{"hostid":"10044","overrides":{"item_name_cpu":"CPU load","th_cpu_1":"95"}}]. Empty overrides use the defaults from this form. The JSON is normalized when you save.'
+                    ))),
+                new CFormField(
+                    $form->registerField(new CWidgetFieldTextBoxView($data['fields']['host_profiles']))->getView()
+                ),
+            ])
+    )
     ->addField(
         (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))
             ->setColumns(3)

@@ -14,6 +14,7 @@ use API;
 use CControllerDashboardWidgetView;
 use CControllerResponseData;
 use Modules\HostOverview\Includes\CWidgetFieldBadgesList;
+use Modules\HostOverview\Includes\HostProfilesHelper;
 use Modules\HostOverview\Includes\MetricMatcher;
 use Modules\HostOverview\Includes\WildcardMetricResolver;
 use Modules\HostOverview\Includes\WidgetForm;
@@ -38,9 +39,24 @@ class WidgetView extends CControllerDashboardWidgetView
     private ?MetricMatcher $metric_matcher = null;
     private ?WildcardMetricResolver $wildcard_metric_resolver = null;
 
+    private string $cell_id_prefix = '';
+
+    private ?string $context_hostid = null;
+
     protected function doAction(): void
     {
         $this->fields_values['hostid'] = $this->resolveSelectedHostIds();
+
+        $hostids = $this->normalizeHostIds($this->fields_values['hostid'] ?? []);
+
+        if (count($hostids) > 1) {
+            $this->renderMultiHostDashboard($hostids);
+
+            return;
+        }
+
+        $this->cell_id_prefix = '';
+        $this->context_hostid = null;
 
         $this->badges = $this->decodeBadges();
         $this->metrics = $this->collectMetrics();
@@ -50,12 +66,175 @@ class WidgetView extends CControllerDashboardWidgetView
 
         $this->setResponse(new CControllerResponseData([
             'name' => $this->getInput('name', $this->widget->getName()),
+            'multi_host' => false,
             'config' => $this->fields_values,
             'badges' => $badges,
             'rows' => $rows,
             'values' => $this->buildValues($badges, $rows),
             'layout_signature' => $this->buildLayoutSignature($badges, $rows),
         ]));
+    }
+
+    /**
+     * @param list<string> $hostids
+     */
+    private function renderMultiHostDashboard(array $hostids): void
+    {
+        $saved_fields = $this->fields_values;
+
+        $profiles = HostProfilesHelper::syncWithHostOrder(
+            HostProfilesHelper::parse($saved_fields['host_profiles'] ?? '[]'),
+            $hostids
+        );
+
+        $hosts_payload = [];
+        $values_hosts = [];
+        $layout_chunks = [];
+
+        foreach ($profiles as $profile) {
+            $hostid = $profile['hostid'];
+            $merged = HostProfilesHelper::mergeProfile($saved_fields, $profile);
+
+            $this->fields_values = $merged;
+            $this->cell_id_prefix = $hostid . ':';
+            $this->context_hostid = $hostid;
+
+            $this->badges = $this->decodeBadges();
+            $this->metrics = $this->collectMetrics();
+            $this->host_details = null;
+            $this->problems = null;
+
+            $badges = $this->buildBadgeModels();
+            $rows = $this->buildOverviewRows();
+
+            $light = $this->computeTrafficLightLevel($rows, $this->fetchProblems());
+            $layout_signature = $this->buildLayoutSignature($badges, $rows);
+
+            $hosts_payload[] = [
+                'hostid' => $hostid,
+                'name' => trim($this->fetchHostName($hostid)) ?: $hostid,
+                'light' => $light,
+                'badges' => $badges,
+                'rows' => $rows,
+                'layout_signature' => $layout_signature,
+                'config' => $merged,
+            ];
+
+            $values_hosts[$hostid] = [
+                'light' => $light,
+                'badges' => $this->buildBadgeValues($badges),
+                'cells' => $this->buildCellValues($rows),
+            ];
+
+            $layout_chunks[] = $layout_signature;
+        }
+
+        $this->fields_values = $saved_fields;
+        $this->cell_id_prefix = '';
+        $this->context_hostid = null;
+
+        $this->setResponse(new CControllerResponseData([
+            'name' => $this->getInput('name', $this->widget->getName()),
+            'multi_host' => true,
+            'config' => $saved_fields,
+            'hosts' => $hosts_payload,
+            'values' => [
+                'hosts' => $values_hosts,
+            ],
+            'layout_signature' => md5(implode('|', $layout_chunks)),
+        ]));
+    }
+
+    private function fetchHostName(string $hostid): string
+    {
+        $hosts = API::Host()->get([
+            'output' => ['name'],
+            'hostids' => [$hostid],
+            'limit' => 1,
+        ]);
+
+        return (string) (($hosts[0]['name'] ?? '') ?: '');
+    }
+
+    /**
+     * @return 'green'|'yellow'|'red'
+     */
+    private function computeTrafficLightLevel(array $rows, array $problems): string
+    {
+        $metric_level = 0;
+
+        foreach ($rows as $row) {
+            foreach ((array) ($row['cells'] ?? []) as $cell) {
+                $metric_level = max($metric_level, $this->metricCellWorstLevel($cell));
+            }
+        }
+
+        $max_severity = (int) ($problems['max_severity'] ?? -1);
+        $problem_level = 0;
+
+        if ($max_severity >= 4) {
+            $problem_level = 2;
+        }
+        elseif ($max_severity >= 2) {
+            $problem_level = 1;
+        }
+        elseif ($max_severity >= 0 && (int) ($problems['total'] ?? 0) > 0) {
+            $problem_level = 1;
+        }
+
+        $worst = max($metric_level, $problem_level);
+
+        return match ($worst) {
+            2 => 'red',
+            1 => 'yellow',
+            default => 'green',
+        };
+    }
+
+    private function metricCellWorstLevel(array $cell): int
+    {
+        if (($cell['state'] ?? '') === 'empty') {
+            return 2;
+        }
+
+        $pct = $cell['bar']['percent'] ?? null;
+
+        if ($pct === null || $pct === '') {
+            return 0;
+        }
+
+        $group = (string) ($cell['bar']['threshold_group'] ?? '');
+        $high = $this->getThresholdValue($group, 1);
+        $medium = $this->getThresholdValue($group, 2);
+
+        if ((int) $pct > $high) {
+            return 2;
+        }
+
+        if ((int) $pct > $medium) {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private function makeCellId(string $local_id): string
+    {
+        return $this->cell_id_prefix === '' ? $local_id : $this->cell_id_prefix . $local_id;
+    }
+
+    private function makeBadgeId(int $index): string
+    {
+        if ($this->context_hostid === null || $this->context_hostid === '') {
+            return 'badge:' . $index;
+        }
+
+        return 'badge:' . $this->context_hostid . ':' . $index;
+    }
+
+    private function getSparklineContextHostId(): ?string
+    {
+        return $this->context_hostid ?? $this->getPrimaryHostId();
     }
 
     // =============================================================================
@@ -147,7 +326,7 @@ class WidgetView extends CControllerDashboardWidgetView
     {
         $type = (int) ($badge['type'] ?? CWidgetFieldBadgesList::BADGE_HOSTNAME);
         $side = $this->normalizeSide($badge['side'] ?? CWidgetFieldBadgesList::SIDE_LEFT);
-        $id = 'badge:' . $index;
+        $id = $this->makeBadgeId($index);
 
         return match ($type) {
             CWidgetFieldBadgesList::BADGE_HOSTNAME => [
@@ -392,7 +571,7 @@ class WidgetView extends CControllerDashboardWidgetView
     ): array {
         $item_ref = $this->toItemRef($metric);
         $cell = $this->buildCellModel([
-            'cell_id' => $row_id,
+            'cell_id' => $this->makeCellId($row_id),
             'cell_label' => $row_label,
             'display_kind' => $display_kind,
             'value' => $value,
@@ -429,7 +608,7 @@ class WidgetView extends CControllerDashboardWidgetView
             }
 
             $cells[] = $this->buildCellModel([
-                'cell_id' => $family . ':' . $cell_key,
+                'cell_id' => $this->makeCellId($family . ':' . $cell_key),
                 'cell_label' => $cell_label,
                 'display_kind' => 'percent',
                 'value' => $row['percent'] ?? null,
@@ -472,7 +651,7 @@ class WidgetView extends CControllerDashboardWidgetView
             }
 
             $cells[] = $this->buildCellModel([
-                'cell_id' => 'iface:' . $cell_key,
+                'cell_id' => $this->makeCellId('iface:' . $cell_key),
                 'cell_label' => $cell_label,
                 'display_kind' => 'interface',
                 'value' => $row['bps'] ?? null,
@@ -535,6 +714,7 @@ class WidgetView extends CControllerDashboardWidgetView
                 'spec' => $item_ref !== null
                     ? [
                         'item_ref' => $item_ref,
+                        'hostid' => $this->getSparklineContextHostId(),
                         'display_kind' => $display_kind,
                         'axis' => [
                             'min' => $options['axis_min'] ?? 0,

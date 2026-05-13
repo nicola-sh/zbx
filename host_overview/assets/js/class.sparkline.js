@@ -149,6 +149,10 @@ class HostOverviewSparkline {
 
     this._removeKeydownHandler();
     this._resumeUpdating();
+
+    if (typeof this.options.onClose === 'function') {
+      this.options.onClose();
+    }
   }
 
   destroy() {
@@ -272,9 +276,14 @@ class HostOverviewSparkline {
 
   _buildSparklineRequest(spec, period) {
     const fields = this._getFields();
-    const hostid = Array.isArray(fields.hostid)
-      ? ((fields.hostid[0] || '').toString())
-      : ((fields.hostid || '').toString());
+    const fromSpec = spec?.hostid != null && String(spec.hostid).trim() !== ''
+      ? String(spec.hostid).trim()
+      : '';
+    const hostid = fromSpec !== ''
+      ? fromSpec
+      : (Array.isArray(fields.hostid)
+        ? ((fields.hostid[0] || '').toString())
+        : ((fields.hostid || '').toString()));
 
     return {
       hostid,
