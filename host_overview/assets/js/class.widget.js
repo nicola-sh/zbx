@@ -18,21 +18,30 @@ class CWidgetHostOverview extends CWidget {
     'problems-disaster',
   ];
 
+  static TRAFFIC_LIGHT_CLASSES = ['host-overview-light--green', 'host-overview-light--yellow', 'host-overview-light--red'];
+
   onInitialize() {
     this.rendered = false;
     this._runtimeFields = this._fields || {};
     this._layoutSignature = '';
-    this._attachedOverviewRoot = null;
+    this._overviewClickRoots = new Set();
     this._handleOverviewClick = (event) => this._onOverviewClick(event);
+    this._sparklineOverviewContext = null;
+    this._multiExpandRoot = null;
+    this._onMultiExpandPointer = (event) => this._onMultiExpandClick(event);
+    this._onMultiExpandKey = (event) => this._onMultiExpandKeydown(event);
     this.valueTicker = new Map();
     this.prevValues = new Map();
 
     this._sparkline = new HostOverviewSparkline({
       getBody: () => this._body,
       getOverlayRoot: () => this._getSparklineRoot(),
-      getOverviewRoot: () => this._getOverviewRoot(),
+      getOverviewRoot: () => this._sparklineOverviewContext || this._getFirstOverviewRoot(),
       getWidgetRoot: () => this._getWidgetRoot(),
       getFields: () => this._getRuntimeFields(),
+      onClose: () => {
+        this._sparklineOverviewContext = null;
+      },
       pauseUpdating: () => {
         if (typeof this._pauseUpdating !== 'function') {
           return false;
@@ -60,11 +69,12 @@ class CWidgetHostOverview extends CWidget {
   }
 
   onDestroy() {
-    if (this._attachedOverviewRoot) {
-      this._attachedOverviewRoot.removeEventListener('click', this._handleOverviewClick);
-      this._attachedOverviewRoot = null;
+    for (const root of this._overviewClickRoots) {
+      root.removeEventListener('click', this._handleOverviewClick);
     }
 
+    this._overviewClickRoots.clear();
+    this._detachMultiExpanders();
     this._resetAnimationState();
     this._sparkline?.destroy();
   }
@@ -75,7 +85,7 @@ class CWidgetHostOverview extends CWidget {
       || this._body;
   }
 
-  _getOverviewRoot() {
+  _getFirstOverviewRoot() {
     return this._body?.querySelector('[data-host-overview-role="overview"]') || null;
   }
 
@@ -112,6 +122,8 @@ class CWidgetHostOverview extends CWidget {
       || this.isFieldsReferredDataUpdated()
       || nextLayoutSignature !== this._layoutSignature;
 
+    this._multiHost = Boolean(response.multi_host);
+
     if (response.config && Object.keys(response.config).length > 0) {
       this._runtimeFields = response.config;
     }
@@ -129,6 +141,7 @@ class CWidgetHostOverview extends CWidget {
 
     this.updateViewModeAttr();
     this._attachOverview();
+    this._attachMultiExpanders();
     this._sparkline?.attach();
     this._syncRootModifiers(this._getRuntimeFields());
     this._layoutSignature = nextLayoutSignature;
@@ -138,33 +151,198 @@ class CWidgetHostOverview extends CWidget {
     }
   }
 
-  _attachOverview() {
-    const root = this._getOverviewRoot();
-
-    if (this._attachedOverviewRoot === root) {
-      return;
+  _overviewRootsEqual(next) {
+    if (this._overviewClickRoots.size !== next.size) {
+      return false;
     }
 
-    if (this._attachedOverviewRoot) {
-      this._attachedOverviewRoot.removeEventListener('click', this._handleOverviewClick);
+    for (const node of next) {
+      if (!this._overviewClickRoots.has(node)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  _attachOverview() {
+    const next = new Set(this._body?.querySelectorAll('[data-host-overview-role="overview"]') || []);
+
+    for (const node of this._overviewClickRoots) {
+      if (!next.has(node)) {
+        node.removeEventListener('click', this._handleOverviewClick);
+      }
+    }
+
+    for (const node of next) {
+      if (!this._overviewClickRoots.has(node)) {
+        node.addEventListener('click', this._handleOverviewClick);
+      }
+    }
+
+    if (!this._overviewRootsEqual(next)) {
       this._resetAnimationState();
     }
 
-    if (root) {
-      root.addEventListener('click', this._handleOverviewClick);
+    this._overviewClickRoots = next;
+  }
+
+  _attachMultiExpanders() {
+    const root = this._body?.querySelector('[data-host-overview-multi="1"]');
+
+    if (!root) {
+      this._detachMultiExpanders();
+
+      return;
     }
 
-    this._attachedOverviewRoot = root;
+    if (this._multiExpandRoot === root) {
+      return;
+    }
+
+    this._detachMultiExpanders();
+    this._multiExpandRoot = root;
+    root.addEventListener('click', this._onMultiExpandPointer);
+    root.addEventListener('keydown', this._onMultiExpandKey);
+  }
+
+  _detachMultiExpanders() {
+    if (!this._multiExpandRoot) {
+      return;
+    }
+
+    this._multiExpandRoot.removeEventListener('click', this._onMultiExpandPointer);
+    this._multiExpandRoot.removeEventListener('keydown', this._onMultiExpandKey);
+    this._multiExpandRoot = null;
+  }
+
+  _onMultiExpandClick(event) {
+    const trigger = event.target.closest('[data-host-overview-expand]');
+
+    if (!trigger || !this._multiExpandRoot?.contains(trigger)) {
+      return;
+    }
+
+    if (event.target.closest('.metric-bar')) {
+      return;
+    }
+
+    event.preventDefault();
+    this._toggleHostPanel(trigger);
+  }
+
+  _onMultiExpandKeydown(event) {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    const trigger = event.target.closest('[data-host-overview-expand]');
+
+    if (!trigger || !this._multiExpandRoot?.contains(trigger)) {
+      return;
+    }
+
+    event.preventDefault();
+    this._toggleHostPanel(trigger);
+  }
+
+  _escapeSelector(value) {
+    const s = String(value);
+
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+      return CSS.escape(s);
+    }
+
+    return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
+  _toggleHostPanel(trigger) {
+    const hostid = trigger.getAttribute('data-host-overview-expand');
+
+    if (!hostid || !this._body) {
+      return;
+    }
+
+    const panel = this._body.querySelector(`[data-host-detail="${this._escapeSelector(hostid)}"]`);
+
+    if (!panel) {
+      return;
+    }
+
+    const expanded = !panel.hasAttribute('hidden');
+
+    if (expanded) {
+      panel.setAttribute('hidden', 'hidden');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+    else {
+      panel.removeAttribute('hidden');
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+
+    this._sparkline?.scheduleRedraw();
+  }
+
+  _applyTrafficLight(element, light) {
+    if (!element) {
+      return;
+    }
+
+    const next = typeof light === 'string' ? light.toLowerCase().trim() : 'green';
+    const safe = ['green', 'yellow', 'red'].includes(next) ? next : 'green';
+
+    element.classList.remove(...CWidgetHostOverview.TRAFFIC_LIGHT_CLASSES);
+    element.classList.add(`host-overview-light--${safe}`);
+    element.setAttribute('title', safe);
+    element.setAttribute('aria-label', safe);
   }
 
   updateValues(values) {
-    const root = this._getOverviewRoot();
-    if (!root || !values) {
+    if (!values) {
+      return;
+    }
+
+    if (this._multiHost && values.hosts) {
+      this._patchMultiHostValues(values.hosts);
+
+      return;
+    }
+
+    const root = this._getFirstOverviewRoot();
+
+    if (!root) {
       return;
     }
 
     this._patchBadges(root, values.badges || {});
     this._patchCells(root, values.cells || {});
+  }
+
+  _patchMultiHostValues(hostsMap) {
+    const root = this._body?.querySelector('[data-host-overview-multi="1"]');
+
+    if (!root) {
+      return;
+    }
+
+    for (const [hostid, payload] of Object.entries(hostsMap)) {
+      const summary = root.querySelector(`[data-host-overview-expand="${this._escapeSelector(hostid)}"]`);
+      const lightEl = summary?.querySelector('.host-overview-light');
+
+      if (lightEl && payload?.light) {
+        this._applyTrafficLight(lightEl, payload.light);
+      }
+
+      const panel = root.querySelector(`[data-host-detail="${this._escapeSelector(hostid)}"]`);
+      const overview = panel?.querySelector('[data-host-overview-role="overview"]');
+
+      if (!overview) {
+        continue;
+      }
+
+      this._patchBadges(overview, payload?.badges || {});
+      this._patchCells(overview, payload?.cells || {});
+    }
   }
 
   _patchBadges(root, badgeValues) {
@@ -465,13 +643,15 @@ class CWidgetHostOverview extends CWidget {
   }
 
   _onOverviewClick(event) {
-    const root = this._getOverviewRoot();
-    if (!root) {
+    const bar = event.target.closest('.metric-bar');
+
+    if (!bar) {
       return;
     }
 
-    const bar = event.target.closest('.metric-bar');
-    if (!bar || !root.contains(bar)) {
+    const root = bar.closest('[data-host-overview-role="overview"]');
+
+    if (!root || !this._body?.contains(root) || !root.contains(bar)) {
       return;
     }
 
@@ -483,6 +663,7 @@ class CWidgetHostOverview extends CWidget {
     }
 
     event.preventDefault();
+    this._sparklineOverviewContext = root;
     this._sparkline?.open(metric);
   }
 
@@ -520,7 +701,21 @@ class CWidgetHostOverview extends CWidget {
   }
 
   _getRuntimeFields() {
-    return this._runtimeFields || this._fields || {};
+    const base = this._runtimeFields || this._fields || {};
+    const ctx = this._sparklineOverviewContext;
+
+    if (ctx?.dataset?.hostOverviewConfig) {
+      try {
+        const parsed = JSON.parse(ctx.dataset.hostOverviewConfig);
+
+        if (parsed && typeof parsed === 'object') {
+          return {...base, ...parsed};
+        }
+      }
+      catch (_) {}
+    }
+
+    return base;
   }
 
   _formatBps(bps) {
