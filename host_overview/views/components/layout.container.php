@@ -27,6 +27,7 @@ function render_overview_container(array $config): CDiv
     $container = (new CDiv())
         ->addClass('host-overview-container')
         ->setAttribute('data-host-overview-role', 'overview')
+        ->setAttribute('data-host-overview-config', json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT))
         ->setAttribute('style', $style);
 
     return $container;

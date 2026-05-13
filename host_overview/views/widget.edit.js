@@ -36,6 +36,7 @@ window.form = new (class {
     this.initColorSchemeToggle();
     this.initFieldDependencies();
     this.initMetricLookupAssistants();
+    this.initHostProfilesHostSync();
 
   }
 
@@ -788,6 +789,92 @@ window.form = new (class {
     preview.hidden = false;
     preview.dataset.state = state;
     preview.replaceChildren(content);
+  }
+
+  initHostProfilesHostSync() {
+    const hostRoot = document.getElementById("hostid");
+    const profilesInput = document.querySelector('[name="host_profiles"]');
+
+    if (!hostRoot || !profilesInput) {
+      return;
+    }
+
+    const run = () => this.syncHostProfilesFieldValue(hostRoot, profilesInput);
+
+    hostRoot.addEventListener("change", run);
+
+    try {
+      const overlay = overlays_stack.getById("widget_properties");
+
+      if (overlay?.$dialogue?.[0]) {
+        overlay.$dialogue[0].addEventListener("overlay.reload", run);
+      }
+    }
+    catch (_err) {
+      // overlays_stack may be unavailable outside the dashboard overlay.
+    }
+
+    run();
+  }
+
+  collectOrderedHostIds(hostRoot) {
+    if (!hostRoot) {
+      return [];
+    }
+
+    const collected = [];
+
+    for (const input of hostRoot.querySelectorAll('input[name="hostid[]"]')) {
+      if (input.value) {
+        collected.push(String(input.value).trim());
+      }
+    }
+
+    if (collected.length > 0) {
+      return [...new Set(collected)];
+    }
+
+    for (const selector of ['input[name="hostid"]', 'input[type="hidden"][name^="hostid"]']) {
+      const input = hostRoot.querySelector(selector);
+
+      if (input?.value) {
+        collected.push(String(input.value).trim());
+      }
+    }
+
+    return [...new Set(collected)];
+  }
+
+  syncHostProfilesFieldValue(hostRoot, profilesInput) {
+    const ordered = this.collectOrderedHostIds(hostRoot);
+    let profiles = [];
+
+    try {
+      profiles = JSON.parse(profilesInput.value || "[]");
+    }
+    catch (_err) {
+      profiles = [];
+    }
+
+    if (!Array.isArray(profiles)) {
+      profiles = [];
+    }
+
+    const byHost = {};
+
+    for (const entry of profiles) {
+      if (entry && entry.hostid) {
+        byHost[String(entry.hostid)] =
+          entry.overrides && typeof entry.overrides === "object" ? entry.overrides : {};
+      }
+    }
+
+    const next = ordered.map((hostid) => ({
+      hostid,
+      overrides: byHost[hostid] || {},
+    }));
+
+    profilesInput.value = JSON.stringify(next);
   }
 
   // Badge editor: add, remove, reorder, and keep the hidden JSON in sync.
