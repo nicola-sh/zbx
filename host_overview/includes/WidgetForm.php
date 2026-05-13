@@ -8,6 +8,7 @@
 
 namespace Modules\HostOverview\Includes;
 
+use JsonException;
 use Zabbix\Widgets\CWidgetField;
 use Zabbix\Widgets\CWidgetForm;
 use Zabbix\Widgets\Fields\CWidgetFieldCheckBoxList;
@@ -78,15 +79,74 @@ class WidgetForm extends CWidgetForm
         'partition',
     ];
 
+    /** @var list<string> */
+    private const SNAPSHOT_FIELD_NAMES = [
+        'hostid',
+        'override_hostid',
+        'host_profiles',
+        'badges',
+        'badge_uptime_item_name',
+        'badge_liveliness_item_name',
+        'problems_hide_acknowledged',
+        'fill_color',
+        'th_color_1',
+        'th_color_2',
+        'th_color_3',
+        'th_num_1',
+        'th_num_2',
+        'th_cpu_1',
+        'th_cpu_2',
+        'th_ram_1',
+        'th_ram_2',
+        'th_load_1',
+        'th_load_2',
+        'th_swap_1',
+        'th_swap_2',
+        'th_iface_1',
+        'th_iface_2',
+        'th_disk_1',
+        'th_disk_2',
+        'th_partition_1',
+        'th_partition_2',
+        'metrics_show',
+        'load_high',
+        'interfaces_high',
+        'interfaces_unit',
+        'color_scheme',
+        'corners',
+        'label_length',
+        'bar_height',
+        'open_links_same_window',
+        'problems_pulse',
+        'freshness_warn',
+        'freshness_stale',
+        'problems_hide_suppressed',
+        'interfaces_exclude',
+        'disks_exclude',
+        'partitions_exclude',
+        'item_name_cpu',
+        'item_name_ram',
+        'item_name_load',
+        'item_name_swap',
+        'item_swap_invert',
+        'item_name_disk',
+        'item_name_partition',
+        'item_name_interface',
+    ];
+
     public function addFields(): self
     {
         return $this
             ->addField(
-                (new CWidgetFieldMultiSelectHost('hostid', _('Host')))
-                    ->setMultiple(false)
+                (new CWidgetFieldMultiSelectHost('hostid', _('Hosts')))
+                    ->setMultiple(true)
             )
             ->addField(
                 new CWidgetFieldMultiSelectOverrideHost()
+            )
+            ->addField(
+                (new CWidgetFieldTextBox('host_profiles', _('Per-host overrides')))
+                    ->setDefault('[]')
             )
             ->addField(
                 (new CWidgetFieldBadgesList('badges'))
@@ -333,18 +393,87 @@ class WidgetForm extends CWidgetForm
             }
         }
 
-        return parent::normalizeValues($values);
+        $values = parent::normalizeValues($values);
+
+        $ordered = self::collectOrderedHostIdsFromValues($values);
+        $profiles_raw = $values['host_profiles'] ?? '[]';
+
+        try {
+            $profiles = HostProfilesHelper::parse($profiles_raw);
+            $values['host_profiles'] = HostProfilesHelper::encode(
+                HostProfilesHelper::syncWithHostOrder($profiles, $ordered)
+            );
+        }
+        catch (JsonException) {
+            $values['host_profiles'] = HostProfilesHelper::encode(
+                HostProfilesHelper::syncWithHostOrder([], $ordered)
+            );
+        }
+
+        return $values;
     }
 
     public function validate(bool $strict = false): array
     {
         $errors = parent::validate($strict);
-        $enabled_metrics = array_map('intval', (array) $this->getFieldValue('metrics_show'));
 
         if (!self::hasConfiguredValue($this->getFieldValue('hostid'))
                 && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))) {
             $this->addFieldError($errors, 'hostid', _('cannot be empty'));
         }
+
+        $profiles_raw = trim((string) $this->getFieldValue('host_profiles'));
+
+        if ($profiles_raw === '') {
+            $profiles_raw = '[]';
+        }
+
+        try {
+            json_decode($profiles_raw, true, 512, JSON_THROW_ON_ERROR);
+        }
+        catch (JsonException) {
+            $this->addFieldError($errors, 'host_profiles', _('must be valid JSON'));
+
+            return $errors;
+        }
+
+        $profiles = HostProfilesHelper::parse($profiles_raw);
+
+        $ordered = $this->resolveOrderedHostIdsFromForm();
+
+        if ($ordered !== [] && count($profiles) !== count($ordered)) {
+            $this->addFieldError($errors, 'host_profiles', _('must include one entry per selected host'));
+        }
+
+        foreach ($profiles as $index => $profile) {
+            $pos = $index + 1;
+            $host_label = (string) ($profile['hostid'] ?? $pos);
+
+            if ($ordered !== [] && !in_array($profile['hostid'], $ordered, true)) {
+                $this->addFieldErrorToHostProfiles(
+                    $errors,
+                    _s('Host %1$s: host is not in the current selection.', $host_label)
+                );
+            }
+        }
+
+        $base = $this->snapshotFieldValues();
+
+        foreach ($profiles as $index => $profile) {
+            $pos = $index + 1;
+            $merged = HostProfilesHelper::mergeProfile($base, $profile);
+            $this->validateProfileConfiguration($errors, $merged, $pos);
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @param array<string, mixed> $merged
+     */
+    private function validateProfileConfiguration(array &$errors, array $merged, int $position): void
+    {
+        $enabled_metrics = array_map('intval', (array) ($merged['metrics_show'] ?? []));
 
         foreach ([
             self::METRIC_CPU => 'item_name_cpu',
@@ -353,46 +482,101 @@ class WidgetForm extends CWidgetForm
             self::METRIC_SWAP => 'item_name_swap',
         ] as $metric => $field_name) {
             if (in_array($metric, $enabled_metrics, true)) {
-                $this->validateRequiredTextField($errors, $field_name);
+                $this->validateRequiredTextFieldMerged($errors, $merged, $field_name, $position);
             }
         }
 
         if (in_array(self::METRIC_DISKS, $enabled_metrics, true)) {
-            $this->validateWildcardPatternField($errors, 'item_name_disk', 1);
+            $this->validateWildcardPatternFieldMerged($errors, $merged, 'item_name_disk', 1, $position);
         }
 
         if (in_array(self::METRIC_PARTITIONS, $enabled_metrics, true)) {
-            $this->validateWildcardPatternField($errors, 'item_name_partition', 1);
+            $this->validateWildcardPatternFieldMerged($errors, $merged, 'item_name_partition', 1, $position);
         }
 
         if (in_array(self::METRIC_INTERFACES, $enabled_metrics, true)) {
-            $this->validateWildcardPatternField($errors, 'item_name_interface', 2);
+            $this->validateWildcardPatternFieldMerged($errors, $merged, 'item_name_interface', 2, $position);
         }
 
-        if ($this->hasBadgeType(CWidgetFieldBadgesList::BADGE_UPTIME)) {
-            $this->validateRequiredTextField($errors, 'badge_uptime_item_name');
+        if ($this->hasBadgeTypeInMerged($merged, CWidgetFieldBadgesList::BADGE_UPTIME)) {
+            $this->validateRequiredTextFieldMerged($errors, $merged, 'badge_uptime_item_name', $position);
         }
 
-        if ($this->hasBadgeType(CWidgetFieldBadgesList::BADGE_LIVELINESS)) {
-            $this->validateRequiredTextField($errors, 'badge_liveliness_item_name');
-        }
-
-        return $errors;
-    }
-
-    private function validateRequiredTextField(array &$errors, string $field_name): void
-    {
-        if (trim((string) $this->getFieldValue($field_name)) === '') {
-            $this->addFieldError($errors, $field_name, _('cannot be empty'));
+        if ($this->hasBadgeTypeInMerged($merged, CWidgetFieldBadgesList::BADGE_LIVELINESS)) {
+            $this->validateRequiredTextFieldMerged($errors, $merged, 'badge_liveliness_item_name', $position);
         }
     }
 
-    private function validateWildcardPatternField(array &$errors, string $field_name, int $required_wildcards): void
+    /**
+     * @return array<string, mixed>
+     */
+    private function snapshotFieldValues(): array
     {
-        $value = trim((string) $this->getFieldValue($field_name));
+        $snapshot = [];
+
+        foreach (self::SNAPSHOT_FIELD_NAMES as $name) {
+            $snapshot[$name] = $this->getFieldValue($name);
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * @param array<string, mixed> $merged
+     */
+    private function hasBadgeTypeInMerged(array $merged, int $type): bool
+    {
+        $badges_raw = $merged['badges'] ?? '[]';
+        $badges = is_string($badges_raw) ? (json_decode($badges_raw, true) ?: []) : [];
+
+        if (!is_array($badges)) {
+            return false;
+        }
+
+        foreach ($badges as $badge) {
+            if ((int) ($badge['type'] ?? -1) === $type) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $merged
+     */
+    private function validateRequiredTextFieldMerged(
+        array &$errors,
+        array $merged,
+        string $field_name,
+        int $position
+    ): void {
+        if (trim((string) ($merged[$field_name] ?? '')) === '') {
+            $this->addFieldErrorToHostProfiles(
+                $errors,
+                _s('Host row %1$s: %2$s cannot be empty.', $position, $this->getField($field_name)->getErrorLabel())
+            );
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $merged
+     */
+    private function validateWildcardPatternFieldMerged(
+        array &$errors,
+        array $merged,
+        string $field_name,
+        int $required_wildcards,
+        int $position
+    ): void {
+        $value = trim((string) ($merged[$field_name] ?? ''));
 
         if ($value === '') {
-            $this->addFieldError($errors, $field_name, _('cannot be empty'));
+            $this->addFieldErrorToHostProfiles(
+                $errors,
+                _s('Host row %1$s: %2$s cannot be empty.', $position, $this->getField($field_name)->getErrorLabel())
+            );
+
             return;
         }
 
@@ -401,8 +585,80 @@ class WidgetForm extends CWidgetForm
                 ? _('must contain at least one "*" wildcard')
                 : _s('must contain at least %1$s "*" wildcards', $required_wildcards);
 
-            $this->addFieldError($errors, $field_name, $message);
+            $this->addFieldErrorToHostProfiles(
+                $errors,
+                _s(
+                    'Host row %1$s: Invalid parameter "%2$s": %3$s.',
+                    $position,
+                    $this->getField($field_name)->getErrorLabel(),
+                    $message
+                )
+            );
         }
+    }
+
+    private function addFieldErrorToHostProfiles(array &$errors, string $message): void
+    {
+        $errors[] = _s(
+            'Invalid parameter "%1$s": %2$s.',
+            $this->getField('host_profiles')->getErrorLabel(),
+            $message
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $values
+     * @return list<string>
+     */
+    private static function collectOrderedHostIdsFromValues(array $values): array
+    {
+        $override = self::normalizeHostIdsScalarList($values['override_hostid'] ?? []);
+
+        if ($override !== []) {
+            return $override;
+        }
+
+        return self::normalizeHostIdsScalarList($values['hostid'] ?? []);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function resolveOrderedHostIdsFromForm(): array
+    {
+        $override = self::normalizeHostIdsScalarList($this->getFieldValue('override_hostid'));
+
+        if ($override !== []) {
+            return $override;
+        }
+
+        return self::normalizeHostIdsScalarList($this->getFieldValue('hostid'));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function normalizeHostIdsScalarList(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $hostids = [];
+
+        foreach ($value as $hostid) {
+            if (!is_scalar($hostid)) {
+                continue;
+            }
+
+            $hostid = trim((string) $hostid);
+
+            if ($hostid !== '') {
+                $hostids[] = $hostid;
+            }
+        }
+
+        return array_values(array_unique($hostids));
     }
 
     private function addFieldError(array &$errors, string $field_name, string $message): void
@@ -433,17 +689,4 @@ class WidgetForm extends CWidgetForm
         return trim((string) $value) !== '';
     }
 
-    private function hasBadgeType(int $type): bool
-    {
-        $badges_field = $this->getField('badges');
-        $badges = $badges_field instanceof CWidgetFieldBadgesList ? $badges_field->getBadges() : [];
-
-        foreach ($badges as $badge) {
-            if ((int) ($badge['type'] ?? -1) === $type) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }
