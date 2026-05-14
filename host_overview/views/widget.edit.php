@@ -26,13 +26,46 @@ $form
     ->addField($data['templateid'] === null
         ? new CWidgetFieldMultiSelectOverrideHostView($data['fields']['override_hostid'])
         : null
-    )
+    );
+
+for ($slot = 0; $slot < WidgetForm::MULTI_HOST_SLOT_COUNT; $slot++) {
+    $n = $slot + 1;
+    $pfx = 'mh' . $slot . '_';
+    $fieldset = (new CWidgetFormFieldsetCollapsibleView(_s('Host #%1$d (optional)', $n)))
+        ->addClass('js-host-slot');
+
+    $fieldset
+        ->addItem([
+            new CLabel($data['fields'][$pfx . 'hostid']->getLabel(), $data['fields'][$pfx . 'hostid']->getName()),
+            new CFormField((new CWidgetFieldMultiSelectHostView($data['fields'][$pfx . 'hostid']))->getView()),
+        ])
+        ->addItem([
+            new CLabel($data['fields'][$pfx . 'display_alias']->getLabel(), $data['fields'][$pfx . 'display_alias']->getName()),
+            new CFormField($form->registerField(new CWidgetFieldTextBoxView($data['fields'][$pfx . 'display_alias']))->getView()),
+        ])
+        ->addItem([
+            new CLabel($data['fields'][$pfx . 'badges_placement']->getLabel(), $data['fields'][$pfx . 'badges_placement']->getName()),
+            new CFormField((new CWidgetFieldRadioButtonListView($data['fields'][$pfx . 'badges_placement']))->getView()),
+        ])
+        ->addItem([
+            (new CLabel($data['fields'][$pfx . 'overrides']->getLabel(), $data['fields'][$pfx . 'overrides']->getName()))
+                ->addItem(makeHelpIcon(_(
+                    'Optional JSON object with field names from this form (for example item_name_cpu, th_cpu_1, metrics_show). Use {} to rely on the global defaults below for this host only.'
+                ))),
+            new CFormField($form->registerField(new CWidgetFieldTextBoxView($data['fields'][$pfx . 'overrides']))->getView()),
+        ]);
+
+    $form->addFieldset($fieldset);
+}
+
+$form
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Per-host overrides (JSON)')))
+        (new CWidgetFormFieldsetCollapsibleView(_('Stored host profiles (auto-synced)')))
+            ->addClass('js-host-profiles-sync-fieldset')
             ->addItem([
                 (new CLabel($data['fields']['host_profiles']->getLabel(), $data['fields']['host_profiles']->getName()))
                     ->addItem(makeHelpIcon(_(
-                        'With several hosts selected, the widget shows a summary list and traffic-light status; click a row to expand that host. Optional JSON (same order as hosts): [{"hostid":"10044","overrides":{"item_name_cpu":"CPU load","th_cpu_1":"95"}}]. Empty overrides use the defaults from this form. The JSON is normalized when you save.'
+                        'This JSON is rebuilt automatically from the host list above when you save. You can still edit it manually if needed.'
                     ))),
                 new CFormField(
                     $form->registerField(new CWidgetFieldTextBoxView($data['fields']['host_profiles']))->getView()

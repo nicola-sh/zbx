@@ -177,3 +177,8 @@
   flex: 0 0 auto;
   opacity: 0.8;
 }
+
+/* Auto-synced host_profiles JSON is maintained by widget.edit.js from host slots */
+.js-host-profiles-sync-fieldset {
+  display: none !important;
+}
