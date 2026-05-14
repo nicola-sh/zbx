@@ -1,0 +1,88 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 nicola
+ */
+
+/* Runtime Config */
+.dashboard-widget-main_overview {
+  --widget-inline-spacing: 10px;
+  --label-width-default: 90px;
+  --metric-row-gap: 25px;
+  --metric-row-padding-y: 5px;
+  --metric-multi-gap: 10px;
+  --metric-multi-min-width: 220px;
+  --metric-value-gap: 0.2em;
+  --metric-bar-offset-y: -2px;
+  --metric-fill-transition-duration: 250ms;
+  --toolbar-margin-top: var(--metric-row-padding-y);
+  --toolbar-margin-bottom: var(--widget-inline-spacing);
+  --badge-height: 30px;
+  --badge-padding-x: 12px;
+  --badge-radius: 8px;
+  --badge-icon-size: 14px;
+  --badge-icon-gap: 8px;
+  --bar-radius: 10px;
+  --canvas-radius: 4px;
+  --dot-size: 5px;
+  --dot-gap: 15px;
+  --text-col-width: 40px;
+  --cell-label-width: 60px;
+  --trend-arrow-size: 14px;
+  --muted-opacity: 0.6;
+  --badge-bg: rgba(0, 0, 0, 0.2);
+  --badge-hover-bg: rgba(0, 0, 0, 0.3);
+  --bar-bg: rgba(0, 0, 0, 0.25);
+  --blue-bg: rgba(70, 130, 220, 0.4);
+  --blue-pulse-bg: rgba(70, 130, 220, 0.15);
+  --yellow-bg: rgba(255, 210, 0, 0.4);
+  --yellow-pulse-bg: rgba(255, 210, 0, 0.15);
+  --orange-bg: rgba(255, 133, 27, 0.4);
+  --orange-pulse-bg: rgba(255, 133, 27, 0.15);
+  --lightred-bg: rgba(230, 80, 40, 0.4);
+  --lightred-pulse-bg: rgba(230, 80, 40, 0.15);
+  --red-bg: rgba(255, 65, 54, 0.4);
+  --red-pulse-bg: rgba(255, 65, 54, 0.15);
+  --sparkline-border-color: rgba(128, 128, 128, 0.3);
+  --sparkline-border-width: 1px;
+  --sparkline-label-color: rgba(128, 128, 128, 0.7);
+  --sparkline-active-color: #458adc;
+  --sparkline-active-fg: #fff;
+  --sparkline-font-size: 12px;
+  --sparkline-overlay-padding-inline: var(--widget-inline-spacing);
+  --sparkline-overlay-padding-bottom: var(--widget-inline-spacing);
+  --sparkline-label-padding-y: 6px;
+  --sparkline-overlay-bg: Canvas;
+  --hidden-header-padding-top: var(--metric-row-padding-y);
+  --problems-pulse-duration: 1.5s;
+  position: relative;
+}
+
+/* Widget Chrome */
+.dashboard-widget-main_overview.sparkline-open {
+  overflow: hidden;
+}
+
+.dashboard-widget-main_overview.is-loading.sparkline-open {
+  pointer-events: auto !important;
+}
+
+.dashboard-widget-main_overview.is-loading.sparkline-open::before,
+.dashboard-widget-main_overview.is-loading.sparkline-open::after {
+  content: none !important;
+  display: none !important;
+}
+
+.dashboard-widget-main_overview.hidden_header .main-overview-container,
+.dashboard-widget-main_overview.hidden_header .sparkline-overlay {
+  padding-top: var(--hidden-header-padding-top);
+}
+
+.dashboard-widget-main_overview.square-corners {
+  --bar-radius: 0;
+  --badge-radius: 0;
+  --canvas-radius: 0;
+}
+
+.dashboard-widget-main_overview.square-corners .sparkline-overlay {
+  border-radius: 0;
+}

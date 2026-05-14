@@ -1,0 +1,309 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 nicola
+ */
+
+/* Badge Editor (widget.edit.php) */
+.badge-lane {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  padding: 8px;
+  min-height: 52px;
+}
+
+.badge-lane-rows {
+  min-height: 28px;
+}
+
+.badge-add-wrap {
+  position: relative;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.badge-lane .js-badge-add {
+  margin-top: 0;
+}
+
+.badge-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.badge-row:last-child {
+  margin-bottom: 0;
+}
+
+.badge-row.is-dragging {
+  opacity: 0.55;
+}
+
+.badge-row .badge-row-type {
+  min-width: 110px;
+  font-weight: 600;
+}
+
+.badge-row input[type="text"] {
+  min-width: 120px;
+}
+
+.badge-row .js-badge-drag {
+  cursor: grab;
+  user-select: none;
+  color: #768d99;
+  font-weight: bold;
+  padding: 0 4px;
+}
+
+.badge-row .js-badge-drag:active {
+  cursor: grabbing;
+}
+
+.badge-row .js-badge-drag svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.badge-row .js-badge-remove {
+  flex-shrink: 0;
+}
+
+/* Item Match Assistant (widget.edit.php) */
+.item-match-assistant {
+  display: grid;
+  gap: 6px;
+}
+
+.item-match-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.item-match-controls input[type="text"] {
+  flex: 1 1 260px;
+  min-width: 180px;
+}
+
+.item-match-preview {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.item-match-preview[data-state="success"] {
+  background: rgba(76, 159, 56, 0.12);
+}
+
+.item-match-preview[data-state="warning"] {
+  background: rgba(255, 133, 27, 0.12);
+}
+
+.item-match-preview[data-state="error"] {
+  background: rgba(255, 65, 54, 0.12);
+}
+
+.item-match-preview-actions {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  margin-top: 6px;
+}
+
+.item-match-apply {
+  margin-left: 0;
+  margin-inline-start: 0;
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.item-match-preview-actions>.item-match-apply:not(:first-child) {
+  margin-left: 0 !important;
+  margin-inline-start: 0 !important;
+  padding-left: 0 !important;
+  padding-inline-start: 0 !important;
+}
+
+.item-match-preview-note {
+  width: 100%;
+  opacity: 0.75;
+}
+
+.item-match-preview-section+.item-match-preview-section {
+  margin-top: 10px;
+}
+
+.item-match-preview-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.item-match-preview-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.item-match-preview-row {
+  display: grid;
+  gap: 2px;
+}
+
+.item-match-preview-row[data-filtered="true"] {
+  opacity: 0.7;
+}
+
+.item-match-preview-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.item-match-preview-arrow {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  opacity: 0.8;
+}
+
+.main-overview-per-host-root {
+  margin: 10px 0 14px;
+}
+
+.main-overview-per-host-hint {
+  color: #6a737d;
+  font-size: 12px;
+  line-height: 1.45;
+  margin-bottom: 10px;
+  max-width: 52rem;
+}
+
+.main-overview-per-host-empty {
+  color: #95999d;
+  font-style: italic;
+  padding: 6px 0;
+}
+
+.main-overview-phost {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.main-overview-phost-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.main-overview-phost-head:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.main-overview-phost-arrow {
+  flex: 0 0 auto;
+  width: 1rem;
+  opacity: 0.65;
+  font-size: 10px;
+}
+
+.main-overview-phost-title {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.main-overview-phost-body {
+  padding: 4px 10px 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.main-overview-phost-section {
+  margin-top: 6px;
+}
+
+.main-overview-phost-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: #444;
+}
+
+.main-overview-phost-section-title {
+  flex: 1 1 auto;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  padding-bottom: 2px;
+}
+
+.main-overview-phost-section-body {
+  padding: 6px 0 4px 18px;
+}
+
+.main-overview-phost-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.main-overview-phost-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.main-overview-phost-row--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.main-overview-phost-label {
+  flex: 0 0 10rem;
+  max-width: 100%;
+  color: #555;
+}
+
+.main-overview-phost-input,
+.main-overview-phost-textarea {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.main-overview-phost-textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+}
+
+/* Auto-synced host_profiles JSON is rebuilt from the per-host accordion in widget.edit.js */
+.js-host-profiles-sync-fieldset {
+  display: none !important;
+}
