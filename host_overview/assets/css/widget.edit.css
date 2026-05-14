@@ -178,7 +178,133 @@
   opacity: 0.8;
 }
 
-/* Auto-synced host_profiles JSON is maintained by widget.edit.js from host slots */
+.host-overview-per-host-root {
+  margin: 10px 0 14px;
+}
+
+.host-overview-per-host-hint {
+  color: #6a737d;
+  font-size: 12px;
+  line-height: 1.45;
+  margin-bottom: 10px;
+  max-width: 52rem;
+}
+
+.host-overview-per-host-empty {
+  color: #95999d;
+  font-style: italic;
+  padding: 6px 0;
+}
+
+.host-overview-phost {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.host-overview-phost-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.host-overview-phost-head:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.host-overview-phost-arrow {
+  flex: 0 0 auto;
+  width: 1rem;
+  opacity: 0.65;
+  font-size: 10px;
+}
+
+.host-overview-phost-title {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.host-overview-phost-body {
+  padding: 4px 10px 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.host-overview-phost-section {
+  margin-top: 6px;
+}
+
+.host-overview-phost-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: #444;
+}
+
+.host-overview-phost-section-title {
+  flex: 1 1 auto;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  padding-bottom: 2px;
+}
+
+.host-overview-phost-section-body {
+  padding: 6px 0 4px 18px;
+}
+
+.host-overview-phost-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.host-overview-phost-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.host-overview-phost-row--split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.host-overview-phost-label {
+  flex: 0 0 10rem;
+  max-width: 100%;
+  color: #555;
+}
+
+.host-overview-phost-input,
+.host-overview-phost-textarea {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.host-overview-phost-textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+}
+
+/* Auto-synced host_profiles JSON is rebuilt from the per-host accordion in widget.edit.js */
 .js-host-profiles-sync-fieldset {
   display: none !important;
 }
