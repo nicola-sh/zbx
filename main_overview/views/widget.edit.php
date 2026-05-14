@@ -107,7 +107,7 @@ $form
                 ),
             ])
     )
-    ->includeJsFile('widget.edit.js')
+    ->includeJsFile('widget.edit.js.php')
     ->addJavaScript('form.init(' . json_encode([
         'color_picker_class' => $color_picker_class,
         'badge_type_options' => CWidgetFieldBadgesList::getBadgeTypeOptions(),

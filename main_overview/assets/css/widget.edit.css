@@ -318,7 +318,7 @@
   font-size: 12px;
 }
 
-/* Auto-synced host_profiles JSON is rebuilt from the per-host accordion in widget.edit.js */
+/* Auto-synced host_profiles JSON is rebuilt from the per-host accordion in assets/js/widget.edit.js */
 .js-host-profiles-sync-fieldset {
   display: none !important;
 }
