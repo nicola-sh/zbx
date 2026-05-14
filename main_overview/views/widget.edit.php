@@ -42,7 +42,7 @@ $form
                 (new CDiv())
                     ->addClass('main-overview-per-host-hint')
                     ->addItem(_(
-                        'Select hosts above, then apply to build or refresh per-host panels. Metrics, items, and thresholds are edited inside each host block; global section keeps badges and style only.'
+                        'After you choose one or more hosts above, a section appears here for each host (CPU, memory, items, thresholds). If nothing shows, click "Apply / refresh host panels".'
                     ))
             )
             ->addItem(

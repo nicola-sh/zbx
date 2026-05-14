@@ -670,8 +670,17 @@ window.form = new (class {
     return input?.value ?? "";
   }
 
+  /**
+   * Zabbix formats multiselect DOM id with zbx_formatDomId(): "hostid[]" -> "hostid__".
+   */
+  resolveHostMultiselectRoot() {
+    return document.getElementById("hostid__")
+      || document.getElementById("hostid")
+      || document.querySelector("div.multiselect[id^=\"hostid\"]");
+  }
+
   getSelectedHostId() {
-    const hostField = document.getElementById("hostid");
+    const hostField = this.resolveHostMultiselectRoot();
 
     if (!hostField) {
       return "";
@@ -737,7 +746,7 @@ window.form = new (class {
 
     const mount = document.getElementById("js-host-accordion-mount");
     const profilesInput = document.querySelector('[name="host_profiles"]');
-    const hostRoot = document.getElementById("hostid");
+    const hostRoot = this.resolveHostMultiselectRoot();
 
     if (!mount || !profilesInput) {
       return;
@@ -830,7 +839,7 @@ window.form = new (class {
 
   refreshHostAccordion() {
     const mount = this._perHostMount;
-    const hostRoot = this._perHostHostRoot;
+    const hostRoot = this._perHostHostRoot || this.resolveHostMultiselectRoot();
     const profilesInput = this._perHostProfilesInput;
 
     if (!mount || !profilesInput) {
@@ -1135,7 +1144,7 @@ window.form = new (class {
       return `${alias} (${hostid})`;
     }
 
-    const hostRoot = document.getElementById("hostid");
+    const hostRoot = this.resolveHostMultiselectRoot();
 
     if (hostRoot) {
       for (const inp of hostRoot.querySelectorAll('input[name="hostid[]"]')) {
@@ -1606,7 +1615,7 @@ window.form = new (class {
 
   writePerHostProfilesToHidden() {
     const profilesInput = this._perHostProfilesInput || document.querySelector('[name="host_profiles"]');
-    const hostRoot = this._perHostHostRoot || document.getElementById("hostid");
+    const hostRoot = this._perHostHostRoot || this.resolveHostMultiselectRoot();
 
     if (!profilesInput || !hostRoot) {
       return;
