@@ -36,7 +36,7 @@ function render_metric_row(array $row): CDiv
         $list->addItem(
             (new CTag('span', true))
                 ->addClass('empty')
-                ->addItem(_('Нет данных'))
+                ->addItem(_m('No data'))
         );
     } else {
         foreach ($cells as $cell) {
@@ -183,7 +183,7 @@ function _render_metric_action(array $cell, ?array $latest_data_link, string $te
                 ->addItem($text)
         ))
             ->addClass('metric-value-link')
-            ->setAttribute('title', _('Меню элемента'))
+            ->setAttribute('title', _m('Item menu'))
             ->setMenuPopup(CMenuPopupHelper::getItem([
                 'itemid' => $itemid,
                 'context' => 'host',
@@ -201,7 +201,7 @@ function _render_metric_action(array $cell, ?array $latest_data_link, string $te
         );
 
     if ($tag === 'a') {
-        _apply_link_attrs($element, $latest_data_link, _('Последние данные'));
+        _apply_link_attrs($element, $latest_data_link, _m('Latest data'));
     }
 
     return $element;

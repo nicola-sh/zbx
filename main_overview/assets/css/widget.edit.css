@@ -188,6 +188,22 @@
   display: none !important;
 }
 
+/*
+ * Zabbix widget forms use a two-column CSS grid: label column width is set via
+ * --label-width on .form-grid. Direct children that are not label/control pairs
+ * must span all columns or they sit in the first (label) track and inherit a
+ * huge min width (see DevTools: --label-width: 984px).
+ */
+.form-grid > .main-overview-add-host-row,
+.form-grid > .js-host-accordion-mount,
+.form-grid > .main-overview-hidden-metrics {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .main-overview-add-host-row {
   display: flex;
   flex-wrap: wrap;
@@ -223,10 +239,11 @@
 
 .main-overview-per-host-hint {
   flex: 1 1 12rem;
+  min-width: 0;
   color: var(--font-alt-color, #6a737d);
   font-size: 12px;
   line-height: 1.45;
-  max-width: 52rem;
+  max-width: min(100%, 42rem);
 }
 
 .main-overview-per-host-empty {

@@ -1,0 +1,673 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the main_overview package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: main_overview 0.5.5\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-14 13:43+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: /workspace/main_overview/actions/WidgetView.php:449
+msgid "Maintenance"
+msgstr ""
+
+#: /workspace/main_overview/includes/CWidgetFieldBadgesList.php:101
+msgid "this"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:144
+msgid "Hosts"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:151
+msgid "Per-host overrides"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:158
+msgid "Uptime item"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:162
+msgid "Liveliness item"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:166
+msgid "Ignore acknowledged problems"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:170
+msgid "Solid"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:182
+msgid "Normal"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:194
+msgid "CPU: high"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:198
+msgid "CPU: medium"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:202
+msgid "Memory: high"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:206
+msgid "Memory: medium"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:210
+msgid "Load: high"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:214
+msgid "Load: medium"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:218
+msgid "Swap: high"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:222
+msgid "Swap: medium"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:226
+msgid "Interfaces: high"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:230
+msgid "Interfaces: medium"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:234
+msgid "Disk: high"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:238
+msgid "Disk: medium"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:242
+msgid "Partition: high"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:246
+msgid "Partition: medium"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:250
+msgid "Metrics"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:251
+#: /workspace/main_overview/views/widget.edit.php:119
+msgid "CPU"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:252
+#: /workspace/main_overview/views/widget.edit.php:120
+msgid "Memory"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:253
+#: /workspace/main_overview/views/widget.edit.php:121
+msgid "Load"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:254
+#: /workspace/main_overview/views/widget.edit.php:122
+#: /workspace/main_overview/views/widget.edit.php:170
+msgid "Swap"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:255
+#: /workspace/main_overview/views/widget.edit.php:123
+#: /workspace/main_overview/views/widget.edit.php:171
+msgid "Interfaces"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:256
+#: /workspace/main_overview/views/widget.edit.php:124
+#: /workspace/main_overview/views/widget.edit.php:172
+msgid "Disk utilization"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:257
+#: /workspace/main_overview/views/widget.edit.php:125
+#: /workspace/main_overview/views/widget.edit.php:173
+msgid "Partitions"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:270
+#: /workspace/main_overview/views/widget.edit.php:182
+#: /workspace/main_overview/views/widget.edit.php:306
+msgid "Load ceiling"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:274
+#: /workspace/main_overview/views/widget.edit.php:187
+#: /workspace/main_overview/views/widget.edit.php:323
+msgid "Interface ceiling"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:279
+msgid "Kbps"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:280
+msgid "Mbps"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:281
+msgid "Gbps"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:286
+msgid "Color scheme"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:287
+msgid "By thresholds"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:288
+msgid "Solid fill"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:293
+msgid "Corners"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:294
+msgid "Rounded"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:295
+msgid "Square"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:300
+msgid "Labels"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:301
+msgid "Full"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:302
+msgid "Short"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:307
+msgid "Bar height"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:319
+msgid "Open links in this tab"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:323
+msgid "Problems badge pulse"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:327
+msgid "Liveliness: warning"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:331
+msgid "Liveliness: stale"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:335
+msgid "Ignore suppressed problems"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:339
+#: /workspace/main_overview/views/widget.edit.php:186
+msgid "Interface filter"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:343
+#: /workspace/main_overview/views/widget.edit.php:190
+msgid "Disk filter"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:347
+#: /workspace/main_overview/views/widget.edit.php:192
+msgid "Partition filter"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:351
+#: /workspace/main_overview/views/widget.edit.php:179
+msgid "Item: CPU"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:355
+#: /workspace/main_overview/views/widget.edit.php:180
+msgid "Item: memory"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:359
+#: /workspace/main_overview/views/widget.edit.php:181
+msgid "Item: load"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:363
+#: /workspace/main_overview/views/widget.edit.php:183
+msgid "Item: swap"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:367
+#: /workspace/main_overview/views/widget.edit.php:184
+msgid "Invert swap"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:371
+#: /workspace/main_overview/views/widget.edit.php:189
+msgid "Disk template"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:375
+#: /workspace/main_overview/views/widget.edit.php:191
+msgid "Partition template"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:379
+#: /workspace/main_overview/views/widget.edit.php:185
+msgid "Interface template"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:427
+msgid "cannot be empty"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:440
+msgid "must be valid JSON"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:450
+msgid "must contain one entry per selected host"
+msgstr ""
+
+#: /workspace/main_overview/includes/WidgetForm.php:590
+msgid "must contain at least one \"*\" character"
+msgstr ""
+
+#: /workspace/main_overview/views/components/layout.metric.php:39
+msgid "No data"
+msgstr ""
+
+#: /workspace/main_overview/views/components/layout.metric.php:186
+msgid "Item menu"
+msgstr ""
+
+#: /workspace/main_overview/views/components/layout.metric.php:204
+msgid "Latest data"
+msgstr ""
+
+#: /workspace/main_overview/views/components/layout.multi_host.php:39
+msgid "Back to list"
+msgstr ""
+
+#: /workspace/main_overview/views/components/layout.sparkline.php:26
+msgid "View sparkline"
+msgstr ""
+
+#: /workspace/main_overview/views/components/layout.sparkline.php:35
+msgid "Back"
+msgstr ""
+
+#: /workspace/main_overview/views/components/layout.sparkline.php:37
+msgid "Back to overview"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:45
+msgid ""
+"After you select one or more hosts, a per-host settings block appears below "
+"(metrics, items, thresholds). If no panels appear, click \"Refresh host "
+"panels\"."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:49
+msgid "Refresh host panels"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:59
+msgid "Global: badges"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:65
+msgid "Do not count acknowledged problems in the Problems badge tally."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:68
+msgid "Do not count suppressed problems in the Problems badge tally."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:71
+msgid "Animate the problems badge when there are active incidents."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:75
+msgid "Global: appearance"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:77
+msgid "Open metric and badge links in the current browser tab."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:82
+msgid "Color: high"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:83
+msgid "Color: medium"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:84
+msgid "Color: normal"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:85
+msgid "Solid color"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:98
+msgid "Host profiles (sync)"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:103
+msgid ""
+"JSON is rebuilt automatically from the host list when you save. You can "
+"still edit it manually if needed."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:128
+#: /workspace/main_overview/views/widget.edit.php:223
+#: /workspace/main_overview/views/widget.edit.php:270
+msgid "Test"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:129
+msgid "Template or exclusions changed. Click \"Test\" to refresh the preview."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:130
+msgid "Input changed. Click \"Test\" to refresh the preview."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:131
+msgid "Select a host first."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:132
+msgid "Looking up matches…"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:133
+msgid "Could not run the match check."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:134
+msgid "Server returned an empty response."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:135
+msgid "Received an HTML page instead of JSON."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:136
+msgid "Could not read the server response."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:137
+#, php-format
+msgid "Exact match: %s."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:138
+#, php-format
+msgid "Single partial match: %s."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:139
+#, php-format
+msgid "Name matches found: %s. Pick an exact item name:"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:140
+msgid "No exact or single partial match yet. Enter an exact item name:"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:141
+msgid "No suitable item names were found."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:142
+#: /workspace/main_overview/views/widget.edit.php:159
+msgid "Enter an item name for preview."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:143
+msgid "Narrow the query to shorten the list."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:144
+msgid "Only the first rows are shown. Refine the template to narrow the list."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:145
+#, php-format
+msgid "Inserted exact item name: %s."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:146
+#, php-format
+msgid "Matches (%s)"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:147
+msgid "Excluded by filter"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:148
+msgid "No matching disks."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:149
+msgid "No matching partitions."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:150
+msgid "No matching interfaces."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:151
+msgid "No matches found."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:152
+msgid "For interfaces use at least two \"*\" characters in the template."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:153
+msgid "Add at least one \"*\" character to the template."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:154
+msgid "Add fixed text around \"*\" to narrow the match list."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:155
+msgid "Enter a template with \"*\" to preview disks."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:156
+msgid "Enter a template with \"*\" to preview partitions."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:157
+msgid "Enter a template with \"*\" to preview interfaces."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:158
+msgid "Enter a template with \"*\" for preview."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:162
+msgid "Pick one or more hosts in the field above."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:163
+msgid "Show metrics"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:164
+msgid "Custom badge list (optional)"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:166
+msgid ""
+"Leave empty to use global badges. Paste JSON in the same format as the "
+"global list to override badges for this host only."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:168
+msgid "Display"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:169
+msgid "CPU, memory, and load"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:174
+msgid "Extra overrides (JSON)"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:175
+msgid "Alias"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:176
+msgid "Badges"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:177
+msgid "Next to the name (summary)"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:178
+msgid "Details only"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:188
+msgid "Interface unit"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:193
+msgid "Extra JSON fields (merged with overrides)"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:194
+msgid "Example: {\"metrics_show\":[\"0\",\"1\"]}"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:207
+msgid ""
+"Prefer an exact item name. A partial name is used only when it matches "
+"exactly one item; otherwise \"No data\" is shown."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:308
+msgid ""
+"Maximum load for scaling the bar and sparkline. The actual load is still "
+"shown on screen."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:325
+msgid ""
+"Expected maximum throughput for scaling interface bars. The selected unit is "
+"applied."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:361
+msgid "Medium"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:363
+msgid "High"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:396
+msgid ""
+"Enter the exact uptime item name, for example \"System uptime\". A partial "
+"name is used only when it matches exactly one item; otherwise the badge will "
+"not show uptime."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:406
+msgid ""
+"Enter the exact liveliness item name, for example \"Zabbix agent ping\". A "
+"partial name is used only when it matches exactly one item; otherwise the "
+"badge will not render."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:420
+msgid "Liveliness thresholds"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:422
+msgid ""
+"Seconds since the last data for the selected liveliness item. Warning "
+"triggers first, then stale."
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:428
+msgid "Warn"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:430
+msgid "Stale"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:471
+msgid "Left"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:475
+msgid "Right"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:503
+msgid "Add"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:520
+msgid "Drag to reorder"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:528
+msgid "Badge text"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:536
+msgid "https://example.com or /path"
+msgstr ""
+
+#: /workspace/main_overview/views/widget.edit.php:543
+msgid "Remove"
+msgstr ""
