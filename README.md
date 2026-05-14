@@ -1,6 +1,6 @@
-# Zabbix Host Overview
+# zbx
 
-A **Zabbix dashboard widget** that shows a compact health summary for one or several hosts: metric bars (CPU, memory, load, swap, interfaces, disks, partitions), optional badges, sparklines, and links into Zabbix. It is aimed at typical Linux and Windows agent templates, with sensible defaults and wildcard-friendly item mapping.
+Zabbix dashboard widgets. This tree includes **Host Overview** — a compact health summary for one or several hosts: metric bars (CPU, memory, load, swap, interfaces, disks, partitions), optional badges, sparklines, and links into Zabbix. It targets typical Linux and Windows agent templates, with sensible defaults and wildcard-friendly item mapping.
 
 **Author:** nicola  
 **Widget version:** see `host_overview/manifest.json` (semantic versioning from **0.5.1**).
@@ -25,7 +25,7 @@ A **Zabbix dashboard widget** that shows a compact health summary for one or sev
 
 ## Repository layout
 
-This repository contains **only** the Host Overview widget module (`host_overview/`). There is no extra tooling or unrelated widgets in-tree.
+- `host_overview/` — Host Overview widget module.
 
 ## License
 
