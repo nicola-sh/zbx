@@ -53,18 +53,7 @@ class WildcardMetricResolver
         $inspection = $this->inspectInterfacePattern($pattern);
 
         if ($inspection['status'] !== self::STATUS_READY) {
-            return [
-                'status' => $inspection['status'],
-                'matched_item_count' => 0,
-                'excluded_item_count' => 0,
-                'excluded_row_count' => 0,
-                'interface_count' => 0,
-                'row_count' => 0,
-                'rows' => [],
-                'excluded_rows' => [],
-                'has_more_rows' => false,
-                'has_more_excluded_rows' => false,
-            ];
+            return $this->emptyInterfacePreview($inspection['status']);
         }
 
         $result = $this->buildInterfaceRowsResult($metrics, $inspection['pattern'], $exclude, $capacity);
@@ -139,17 +128,7 @@ class WildcardMetricResolver
         $inspection = $this->inspectSingleWildcardPattern($pattern);
 
         if ($inspection['status'] !== self::STATUS_READY) {
-            return [
-                'status' => $inspection['status'],
-                'matched_item_count' => 0,
-                'excluded_item_count' => 0,
-                'excluded_row_count' => 0,
-                'row_count' => 0,
-                'rows' => [],
-                'excluded_rows' => [],
-                'has_more_rows' => false,
-                'has_more_excluded_rows' => false,
-            ];
+            return $this->emptySingleWildcardPreview($inspection['status']);
         }
 
         $result = $this->buildSingleWildcardRowsResult($metrics, $inspection['pattern'], $exclude);
@@ -294,7 +273,7 @@ class WildcardMetricResolver
                 if ($percent !== null || $rows[$row_index]['percent'] === null) {
                     $rows[$row_index]['percent'] = $percent;
                     $rows[$row_index]['item_name'] = $metric_name;
-                    $rows[$row_index]['item_ref'] = $this->toItemRef($details);
+                    $rows[$row_index]['item_ref'] = ItemRef::fromMetric($details);
                 }
             }
             else {
@@ -303,7 +282,7 @@ class WildcardMetricResolver
                     'name' => $row_name,
                     'percent' => $percent,
                     'item_name' => $metric_name,
-                    'item_ref' => $this->toItemRef($details),
+                    'item_ref' => ItemRef::fromMetric($details),
                 ];
             }
         }
@@ -389,7 +368,7 @@ class WildcardMetricResolver
                 'bps' => $details['value'],
                 'percent' => $this->calculateInterfacePercent($details['value'], $capacity),
                 'item_name' => $metric_name,
-                'item_ref' => $this->toItemRef($details),
+                'item_ref' => ItemRef::fromMetric($details),
                 'excluded' => false,
             ],
         ];
@@ -488,6 +467,37 @@ class WildcardMetricResolver
         return $rows;
     }
 
+    private function emptyInterfacePreview(string $status): array
+    {
+        return [
+            'status' => $status,
+            'matched_item_count' => 0,
+            'excluded_item_count' => 0,
+            'excluded_row_count' => 0,
+            'interface_count' => 0,
+            'row_count' => 0,
+            'rows' => [],
+            'excluded_rows' => [],
+            'has_more_rows' => false,
+            'has_more_excluded_rows' => false,
+        ];
+    }
+
+    private function emptySingleWildcardPreview(string $status): array
+    {
+        return [
+            'status' => $status,
+            'matched_item_count' => 0,
+            'excluded_item_count' => 0,
+            'excluded_row_count' => 0,
+            'row_count' => 0,
+            'rows' => [],
+            'excluded_rows' => [],
+            'has_more_rows' => false,
+            'has_more_excluded_rows' => false,
+        ];
+    }
+
     private function matchesExcludePattern(string $name, string $patterns): bool
     {
         if ($patterns === '') {
@@ -508,19 +518,6 @@ class WildcardMetricResolver
     private function clampPercent(float | int $value): int
     {
         return max(0, min(100, (int) round($value)));
-    }
-
-    private function toItemRef(?array $metric): ?array
-    {
-        if ($metric === null || !array_key_exists('itemid', $metric) || !array_key_exists('value_type', $metric)) {
-            return null;
-        }
-
-        return [
-            'itemid' => (string) $metric['itemid'],
-            'name' => $metric['name'] ?? null,
-            'value_type' => (int) $metric['value_type'],
-        ];
     }
 
     private function toPreviewRow(array $row): array

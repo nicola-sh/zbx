@@ -69,7 +69,6 @@ class WidgetForm extends CWidgetForm
     public const DEFAULT_ITEM_INTERFACE   = 'Interface *: Bits *';
 
     public const MULTI_HOST_BADGES_SUMMARY = 0;
-
     public const MULTI_HOST_BADGES_DETAIL_ONLY = 1;
 
     private const THRESHOLD_METRIC_FIELDS = [
