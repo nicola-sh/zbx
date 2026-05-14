@@ -36,7 +36,7 @@ function render_multi_host_root(array $data): CDiv
         ->addClass('main-overview-multi-back')
         ->setAttribute('type', 'button')
         ->setAttribute('data-main-overview-back', '1')
-        ->addItem(_('Back to list'));
+        ->addItem(_('К списку'));
 
     $detail_inner = (new CDiv())->addClass('main-overview-multi-detail-panels');
 
@@ -61,7 +61,7 @@ function render_multi_host_root(array $data): CDiv
             ->setAttribute('data-main-overview-nav', $hostid)
             ->setAttribute('role', 'button')
             ->setAttribute('tabindex', '0')
-            ->setAttribute('aria-label', _s('Open details for %1$s', $label));
+            ->setAttribute('aria-label', _s('Открыть детали: %1$s', $label));
 
         $left = (new CDiv())->addClass('main-overview-multi-summary-main');
 

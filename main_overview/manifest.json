@@ -2,11 +2,11 @@
   "manifest_version": 2.0,
   "id": "main_overview",
   "type": "widget",
-  "name": "Zabbix Main Overview",
+  "name": "Zabbix: обзор узла",
   "namespace": "MainOverview",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "author": "nicola",
-  "description": "Dashboard widget: multi-metric host summary (CPU, memory, load, swap, interfaces, disks, partitions), badges, sparklines, and per-host overrides. Works with common Zabbix agent templates.",
+  "description": "Виджет дашборда: сводка по CPU, памяти, нагрузке, свопу, интерфейсам, дискам и разделам, значки, спарклайны и переопределения по узлам. Рассчитан на типовые шаблоны Zabbix Agent.",
   "widget": {
     "size": {
       "width": 38,
