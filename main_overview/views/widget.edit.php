@@ -30,44 +30,26 @@ $form
 $form
     ->addItem(
         (new CDiv())
-            ->addClass('main-overview-per-host-root')
+            ->addClass('main-overview-add-host-row')
             ->addItem(
                 (new CDiv())
                     ->addClass('main-overview-per-host-hint')
                     ->addItem(_(
-                        'For each host you select in the field above, a collapsible section is created here — similar to the global groups below, but only for that host. Leave a field empty to use the global default.'
+                        'Select hosts above, then apply to build or refresh per-host panels. Metrics, items, and thresholds are edited inside each host block; global section keeps badges and style only.'
                     ))
             )
             ->addItem(
-                (new CDiv())
-                    ->addClass('js-host-accordion-mount')
-                    ->setAttribute('id', 'js-host-accordion-mount')
+                (new CButton(null, _('Apply / refresh host panels')))
+                    ->addClass('js-ho-refresh-host-panels')
             )
-    );
-
-$form
-    ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Stored host profiles (auto-synced)')))
-            ->addClass('js-host-profiles-sync-fieldset')
-            ->addItem([
-                (new CLabel($data['fields']['host_profiles']->getLabel(), $data['fields']['host_profiles']->getName()))
-                    ->addItem(makeHelpIcon(_(
-                        'This JSON is rebuilt automatically from the host list above when you save. You can still edit it manually if needed.'
-                    ))),
-                new CFormField(
-                    $form->registerField(new CWidgetFieldTextBoxView($data['fields']['host_profiles']))->getView()
-                ),
-            ])
     )
-    ->addField(
-        (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))
-            ->setColumns(3)
+    ->addItem(
+        (new CDiv())
+            ->addClass('js-host-accordion-mount')
+            ->setAttribute('id', 'js-host-accordion-mount')
     )
-    ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
-        'Open metric and badge links in the current browser tab instead of a new tab.'
-    ))
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Badges')))
+        (new CWidgetFormFieldsetCollapsibleView(_('Global: Badges')))
             ->addItem(getBadgesListView($data['fields']['badges']))
             ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
             ->addItem(getBadgeLivelinessItemViews($form, $data['fields']['badge_liveliness_item_name']))
@@ -83,124 +65,10 @@ $form
             ))
     )
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Processor, Memory and Load')))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_cpu'],
-                'Enter the exact CPU item name, for example "CPU utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.',
-                (string) WidgetForm::METRIC_CPU
+        (new CWidgetFormFieldsetCollapsibleView(_('Global: Style')))
+            ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
+                'Open metric and badge links in the current browser tab instead of a new tab.'
             ))
-            ->addItem(getMetricThresholdViews($form, $data['fields'],
-                _('Processor thresholds'),
-                'th_cpu_1',
-                'th_cpu_2',
-                _('Used for the processor utilization bar. High and Medium share the colors from the Style section.')
-            ))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_ram'],
-                'Enter the exact memory item name, for example "Memory utilization". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.',
-                (string) WidgetForm::METRIC_RAM
-            ))
-            ->addItem(getMetricThresholdViews($form, $data['fields'],
-                _('Memory thresholds'),
-                'th_ram_1',
-                'th_ram_2',
-                _('Used for the memory utilization bar. High and Medium share the colors from the Style section.')
-            ))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_load'],
-                'Enter the exact load item name, for example "Load average (5m avg)". The widget displays the raw load value and scales the bar using the Load ceiling setting below. Partial names are only used when they match one item uniquely; otherwise the widget shows No data.',
-                (string) WidgetForm::METRIC_LOAD
-            ))
-            ->addItem(getMetricThresholdViews($form, $data['fields'],
-                _('Load thresholds'),
-                'th_load_1',
-                'th_load_2',
-                _('Applied to the load bar after it is scaled against the Load ceiling. The displayed value remains the raw load. High and Medium share the colors from the Style section.')
-            ))
-            ->addItem(getLoadCeilingViews($form, $data['fields']['load_high']))
-    )
-    ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Swap')))
-            ->addItem(getItemNameView($form, $data['fields']['item_name_swap'],
-                'Enter the exact swap item name, for example "Free swap space in %". Partial names are only used when they match one item uniquely; otherwise the widget shows No data.',
-                (string) WidgetForm::METRIC_SWAP
-            ))
-            ->addItem(getMetricThresholdViews($form, $data['fields'],
-                _('Swap thresholds'),
-                'th_swap_1',
-                'th_swap_2',
-                _('Used for the swap utilization bar after any inversion setting is applied. High and Medium share the colors from the Style section.')
-            ))
-            ->addItem(getCheckBoxView($form, $data['fields']['item_swap_invert'],
-                'Enable if the swap item reports free % instead of used %. The value will be inverted (100 − value).'
-            ))
-    )
-    ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Interfaces')))
-            ->addItem(getPatternView($form, $data['fields']['item_name_interface'],
-                'Use * as wildcard. First * = interface name, second * = direction. Direction is automatically labeled RX (received/in) or TX (sent/out).',
-                [
-                    'mode' => 'wildcard',
-                    'metric_type' => 'interface',
-                    'metric_value' => (string) WidgetForm::METRIC_INTERFACES,
-                    'exclude_field_name' => 'interfaces_exclude',
-                    'button_text' => _('Test'),
-                ]
-            ))
-            ->addItem(getPatternView($form, $data['fields']['interfaces_exclude'],
-                'Comma-separated list of interface names to hide. Wildcards * and ? are supported.'
-            ))
-            ->addItem(getInterfaceCeilingViews($form, $data['fields']))
-            ->addItem(getMetricThresholdViews($form, $data['fields'],
-                _('Interface thresholds'),
-                'th_iface_1',
-                'th_iface_2',
-                _('Used for interface bars after throughput is converted to a percentage of the Interface ceiling. High and Medium share the colors from the Style section.')
-            ))
-    )
-    ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Disk utilization')))
-            ->addItem(getPatternView($form, $data['fields']['item_name_disk'],
-                'Use * as wildcard for the disk name.',
-                [
-                    'mode' => 'wildcard',
-                    'metric_type' => 'disk',
-                    'metric_value' => (string) WidgetForm::METRIC_DISKS,
-                    'exclude_field_name' => 'disks_exclude',
-                    'button_text' => _('Test'),
-                ]
-            ))
-            ->addItem(getPatternView($form, $data['fields']['disks_exclude'],
-                'Comma-separated list of disk names to hide. Wildcards * and ? are supported.'
-            ))
-            ->addItem(getMetricThresholdViews($form, $data['fields'],
-                _('Disk thresholds'),
-                'th_disk_1',
-                'th_disk_2',
-                _('Used for disk utilization rows. High and Medium share the colors from the Style section.')
-            ))
-    )
-    ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Partitions')))
-            ->addItem(getPatternView($form, $data['fields']['item_name_partition'],
-                'Use * as wildcard for the partition/mount path.',
-                [
-                    'mode' => 'wildcard',
-                    'metric_type' => 'partition',
-                    'metric_value' => (string) WidgetForm::METRIC_PARTITIONS,
-                    'exclude_field_name' => 'partitions_exclude',
-                    'button_text' => _('Test'),
-                ]
-            ))
-            ->addItem(getPatternView($form, $data['fields']['partitions_exclude'],
-                'Comma-separated list of partition paths to hide. Wildcards * and ? are supported.'
-            ))
-            ->addItem(getMetricThresholdViews($form, $data['fields'],
-                _('Partition thresholds'),
-                'th_partition_1',
-                'th_partition_2',
-                _('Used for partition utilization rows. High and Medium share the colors from the Style section.')
-            ))
-    )
-    ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Style')))
             ->addField(
                 new CWidgetFieldRadioButtonListView($data['fields']['color_scheme'])
             )
@@ -218,6 +86,27 @@ $form
                 new CWidgetFieldRadioButtonListView($data['fields']['bar_height'])
             )
     )
+    ->addItem(
+        (new CDiv())
+            ->addClass('main-overview-hidden-metrics')
+            ->addItem(
+                (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))
+                    ->setColumns(3)
+            )
+    )
+    ->addFieldset(
+        (new CWidgetFormFieldsetCollapsibleView(_('Stored host profiles (auto-synced)')))
+            ->addClass('js-host-profiles-sync-fieldset')
+            ->addItem([
+                (new CLabel($data['fields']['host_profiles']->getLabel(), $data['fields']['host_profiles']->getName()))
+                    ->addItem(makeHelpIcon(_(
+                        'This JSON is rebuilt automatically from the host list above when you save. You can still edit it manually if needed.'
+                    ))),
+                new CFormField(
+                    $form->registerField(new CWidgetFieldTextBoxView($data['fields']['host_profiles']))->getView()
+                ),
+            ])
+    )
     ->includeJsFile('widget.edit.js')
     ->addJavaScript('form.init(' . json_encode([
         'color_picker_class' => $color_picker_class,
@@ -228,7 +117,10 @@ $form
         'item_lookup_action' => 'widget.main_overview.lookup',
         'per_host_labels' => [
             'empty' => _('Select one or more hosts in the field above.'),
-            'section_display' => _('Display & badges'),
+            'section_metrics' => _('Metrics to show'),
+            'section_badges_json' => _('Badge list override (optional)'),
+            'label_badges_json_hint' => _('Leave empty to use global badges. Paste JSON in the same format as the global badge list to replace badges for this host only.'),
+            'section_display' => _('Display'),
             'section_proc' => _('Processor, Memory and Load'),
             'section_swap' => _('Swap'),
             'section_if' => _('Interfaces'),
