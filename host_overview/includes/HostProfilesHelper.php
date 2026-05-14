@@ -13,7 +13,7 @@ namespace Modules\HostOverview\Includes;
 final class HostProfilesHelper
 {
     /**
-     * @return list<array{hostid: string, overrides: array<string, mixed>}>
+     * @return list<array{hostid: string, alias?: string, badges_placement?: int, overrides: array<string, mixed>}>
      */
     public static function parse(mixed $raw): array
     {
@@ -52,6 +52,8 @@ final class HostProfilesHelper
 
             $out[] = [
                 'hostid' => $hostid,
+                'alias' => trim((string) ($entry['alias'] ?? '')),
+                'badges_placement' => (int) ($entry['badges_placement'] ?? 0),
                 'overrides' => $overrides,
             ];
         }
@@ -60,7 +62,7 @@ final class HostProfilesHelper
     }
 
     /**
-     * @param list<array{hostid: string, overrides: array<string, mixed>}> $profiles
+     * @param list<array{hostid: string, alias?: string, badges_placement?: int, overrides: array<string, mixed>}> $profiles
      */
     public static function encode(array $profiles): string
     {
@@ -68,9 +70,9 @@ final class HostProfilesHelper
     }
 
     /**
-     * @param list<array{hostid: string, overrides: array<string, mixed>}> $profiles
+     * @param list<array{hostid: string, alias?: string, badges_placement?: int, overrides: array<string, mixed>}> $profiles
      * @param list<string> $ordered_hostids
-     * @return list<array{hostid: string, overrides: array<string, mixed>}>
+     * @return list<array{hostid: string, alias: string, badges_placement: int, overrides: array<string, mixed>}>
      */
     public static function syncWithHostOrder(array $profiles, array $ordered_hostids): array
     {
@@ -83,7 +85,11 @@ final class HostProfilesHelper
                 continue;
             }
 
-            $by_host[$id] = $entry['overrides'] ?? [];
+            $by_host[$id] = [
+                'overrides' => $entry['overrides'] ?? [],
+                'alias' => trim((string) ($entry['alias'] ?? '')),
+                'badges_placement' => (int) ($entry['badges_placement'] ?? 0),
+            ];
         }
 
         $result = [];
@@ -95,9 +101,13 @@ final class HostProfilesHelper
                 continue;
             }
 
+            $meta = $by_host[$hostid] ?? ['overrides' => [], 'alias' => '', 'badges_placement' => 0];
+
             $result[] = [
                 'hostid' => $hostid,
-                'overrides' => $by_host[$hostid] ?? [],
+                'alias' => $meta['alias'] ?? '',
+                'badges_placement' => (int) ($meta['badges_placement'] ?? 0),
+                'overrides' => is_array($meta['overrides'] ?? null) ? $meta['overrides'] : [],
             ];
         }
 
@@ -106,7 +116,7 @@ final class HostProfilesHelper
 
     /**
      * @param array<string, mixed> $base_fields
-     * @param array{hostid: string, overrides: array<string, mixed>} $profile
+     * @param array{hostid: string, alias?: string, badges_placement?: int, overrides: array<string, mixed>} $profile
      * @return array<string, mixed>
      */
     public static function mergeProfile(array $base_fields, array $profile): array
@@ -120,7 +130,7 @@ final class HostProfilesHelper
                 continue;
             }
 
-            if (in_array($key, ['hostid', 'override_hostid', 'host_profiles'], true)) {
+            if (in_array($key, ['hostid', 'override_hostid', 'host_profiles', 'alias', 'badges_placement'], true)) {
                 continue;
             }
 

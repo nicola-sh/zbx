@@ -69,6 +69,12 @@ class WidgetForm extends CWidgetForm
     public const DEFAULT_ITEM_PARTITION   = 'FS [*]: Space: Used, in %';
     public const DEFAULT_ITEM_INTERFACE   = 'Interface *: Bits *';
 
+    public const MULTI_HOST_SLOT_COUNT = 8;
+
+    public const MULTI_HOST_BADGES_SUMMARY = 0;
+
+    public const MULTI_HOST_BADGES_DETAIL_ONLY = 1;
+
     private const THRESHOLD_METRIC_FIELDS = [
         'cpu',
         'ram',
@@ -136,7 +142,7 @@ class WidgetForm extends CWidgetForm
 
     public function addFields(): self
     {
-        return $this
+        $this
             ->addField(
                 (new CWidgetFieldMultiSelectHost('hostid', _('Hosts')))
                     ->setMultiple(true)
@@ -376,6 +382,32 @@ class WidgetForm extends CWidgetForm
                 (new CWidgetFieldTextBox('item_name_interface', _('Interface pattern')))
                     ->setDefault(self::DEFAULT_ITEM_INTERFACE)
             );
+
+        for ($i = 0; $i < self::MULTI_HOST_SLOT_COUNT; $i++) {
+            $n = $i + 1;
+            $pfx = 'mh' . $i . '_';
+            $this->addField(
+                (new CWidgetFieldMultiSelectHost($pfx . 'hostid', _s('Host #%1$d', $n)))
+                    ->setMultiple(false)
+            );
+            $this->addField(
+                (new CWidgetFieldTextBox($pfx . 'display_alias', _('Display alias')))
+                    ->setDefault('')
+            );
+            $this->addField(
+                (new CWidgetFieldRadioButtonList($pfx . 'badges_placement', _('Badges'), [
+                    self::MULTI_HOST_BADGES_SUMMARY => _('Next to name (summary row)'),
+                    self::MULTI_HOST_BADGES_DETAIL_ONLY => _('Only in detail view'),
+                ]))
+                    ->setDefault(self::MULTI_HOST_BADGES_SUMMARY)
+            );
+            $this->addField(
+                (new CWidgetFieldTextBox($pfx . 'overrides', _('Parameters JSON')))
+                    ->setDefault('{}')
+            );
+        }
+
+        return $this;
     }
 
     protected function normalizeValues(array $values): array
@@ -393,7 +425,18 @@ class WidgetForm extends CWidgetForm
             }
         }
 
+        $slot_profiles = self::buildProfilesFromSlots($values);
+
+        if ($slot_profiles !== []) {
+            $values['host_profiles'] = HostProfilesHelper::encode($slot_profiles);
+            $values['hostid'] = array_column($slot_profiles, 'hostid');
+        }
+
         $values = parent::normalizeValues($values);
+
+        if ($slot_profiles !== []) {
+            return $values;
+        }
 
         $ordered = self::collectOrderedHostIdsFromValues($values);
         $profiles_raw = $values['host_profiles'] ?? '[]';
@@ -418,8 +461,25 @@ class WidgetForm extends CWidgetForm
         $errors = parent::validate($strict);
 
         if (!self::hasConfiguredValue($this->getFieldValue('hostid'))
-                && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))) {
+                && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))
+                && !$this->hasSlotConfiguredHosts()) {
             $this->addFieldError($errors, 'hostid', _('cannot be empty'));
+        }
+
+        for ($i = 0; $i < self::MULTI_HOST_SLOT_COUNT; $i++) {
+            $field_name = 'mh' . $i . '_overrides';
+            $raw = trim((string) $this->getFieldValue($field_name));
+
+            if ($raw === '') {
+                continue;
+            }
+
+            try {
+                json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            }
+            catch (JsonException) {
+                $this->addFieldError($errors, $field_name, _('must be valid JSON'));
+            }
         }
 
         $profiles_raw = trim((string) $this->getFieldValue('host_profiles'));
@@ -441,19 +501,21 @@ class WidgetForm extends CWidgetForm
 
         $ordered = $this->resolveOrderedHostIdsFromForm();
 
-        if ($ordered !== [] && count($profiles) !== count($ordered)) {
+        if (!$this->hasSlotConfiguredHosts() && $ordered !== [] && count($profiles) !== count($ordered)) {
             $this->addFieldError($errors, 'host_profiles', _('must include one entry per selected host'));
         }
 
-        foreach ($profiles as $index => $profile) {
-            $pos = $index + 1;
-            $host_label = (string) ($profile['hostid'] ?? $pos);
+        if (!$this->hasSlotConfiguredHosts()) {
+            foreach ($profiles as $index => $profile) {
+                $pos = $index + 1;
+                $host_label = (string) ($profile['hostid'] ?? $pos);
 
-            if ($ordered !== [] && !in_array($profile['hostid'], $ordered, true)) {
-                $this->addFieldErrorToHostProfiles(
-                    $errors,
-                    _s('Host %1$s: host is not in the current selection.', $host_label)
-                );
+                if ($ordered !== [] && !in_array($profile['hostid'], $ordered, true)) {
+                    $this->addFieldErrorToHostProfiles(
+                        $errors,
+                        _s('Host %1$s: host is not in the current selection.', $host_label)
+                    );
+                }
             }
         }
 
@@ -466,6 +528,67 @@ class WidgetForm extends CWidgetForm
         }
 
         return $errors;
+    }
+
+    private function hasSlotConfiguredHosts(): bool
+    {
+        for ($i = 0; $i < self::MULTI_HOST_SLOT_COUNT; $i++) {
+            if (self::hasConfiguredValue($this->getFieldValue('mh' . $i . '_hostid'))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $values
+     * @return list<array{hostid: string, alias: string, badges_placement: int, overrides: array<string, mixed>}>
+     */
+    private static function buildProfilesFromSlots(array $values): array
+    {
+        $out = [];
+
+        for ($i = 0; $i < self::MULTI_HOST_SLOT_COUNT; $i++) {
+            $pfx = 'mh' . $i . '_';
+            $raw_host = $values[$pfx . 'hostid'] ?? [];
+            $hostids = self::normalizeHostIdsScalarList(is_array($raw_host) ? $raw_host : []);
+            $hid = $hostids[0] ?? '';
+
+            if ($hid === '') {
+                continue;
+            }
+
+            $alias = trim((string) ($values[$pfx . 'display_alias'] ?? ''));
+            $bp = (int) ($values[$pfx . 'badges_placement'] ?? 0);
+            $bp = $bp === self::MULTI_HOST_BADGES_DETAIL_ONLY
+                ? self::MULTI_HOST_BADGES_DETAIL_ONLY
+                : self::MULTI_HOST_BADGES_SUMMARY;
+
+            $raw_ov = $values[$pfx . 'overrides'] ?? '{}';
+
+            if (!is_string($raw_ov)) {
+                $raw_ov = '{}';
+            }
+
+            try {
+                $decoded = json_decode($raw_ov, true, 512, JSON_THROW_ON_ERROR);
+            }
+            catch (JsonException) {
+                $decoded = [];
+            }
+
+            $overrides = is_array($decoded) ? $decoded : [];
+
+            $out[] = [
+                'hostid' => $hid,
+                'alias' => $alias,
+                'badges_placement' => $bp,
+                'overrides' => $overrides,
+            ];
+        }
+
+        return $out;
     }
 
     /**
