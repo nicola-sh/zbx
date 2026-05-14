@@ -2,8 +2,7 @@
 
 /*
  * MIT License
- * Copyright (c) 2026 ObviousAIChicken
- * github.com/obviousaichicken/zabbix_widgets
+ * Copyright (c) 2026 nicola
  */
 
 namespace Modules\HostOverview\Includes;
