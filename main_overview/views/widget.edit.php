@@ -34,6 +34,25 @@ foreach ($form->registerField($metrics_field_view)->getView() as $metrics_view_p
     $hidden_metrics_wrap->addItem($metrics_view_part);
 }
 
+$global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView(_m('Global: appearance')))
+    ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
+        _m('Open metric and badge links in the current browser tab.')
+    ));
+
+add_widget_field_rows_to_collapsible_fieldset($form, $global_appearance_fieldset,
+    new CWidgetFieldRadioButtonListView($data['fields']['color_scheme']));
+$global_appearance_fieldset
+    ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], _m('Color: high'), 'js-threshold-color-row'))
+    ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], _m('Color: medium'), 'js-threshold-color-row'))
+    ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], _m('Color: normal'), 'js-threshold-color-row'))
+    ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], _m('Solid color'), 'js-solid-color-row'));
+add_widget_field_rows_to_collapsible_fieldset($form, $global_appearance_fieldset,
+    new CWidgetFieldRadioButtonListView($data['fields']['corners']));
+add_widget_field_rows_to_collapsible_fieldset($form, $global_appearance_fieldset,
+    new CWidgetFieldRadioButtonListView($data['fields']['label_length']));
+add_widget_field_rows_to_collapsible_fieldset($form, $global_appearance_fieldset,
+    new CWidgetFieldRadioButtonListView($data['fields']['bar_height']));
+
 $form
     ->addItem(
         (new CDiv())
@@ -71,28 +90,7 @@ $form
                 _m('Animate the problems badge when there are active incidents.')
             ))
     )
-    ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_m('Global: appearance')))
-            ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
-                _m('Open metric and badge links in the current browser tab.')
-            ))
-            ->addField(
-                new CWidgetFieldRadioButtonListView($data['fields']['color_scheme'])
-            )
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], _m('Color: high'), 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], _m('Color: medium'), 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], _m('Color: normal'), 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], _m('Solid color'), 'js-solid-color-row'))
-            ->addField(
-                new CWidgetFieldRadioButtonListView($data['fields']['corners'])
-            )
-            ->addField(
-                new CWidgetFieldRadioButtonListView($data['fields']['label_length'])
-            )
-            ->addField(
-                new CWidgetFieldRadioButtonListView($data['fields']['bar_height'])
-            )
-    )
+    ->addFieldset($global_appearance_fieldset)
     ->addItem($hidden_metrics_wrap)
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_m('Host profiles (sync)')))
@@ -195,6 +193,29 @@ $form
         ],
     ], JSON_THROW_ON_ERROR) . ');')
     ->show();
+
+/**
+ * Expand a widget field view into label + {@see CFormField} rows on a collapsible fieldset.
+ *
+ * Avoid storing raw {@see CWidgetFieldView} instances in the fieldset: some Zabbix builds pass
+ * those objects to {@see unpack_object()}, which expects {@see CTag::toString()} and fatals.
+ *
+ * @param CWidgetFieldView $field_view
+ */
+function add_widget_field_rows_to_collapsible_fieldset(
+    CWidgetFormView $form,
+    CWidgetFormFieldsetCollapsibleView $fieldset,
+    CWidgetFieldView $field_view
+): void {
+    $form->registerField($field_view);
+
+    foreach ($field_view->getViewCollection() as $row) {
+        $fieldset->addItem([
+            $row['label'],
+            (new CFormField($row['view']))->addClass($row['class'])
+        ]);
+    }
+}
 
 function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?string $metric_value = null): array
 {
