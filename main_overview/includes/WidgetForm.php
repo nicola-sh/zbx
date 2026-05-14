@@ -141,33 +141,33 @@ class WidgetForm extends CWidgetForm
     {
         $this
             ->addField(
-                (new CWidgetFieldMultiSelectHost('hostid', _('Узлы')))
+                (new CWidgetFieldMultiSelectHost('hostid', _m('Hosts')))
                     ->setMultiple(true)
             )
             ->addField(
                 new CWidgetFieldMultiSelectOverrideHost()
             )
             ->addField(
-                (new CWidgetFieldTextBox('host_profiles', _('Переопределения по узлам')))
+                (new CWidgetFieldTextBox('host_profiles', _m('Per-host overrides')))
                     ->setDefault('[]')
             )
             ->addField(
                 (new CWidgetFieldBadgesList('badges'))
             )
             ->addField(
-                (new CWidgetFieldTextBox('badge_uptime_item_name', _('Элемент аптайма')))
+                (new CWidgetFieldTextBox('badge_uptime_item_name', _m('Uptime item')))
                     ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME)
             )
             ->addField(
-                (new CWidgetFieldTextBox('badge_liveliness_item_name', _('Элемент «живости»')))
+                (new CWidgetFieldTextBox('badge_liveliness_item_name', _m('Liveliness item')))
                     ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_LIVELINESS)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('problems_hide_acknowledged', _('Не учитывать подтверждённые проблемы')))
+                (new CWidgetFieldCheckBox('problems_hide_acknowledged', _m('Ignore acknowledged problems')))
                     ->setDefault(0)
             )
             ->addField(
-                (new CWidgetFieldColor('fill_color', _('Сплошной')))
+                (new CWidgetFieldColor('fill_color', _m('Solid')))
                     ->setDefault(self::DEFAULT_COLOR_FILL)
             )
             ->addField(
@@ -179,7 +179,7 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_COLOR_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldColor('th_color_3', _('Обычный')))
+                (new CWidgetFieldColor('th_color_3', _m('Normal')))
                     ->setDefault(self::DEFAULT_COLOR_THRESHOLD_LOW)
             )
             ->addField(
@@ -191,70 +191,70 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_cpu_1', _('Процессор: высокий'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_cpu_1', _m('CPU: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_cpu_2', _('Процессор: средний'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_cpu_2', _m('CPU: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_ram_1', _('Память: высокий'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_ram_1', _m('Memory: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_ram_2', _('Память: средний'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_ram_2', _m('Memory: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_load_1', _('Нагрузка: высокий'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_load_1', _m('Load: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_load_2', _('Нагрузка: средний'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_load_2', _m('Load: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_swap_1', _('Своп: высокий'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_swap_1', _m('Swap: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_SWAP_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_swap_2', _('Своп: средний'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_swap_2', _m('Swap: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_SWAP_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_iface_1', _('Интерфейсы: высокий'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_iface_1', _m('Interfaces: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_iface_2', _('Интерфейсы: средний'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_iface_2', _m('Interfaces: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_disk_1', _('Диск: высокий'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_disk_1', _m('Disk: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_disk_2', _('Диск: средний'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_disk_2', _m('Disk: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_partition_1', _('Раздел: высокий'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_partition_1', _m('Partition: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_partition_2', _('Раздел: средний'), 1, 100))
+                (new CWidgetFieldIntegerBox('th_partition_2', _m('Partition: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldCheckBoxList('metrics_show', _('Метрики'), [
-                    self::METRIC_CPU        => _('Процессор'),
-                    self::METRIC_RAM        => _('Память'),
-                    self::METRIC_LOAD       => _('Нагрузка'),
-                    self::METRIC_SWAP       => _('Своп'),
-                    self::METRIC_INTERFACES => _('Интерфейсы'),
-                    self::METRIC_DISKS      => _('Загрузка диска'),
-                    self::METRIC_PARTITIONS => _('Разделы'),
+                (new CWidgetFieldCheckBoxList('metrics_show', _m('Metrics'), [
+                    self::METRIC_CPU        => _m('CPU'),
+                    self::METRIC_RAM        => _m('Memory'),
+                    self::METRIC_LOAD       => _m('Load'),
+                    self::METRIC_SWAP       => _m('Swap'),
+                    self::METRIC_INTERFACES => _m('Interfaces'),
+                    self::METRIC_DISKS      => _m('Disk utilization'),
+                    self::METRIC_PARTITIONS => _m('Partitions'),
                 ]))
                     ->setDefault([
                         self::METRIC_CPU,
@@ -267,44 +267,44 @@ class WidgetForm extends CWidgetForm
                     ])
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('load_high', _('Потолок нагрузки'), 1, 1000))
+                (new CWidgetFieldIntegerBox('load_high', _m('Load ceiling'), 1, 1000))
                     ->setDefault(self::DEFAULT_LOAD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('interfaces_high', _('Потолок интерфейса'), 1, 10000))
+                (new CWidgetFieldIntegerBox('interfaces_high', _m('Interface ceiling'), 1, 10000))
                     ->setDefault(self::DEFAULT_INTERFACES_HIGH)
             )
             ->addField(
                 (new CWidgetFieldRadioButtonList('interfaces_unit', null, [
-                    self::INTERFACES_UNIT_KBPS => _('Кбит/с'),
-                    self::INTERFACES_UNIT_MBPS => _('Мбит/с'),
-                    self::INTERFACES_UNIT_GBPS => _('Гбит/с'),
+                    self::INTERFACES_UNIT_KBPS => _m('Kbps'),
+                    self::INTERFACES_UNIT_MBPS => _m('Mbps'),
+                    self::INTERFACES_UNIT_GBPS => _m('Gbps'),
                 ]))
                     ->setDefault(self::INTERFACES_UNIT_GBPS)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('color_scheme', _('Цветовая схема'), [
-                    self::COLOR_SCHEME_THRESHOLD => _('По порогам'),
-                    self::COLOR_SCHEME_SOLID     => _('Сплошная'),
+                (new CWidgetFieldRadioButtonList('color_scheme', _m('Color scheme'), [
+                    self::COLOR_SCHEME_THRESHOLD => _m('By thresholds'),
+                    self::COLOR_SCHEME_SOLID     => _m('Solid fill'),
                 ]))
                     ->setDefault(self::COLOR_SCHEME_THRESHOLD)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('corners', _('Углы'), [
-                    self::CORNERS_ROUNDED => _('Скруглённые'),
-                    self::CORNERS_SQUARE  => _('Прямые'),
+                (new CWidgetFieldRadioButtonList('corners', _m('Corners'), [
+                    self::CORNERS_ROUNDED => _m('Rounded'),
+                    self::CORNERS_SQUARE  => _m('Square'),
                 ]))
                     ->setDefault(self::CORNERS_ROUNDED)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('label_length', _('Подписи'), [
-                    self::LABELS_FULL  => _('Полные'),
-                    self::LABELS_SHORT => _('Короткие'),
+                (new CWidgetFieldRadioButtonList('label_length', _m('Labels'), [
+                    self::LABELS_FULL  => _m('Full'),
+                    self::LABELS_SHORT => _m('Short'),
                 ]))
                     ->setDefault(self::LABELS_FULL)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('bar_height', _('Высота полос'), [
+                (new CWidgetFieldRadioButtonList('bar_height', _m('Bar height'), [
                     4  => '4px',
                     5  => '5px',
                     6  => '6px',
@@ -316,67 +316,67 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_BAR_HEIGHT)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('open_links_same_window', _('Открывать ссылки в этой вкладке')))
+                (new CWidgetFieldCheckBox('open_links_same_window', _m('Open links in this tab')))
                     ->setDefault(0)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('problems_pulse', _('Пульсация значка проблем')))
+                (new CWidgetFieldCheckBox('problems_pulse', _m('Problems badge pulse')))
                     ->setDefault(1)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('freshness_warn', _('Живость: предупреждение'), 1, 86400))
+                (new CWidgetFieldIntegerBox('freshness_warn', _m('Liveliness: warning'), 1, 86400))
                     ->setDefault(self::DEFAULT_FRESHNESS_WARN)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('freshness_stale', _('Живость: устарело'), 1, 86400))
+                (new CWidgetFieldIntegerBox('freshness_stale', _m('Liveliness: stale'), 1, 86400))
                     ->setDefault(self::DEFAULT_FRESHNESS_STALE)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('problems_hide_suppressed', _('Не учитывать подавленные проблемы')))
+                (new CWidgetFieldCheckBox('problems_hide_suppressed', _m('Ignore suppressed problems')))
                     ->setDefault(0)
             )
             ->addField(
-                (new CWidgetFieldTextBox('interfaces_exclude', _('Фильтр интерфейсов')))
+                (new CWidgetFieldTextBox('interfaces_exclude', _m('Interface filter')))
                     ->setDefault('')
             )
             ->addField(
-                (new CWidgetFieldTextBox('disks_exclude', _('Фильтр дисков')))
+                (new CWidgetFieldTextBox('disks_exclude', _m('Disk filter')))
                     ->setDefault('')
             )
             ->addField(
-                (new CWidgetFieldTextBox('partitions_exclude', _('Фильтр разделов')))
+                (new CWidgetFieldTextBox('partitions_exclude', _m('Partition filter')))
                     ->setDefault('')
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_cpu', _('Элемент: процессор')))
+                (new CWidgetFieldTextBox('item_name_cpu', _m('Item: CPU')))
                     ->setDefault(self::DEFAULT_ITEM_CPU)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_ram', _('Элемент: память')))
+                (new CWidgetFieldTextBox('item_name_ram', _m('Item: memory')))
                     ->setDefault(self::DEFAULT_ITEM_RAM)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_load', _('Элемент: нагрузка')))
+                (new CWidgetFieldTextBox('item_name_load', _m('Item: load')))
                     ->setDefault(self::DEFAULT_ITEM_LOAD)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_swap', _('Элемент: своп')))
+                (new CWidgetFieldTextBox('item_name_swap', _m('Item: swap')))
                     ->setDefault(self::DEFAULT_ITEM_SWAP)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('item_swap_invert', _('Инвертировать своп')))
+                (new CWidgetFieldCheckBox('item_swap_invert', _m('Invert swap')))
                     ->setDefault(1)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_disk', _('Шаблон диска')))
+                (new CWidgetFieldTextBox('item_name_disk', _m('Disk template')))
                     ->setDefault(self::DEFAULT_ITEM_DISK)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_partition', _('Шаблон раздела')))
+                (new CWidgetFieldTextBox('item_name_partition', _m('Partition template')))
                     ->setDefault(self::DEFAULT_ITEM_PARTITION)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_interface', _('Шаблон интерфейса')))
+                (new CWidgetFieldTextBox('item_name_interface', _m('Interface template')))
                     ->setDefault(self::DEFAULT_ITEM_INTERFACE)
             );
 
@@ -386,8 +386,8 @@ class WidgetForm extends CWidgetForm
     protected function normalizeValues(array $values): array
     {
         foreach (self::THRESHOLD_METRIC_FIELDS as $metric) {
-            $high_field = 'th_' . $metric . '_1';
-            $medium_field = 'th_' . $metric . '_2';
+            $high_field = 'th_m' . $metric . '_1';
+            $medium_field = 'th_m' . $metric . '_2';
 
             if (!array_key_exists($high_field, $values) && array_key_exists('th_num_1', $values)) {
                 $values[$high_field] = $values['th_num_1'];
@@ -424,7 +424,7 @@ class WidgetForm extends CWidgetForm
 
         if (!self::hasConfiguredValue($this->getFieldValue('hostid'))
                 && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))) {
-            $this->addFieldError($errors, 'hostid', _('не может быть пустым'));
+            $this->addFieldError($errors, 'hostid', _m('cannot be empty'));
         }
 
         $profiles_raw = trim((string) $this->getFieldValue('host_profiles'));
@@ -437,7 +437,7 @@ class WidgetForm extends CWidgetForm
             json_decode($profiles_raw, true, 512, JSON_THROW_ON_ERROR);
         }
         catch (JsonException) {
-            $this->addFieldError($errors, 'host_profiles', _('должен быть корректным JSON'));
+            $this->addFieldError($errors, 'host_profiles', _m('must be valid JSON'));
 
             return $errors;
         }
@@ -447,7 +447,7 @@ class WidgetForm extends CWidgetForm
         $ordered = $this->resolveOrderedHostIdsFromForm();
 
         if ($ordered !== [] && count($profiles) !== count($ordered)) {
-            $this->addFieldError($errors, 'host_profiles', _('должен содержать по одной записи для каждого выбранного узла'));
+            $this->addFieldError($errors, 'host_profiles', _m('must contain one entry per selected host'));
         }
 
         foreach ($profiles as $index => $profile) {
@@ -457,7 +457,7 @@ class WidgetForm extends CWidgetForm
             if ($ordered !== [] && !in_array($profile['hostid'], $ordered, true)) {
                 $this->addFieldErrorToHostProfiles(
                     $errors,
-                    _s('Узел %1$s: отсутствует в текущем выборе.', $host_label)
+                    _ms('Host %1$s: not in the current selection.', $host_label)
                 );
             }
         }
@@ -559,7 +559,7 @@ class WidgetForm extends CWidgetForm
         if (trim((string) ($merged[$field_name] ?? '')) === '') {
             $this->addFieldErrorToHostProfiles(
                 $errors,
-                _s('Строка узла %1$s: поле «%2$s» не может быть пустым.', $position, $this->getField($field_name)->getErrorLabel())
+                _ms('Host row %1$s: field "%2$s" cannot be empty.', $position, $this->getField($field_name)->getErrorLabel())
             );
         }
     }
@@ -579,7 +579,7 @@ class WidgetForm extends CWidgetForm
         if ($value === '') {
             $this->addFieldErrorToHostProfiles(
                 $errors,
-                _s('Строка узла %1$s: поле «%2$s» не может быть пустым.', $position, $this->getField($field_name)->getErrorLabel())
+                _ms('Host row %1$s: field "%2$s" cannot be empty.', $position, $this->getField($field_name)->getErrorLabel())
             );
 
             return;
@@ -587,13 +587,13 @@ class WidgetForm extends CWidgetForm
 
         if (substr_count($value, '*') < $required_wildcards) {
             $message = $required_wildcards === 1
-                ? _('должен содержать хотя бы один символ «*»')
-                : _s('требуется минимум %1$s символов «*»', $required_wildcards);
+                ? _m('must contain at least one "*" character')
+                : _ms('requires at least %1$s "*" characters', $required_wildcards);
 
             $this->addFieldErrorToHostProfiles(
                 $errors,
-                _s(
-                    'Строка узла %1$s: некорректный параметр «%2$s»: %3$s.',
+                _ms(
+                    'Host row %1$s: invalid parameter "%2$s": %3$s.',
                     $position,
                     $this->getField($field_name)->getErrorLabel(),
                     $message
@@ -604,8 +604,8 @@ class WidgetForm extends CWidgetForm
 
     private function addFieldErrorToHostProfiles(array &$errors, string $message): void
     {
-        $errors[] = _s(
-            'Некорректный параметр «%1$s»: %2$s.',
+        $errors[] = _ms(
+            'Invalid parameter "%1$s": %2$s.',
             $this->getField('host_profiles')->getErrorLabel(),
             $message
         );
@@ -668,8 +668,8 @@ class WidgetForm extends CWidgetForm
 
     private function addFieldError(array &$errors, string $field_name, string $message): void
     {
-        $errors[] = _s(
-            'Некорректный параметр «%1$s»: %2$s.',
+        $errors[] = _ms(
+            'Invalid parameter "%1$s": %2$s.',
             $this->getField($field_name)->getErrorLabel(),
             $message
         );

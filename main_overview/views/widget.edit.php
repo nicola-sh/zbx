@@ -41,12 +41,12 @@ $form
             ->addItem(
                 (new CDiv())
                     ->addClass('main-overview-per-host-hint')
-                    ->addItem(_(
-                        'После выбора одного или нескольких узлов ниже появится блок настроек для каждого (метрики, элементы, пороги). Если панелей нет — нажмите «Обновить панели узлов».'
+                    ->addItem(_m(
+                        'After you select one or more hosts, a per-host settings block appears below (metrics, items, thresholds). If no panels appear, click "Refresh host panels".'
                     ))
             )
             ->addItem(
-                (new CButton(null, _('Обновить панели узлов')))
+                (new CButton(null, _m('Refresh host panels')))
                     ->addClass('js-ho-refresh-host-panels')
             )
     )
@@ -56,33 +56,33 @@ $form
             ->setAttribute('id', 'js-host-accordion-mount')
     )
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Общие: значки')))
+        (new CWidgetFormFieldsetCollapsibleView(_m('Global: badges')))
             ->addItem(getBadgesListView($data['fields']['badges']))
             ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
             ->addItem(getBadgeLivelinessItemViews($form, $data['fields']['badge_liveliness_item_name']))
             ->addItem(getFreshnessThresholdViews($form, $data['fields']))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_acknowledged'],
-                _('Не учитывать подтверждённые проблемы в счётчике значка «Проблемы».')
+                _m('Do not count acknowledged problems in the Problems badge tally.')
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_suppressed'],
-                _('Не учитывать подавленные проблемы в счётчике значка «Проблемы».')
+                _m('Do not count suppressed problems in the Problems badge tally.')
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_pulse'],
-                _('Анимировать значок проблем при наличии активных инцидентов.')
+                _m('Animate the problems badge when there are active incidents.')
             ))
     )
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Общие: оформление')))
+        (new CWidgetFormFieldsetCollapsibleView(_m('Global: appearance')))
             ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
-                _('Открывать ссылки метрик и значков в текущей вкладке браузера.')
+                _m('Open metric and badge links in the current browser tab.')
             ))
             ->addField(
                 new CWidgetFieldRadioButtonListView($data['fields']['color_scheme'])
             )
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], _('Цвет: высокий'), 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], _('Цвет: средний'), 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], _('Цвет: обычный'), 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], _('Сплошной цвет'), 'js-solid-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], _m('Color: high'), 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], _m('Color: medium'), 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], _m('Color: normal'), 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], _m('Solid color'), 'js-solid-color-row'))
             ->addField(
                 new CWidgetFieldRadioButtonListView($data['fields']['corners'])
             )
@@ -95,12 +95,12 @@ $form
     )
     ->addItem($hidden_metrics_wrap)
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_('Профили узлов (синхронизация)')))
+        (new CWidgetFormFieldsetCollapsibleView(_m('Host profiles (sync)')))
             ->addClass('js-host-profiles-sync-fieldset')
             ->addItem([
                 (new CLabel($data['fields']['host_profiles']->getLabel(), $data['fields']['host_profiles']->getName()))
-                    ->addItem(makeHelpIcon(_(
-                        'JSON пересобирается автоматически из списка узлов при сохранении. При необходимости его можно править вручную.'
+                    ->addItem(makeHelpIcon(_m(
+                        'JSON is rebuilt automatically from the host list when you save. You can still edit it manually if needed.'
                     ))),
                 new CFormField(
                     $form->registerField(new CWidgetFieldTextBoxView($data['fields']['host_profiles']))->getView()
@@ -116,82 +116,82 @@ $form
         'badge_types_with_url' => CWidgetFieldBadgesList::getUrlFieldBadgeTypes(),
         'item_lookup_action' => 'widget.main_overview.lookup',
         'metric_checkbox_rows' => [
-            ['value' => (string) WidgetForm::METRIC_CPU, 'label' => _('Процессор')],
-            ['value' => (string) WidgetForm::METRIC_RAM, 'label' => _('Память')],
-            ['value' => (string) WidgetForm::METRIC_LOAD, 'label' => _('Нагрузка')],
-            ['value' => (string) WidgetForm::METRIC_SWAP, 'label' => _('Своп')],
-            ['value' => (string) WidgetForm::METRIC_INTERFACES, 'label' => _('Интерфейсы')],
-            ['value' => (string) WidgetForm::METRIC_DISKS, 'label' => _('Загрузка диска')],
-            ['value' => (string) WidgetForm::METRIC_PARTITIONS, 'label' => _('Разделы')],
+            ['value' => (string) WidgetForm::METRIC_CPU, 'label' => _m('CPU')],
+            ['value' => (string) WidgetForm::METRIC_RAM, 'label' => _m('Memory')],
+            ['value' => (string) WidgetForm::METRIC_LOAD, 'label' => _m('Load')],
+            ['value' => (string) WidgetForm::METRIC_SWAP, 'label' => _m('Swap')],
+            ['value' => (string) WidgetForm::METRIC_INTERFACES, 'label' => _m('Interfaces')],
+            ['value' => (string) WidgetForm::METRIC_DISKS, 'label' => _m('Disk utilization')],
+            ['value' => (string) WidgetForm::METRIC_PARTITIONS, 'label' => _m('Partitions')],
         ],
         'lookup_ui' => [
-            'test' => _('Проверить'),
-            'stale_wildcard' => _('Шаблон или исключения изменились. Нажмите «Проверить», чтобы обновить предпросмотр.'),
-            'stale_single' => _('Ввод изменён. Нажмите «Проверить», чтобы обновить предпросмотр.'),
-            'pick_host' => _('Сначала выберите узел.'),
-            'checking' => _('Поиск совпадений…'),
-            'lookup_failed' => _('Не удалось выполнить проверку совпадений.'),
-            'lookup_empty_response' => _('Сервер вернул пустой ответ.'),
-            'lookup_html_error' => _('Вместо JSON получена HTML-страница.'),
-            'read_response_error' => _('Не удалось прочитать ответ сервера.'),
-            'exact_fmt' => _('Точное совпадение: %s.'),
-            'unique_partial_fmt' => _('Единственное частичное совпадение: %s.'),
-            'ambiguous_fmt' => _('Найдено совпадений по имени: %s. Выберите точное имя элемента:'),
-            'none_partial' => _('Точного или единственного частичного совпадения пока нет. Укажите точное имя элемента:'),
-            'none_no_items' => _('Подходящих имён элементов не найдено.'),
-            'enter_name' => _('Введите имя элемента для предпросмотра.'),
-            'refine_candidates' => _('Сузьте запрос, чтобы укоротить список.'),
-            'refine_rows' => _('Показаны только первые строки. Уточните шаблон, чтобы сузить список.'),
-            'apply_fmt' => _('Подставлено точное имя элемента: %s.'),
-            'matches_heading_fmt' => _('Совпадения (%s)'),
-            'filtered_heading' => _('Исключено фильтром'),
-            'wildcard_no_disk' => _('Совпадающих дисков не найдено.'),
-            'wildcard_no_partition' => _('Совпадающих разделов не найдено.'),
-            'wildcard_no_interface' => _('Совпадающих интерфейсов не найдено.'),
-            'wildcard_no_default' => _('Совпадений не найдено.'),
-            'wildcard_invalid_iface' => _('Для интерфейсов используйте не менее двух символов «*» в шаблоне.'),
-            'wildcard_invalid_other' => _('Добавьте хотя бы один символ «*» в шаблон.'),
-            'wildcard_too_broad' => _('Добавьте фиксированный текст вокруг «*», чтобы сузить список совпадений.'),
-            'wildcard_empty_disk' => _('Введите шаблон с «*» для предпросмотра дисков.'),
-            'wildcard_empty_partition' => _('Введите шаблон с «*» для предпросмотра разделов.'),
-            'wildcard_empty_interface' => _('Введите шаблон с «*» для предпросмотра интерфейсов.'),
-            'wildcard_empty_default' => _('Введите шаблон с «*» для предпросмотра.'),
-            'wildcard_empty_single' => _('Введите имя элемента для предпросмотра.'),
+            'test' => _m('Test'),
+            'stale_wildcard' => _m('Template or exclusions changed. Click "Test" to refresh the preview.'),
+            'stale_single' => _m('Input changed. Click "Test" to refresh the preview.'),
+            'pick_host' => _m('Select a host first.'),
+            'checking' => _m('Looking up matches…'),
+            'lookup_failed' => _m('Could not run the match check.'),
+            'lookup_empty_response' => _m('Server returned an empty response.'),
+            'lookup_html_error' => _m('Received an HTML page instead of JSON.'),
+            'read_response_error' => _m('Could not read the server response.'),
+            'exact_fmt' => _m('Exact match: %s.'),
+            'unique_partial_fmt' => _m('Single partial match: %s.'),
+            'ambiguous_fmt' => _m('Name matches found: %s. Pick an exact item name:'),
+            'none_partial' => _m('No exact or single partial match yet. Enter an exact item name:'),
+            'none_no_items' => _m('No suitable item names were found.'),
+            'enter_name' => _m('Enter an item name for preview.'),
+            'refine_candidates' => _m('Narrow the query to shorten the list.'),
+            'refine_rows' => _m('Only the first rows are shown. Refine the template to narrow the list.'),
+            'apply_fmt' => _m('Inserted exact item name: %s.'),
+            'matches_heading_fmt' => _m('Matches (%s)'),
+            'filtered_heading' => _m('Excluded by filter'),
+            'wildcard_no_disk' => _m('No matching disks.'),
+            'wildcard_no_partition' => _m('No matching partitions.'),
+            'wildcard_no_interface' => _m('No matching interfaces.'),
+            'wildcard_no_default' => _m('No matches found.'),
+            'wildcard_invalid_iface' => _m('For interfaces use at least two "*" characters in the template.'),
+            'wildcard_invalid_other' => _m('Add at least one "*" character to the template.'),
+            'wildcard_too_broad' => _m('Add fixed text around "*" to narrow the match list.'),
+            'wildcard_empty_disk' => _m('Enter a template with "*" to preview disks.'),
+            'wildcard_empty_partition' => _m('Enter a template with "*" to preview partitions.'),
+            'wildcard_empty_interface' => _m('Enter a template with "*" to preview interfaces.'),
+            'wildcard_empty_default' => _m('Enter a template with "*" for preview.'),
+            'wildcard_empty_single' => _m('Enter an item name for preview.'),
         ],
         'per_host_labels' => [
-            'empty' => _('Выберите один или несколько узлов в поле выше.'),
-            'section_metrics' => _('Показывать метрики'),
-            'section_badges_json' => _('Свой список значков (необязательно)'),
-            'label_badges_json_hint' => _(
-                'Оставьте пустым, чтобы использовать общие значки. Вставьте JSON в том же формате, что и глобальный список, чтобы заменить значки только для этого узла.'
+            'empty' => _m('Pick one or more hosts in the field above.'),
+            'section_metrics' => _m('Show metrics'),
+            'section_badges_json' => _m('Custom badge list (optional)'),
+            'label_badges_json_hint' => _m(
+                'Leave empty to use global badges. Paste JSON in the same format as the global list to override badges for this host only.'
             ),
-            'section_display' => _('Отображение'),
-            'section_proc' => _('Процессор, память и нагрузка'),
-            'section_swap' => _('Своп'),
-            'section_if' => _('Интерфейсы'),
-            'section_disk' => _('Загрузка диска'),
-            'section_part' => _('Разделы'),
-            'section_adv' => _('Доп. переопределения (JSON)'),
-            'label_alias' => _('Псевдоним'),
-            'label_badges' => _('Значки'),
-            'bp_summary' => _('Рядом с именем (сводка)'),
-            'bp_detail' => _('Только в детализации'),
-            'label_cpu' => _('Элемент: процессор'),
-            'label_ram' => _('Элемент: память'),
-            'label_load' => _('Элемент: нагрузка'),
-            'label_load_high' => _('Потолок нагрузки'),
-            'label_swap' => _('Элемент: своп'),
-            'label_swap_inv' => _('Инвертировать своп'),
-            'label_iface' => _('Шаблон интерфейса'),
-            'label_iface_ex' => _('Фильтр интерфейсов'),
-            'label_iface_high' => _('Потолок интерфейса'),
-            'label_iface_unit' => _('Единица интерфейса'),
-            'label_disk' => _('Шаблон диска'),
-            'label_disk_ex' => _('Фильтр дисков'),
-            'label_part' => _('Шаблон раздела'),
-            'label_part_ex' => _('Фильтр разделов'),
-            'label_extras' => _('Дополнительные поля JSON (сливаются с переопределениями)'),
-            'placeholder_extras' => _('Пример: {"metrics_show":["0","1"]}'),
+            'section_display' => _m('Display'),
+            'section_proc' => _m('CPU, memory, and load'),
+            'section_swap' => _m('Swap'),
+            'section_if' => _m('Interfaces'),
+            'section_disk' => _m('Disk utilization'),
+            'section_part' => _m('Partitions'),
+            'section_adv' => _m('Extra overrides (JSON)'),
+            'label_alias' => _m('Alias'),
+            'label_badges' => _m('Badges'),
+            'bp_summary' => _m('Next to the name (summary)'),
+            'bp_detail' => _m('Details only'),
+            'label_cpu' => _m('Item: CPU'),
+            'label_ram' => _m('Item: memory'),
+            'label_load' => _m('Item: load'),
+            'label_load_high' => _m('Load ceiling'),
+            'label_swap' => _m('Item: swap'),
+            'label_swap_inv' => _m('Invert swap'),
+            'label_iface' => _m('Interface template'),
+            'label_iface_ex' => _m('Interface filter'),
+            'label_iface_high' => _m('Interface ceiling'),
+            'label_iface_unit' => _m('Interface unit'),
+            'label_disk' => _m('Disk template'),
+            'label_disk_ex' => _m('Disk filter'),
+            'label_part' => _m('Partition template'),
+            'label_part_ex' => _m('Partition filter'),
+            'label_extras' => _m('Extra JSON fields (merged with overrides)'),
+            'placeholder_extras' => _m('Example: {"metrics_show":["0","1"]}'),
         ],
     ], JSON_THROW_ON_ERROR) . ');')
     ->show();
@@ -203,8 +203,8 @@ function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?stri
     $field_view = $view->getView();
 
     if ($hint === '') {
-        $hint = _(
-            'Предпочтительно точное имя элемента. Частичное имя используется только при единственном совпадении; иначе отображается «Нет данных».'
+        $hint = _m(
+            'Prefer an exact item name. A partial name is used only when it matches exactly one item; otherwise "No data" is shown.'
         );
     }
     $label->addItem(makeHelpIcon($hint));
@@ -220,7 +220,7 @@ function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?stri
                     ->addClass('item-match-controls')
                     ->addItem($view->getView())
                     ->addItem(
-                        (new CButton(null, _('Проверить')))
+                        (new CButton(null, _m('Test')))
                             ->addClass('js-item-match-test')
                     )
             )
@@ -267,7 +267,7 @@ function getPatternView(CWidgetFormView $form, $field, string $hint = '', ?array
                     ->addClass('item-match-controls')
                     ->addItem($view->getView())
                     ->addItem(
-                        (new CButton(null, (string) ($assistant['button_text'] ?? _('Проверить'))))
+                        (new CButton(null, (string) ($assistant['button_text'] ?? _m('Test'))))
                             ->addClass('js-item-match-test')
                     )
             )
@@ -303,9 +303,9 @@ function getCheckBoxView(CWidgetFormView $form, $field, string $hint = ''): arra
 function getLoadCeilingViews(CWidgetFormView $form, $field): array
 {
     $view = $form->registerField(new CWidgetFieldIntegerBoxView($field));
-    $label = new CLabel(_('Потолок нагрузки'), $field->getName());
+    $label = new CLabel(_m('Load ceiling'), $field->getName());
     $label->addItem(makeHelpIcon(
-        _('Максимальное значение нагрузки для масштаба полосы и спарклайна. На экране по-прежнему показывается фактическая нагрузка.')
+        _m('Maximum load for scaling the bar and sparkline. The actual load is still shown on screen.')
     ));
 
     return [
@@ -320,9 +320,9 @@ function getInterfaceCeilingViews(CWidgetFormView $form, array $fields): array
         new CWidgetFieldRadioButtonListView($fields['interfaces_unit'])
     );
     $interface_ceiling = $form->registerField(new CWidgetFieldIntegerBoxView($fields['interfaces_high']));
-    $label = new CLabel(_('Потолок интерфейса'), 'interfaces_high');
+    $label = new CLabel(_m('Interface ceiling'), 'interfaces_high');
     $label->addItem(makeHelpIcon(
-        _('Ожидаемая максимальная пропускная способность для масштаба полос интерфейсов. Учитывается выбранная единица измерения.')
+        _m('Expected maximum throughput for scaling interface bars. The selected unit is applied.')
     ));
 
     return [
@@ -358,9 +358,9 @@ function getMetricThresholdViews(
     return [
         $label,
         new CFormField(new CHorList([
-            new CSpan(_('Средний')),
+            new CSpan(_m('Medium')),
             $medium->getView(),
-            new CSpan(_('Высокий')),
+            new CSpan(_m('High')),
             $high->getView(),
         ])),
     ];
@@ -393,7 +393,7 @@ function getBadgeUptimeItemViews(CWidgetFormView $form, $field): array
     return getItemNameView(
         $form,
         $field,
-        _('Укажите точное имя элемента аптайма, например «System uptime». Частичное имя — только при единственном совпадении; иначе значок не покажет аптайм.'),
+        _m('Enter the exact uptime item name, for example "System uptime". A partial name is used only when it matches exactly one item; otherwise the badge will not show uptime.'),
         ''
     );
 }
@@ -403,7 +403,7 @@ function getBadgeLivelinessItemViews(CWidgetFormView $form, $field): array
     return getItemNameView(
         $form,
         $field,
-        _('Укажите точное имя элемента «живости», например «Zabbix agent ping». Частичное имя — только при единственном совпадении; иначе значок не отобразится.'),
+        _m('Enter the exact liveliness item name, for example "Zabbix agent ping". A partial name is used only when it matches exactly one item; otherwise the badge will not render.'),
         ''
     );
 }
@@ -417,17 +417,17 @@ function getFreshnessThresholdViews(CWidgetFormView $form, array $fields): array
         new CWidgetFieldIntegerBoxView($fields['freshness_stale'])
     );
 
-    $label = new CLabel(_('Пороги «живости»'), 'freshness_warn');
+    $label = new CLabel(_m('Liveliness thresholds'), 'freshness_warn');
     $label->addItem(makeHelpIcon(
-        _('Возраст в секундах с момента последних данных выбранного элемента «живости». Сначала срабатывает предупреждение, затем «устарело».')
+        _m('Seconds since the last data for the selected liveliness item. Warning triggers first, then stale.')
     ));
 
     return [
         $label,
         new CFormField(new CHorList([
-            new CSpan(_('Предупр.')),
+            new CSpan(_m('Warn')),
             $freshness_warn->getView(),
-            new CSpan(_('Устарело')),
+            new CSpan(_m('Stale')),
             $freshness_stale->getView(),
         ])),
     ];
@@ -468,11 +468,11 @@ function getBadgesListView(CWidgetFieldBadgesList $field): array
     );
     $right_lane = createBadgeLane(CWidgetFieldBadgesList::SIDE_RIGHT, $right_rows);
     $left_lane->addItem(createBadgeRowTemplate());
-    $left_label = new CLabel(_('Слева'), 'badges-json');
+    $left_label = new CLabel(_m('Left'), 'badges-json');
 
     return [
         [$left_label, new CFormField($left_lane)],
-        [new CLabel(_('Справа')), new CFormField($right_lane)],
+        [new CLabel(_m('Right')), new CFormField($right_lane)],
     ];
 }
 
@@ -500,7 +500,7 @@ function createBadgeLane(string $side, CDiv $rows, ?CTag $hidden_input = null): 
             (new CDiv())
                 ->addClass('badge-add-wrap')
                 ->addItem(
-                    (new CButton($add_name, _('Добавить')))
+                    (new CButton($add_name, _m('Add')))
                         ->addClass('btn-link')
                         ->addClass('js-badge-add')
                         ->setAttribute('data-side', $side)
@@ -517,15 +517,15 @@ function createBadgeRow(array $badge): CDiv
     $drag_handle = (new CSpan())
         ->addClass('js-badge-drag')
         ->setAttribute('draggable', 'true')
-        ->setAttribute('title', _('Перетащите для изменения порядка'));
+        ->setAttribute('title', _m('Drag to reorder'));
     $drag_handle->addItem(render_icon('grip-vertical'));
-    $type_badge = (new CSpan(_($type_label)))
+    $type_badge = (new CSpan(_m($type_label)))
         ->addClass('badge-row-type');
 
     $show_text = CWidgetFieldBadgesList::badgeTypeUsesTextField($type);
     $show_url = CWidgetFieldBadgesList::badgeTypeUsesUrlField($type);
     $text_input = (new CTextBox('', $badge['text'] ?? ''))
-        ->setAttribute('placeholder', _('Текст на значке'))
+        ->setAttribute('placeholder', _m('Badge text'))
         ->addClass('js-badge-text');
 
     if (!$show_text) {
@@ -533,14 +533,14 @@ function createBadgeRow(array $badge): CDiv
     }
 
     $url_input = (new CTextBox('', $badge['url'] ?? ''))
-        ->setAttribute('placeholder', _('https://example.com или /path'))
+        ->setAttribute('placeholder', _m('https://example.com or /path'))
         ->addClass('js-badge-url');
 
     if (!$show_url) {
         $url_input->setAttribute('style', 'display: none');
     }
 
-    $remove_btn = (new CButton('', _('Удалить')))
+    $remove_btn = (new CButton('', _m('Remove')))
         ->addClass('btn-link')
         ->addClass('js-badge-remove');
 

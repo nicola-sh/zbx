@@ -1161,8 +1161,8 @@ window.form = new (class {
       }
     });
 
-    body.appendChild(this.buildPerHostSection(L.section_metrics ?? "Метрики", this.buildMetricsShowSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_badges_json ?? "Значки (JSON)", this.buildBadgesJsonSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_metrics ?? "Metrics", this.buildMetricsShowSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_badges_json ?? "Badges (JSON)", this.buildBadgesJsonSection(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_display, this.buildDisplayBadges(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_proc, this.buildProcessorMemoryLoad(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_swap, this.buildSwapSection(hostid, profile)));
