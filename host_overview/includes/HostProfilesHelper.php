@@ -11,15 +11,6 @@ namespace Modules\HostOverview\Includes;
 
 final class HostProfilesHelper
 {
-    /** @var list<string> */
-    private const PROFILE_MERGE_BLOCKLIST = [
-        'hostid',
-        'override_hostid',
-        'host_profiles',
-        'alias',
-        'badges_placement',
-    ];
-
     /**
      * @return list<array{hostid: string, alias?: string, badges_placement?: int, overrides: array<string, mixed>}>
      */
@@ -138,7 +129,7 @@ final class HostProfilesHelper
                 continue;
             }
 
-            if (in_array($key, self::PROFILE_MERGE_BLOCKLIST, true)) {
+            if (in_array($key, ['hostid', 'override_hostid', 'host_profiles', 'alias', 'badges_placement'], true)) {
                 continue;
             }
 

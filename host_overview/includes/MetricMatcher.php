@@ -50,6 +50,7 @@ class MetricMatcher
                 'value' => $numeric_value,
                 'raw' => $value,
             ];
+
         }
 
         return [

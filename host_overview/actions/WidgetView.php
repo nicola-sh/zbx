@@ -14,7 +14,6 @@ use CControllerDashboardWidgetView;
 use CControllerResponseData;
 use Modules\HostOverview\Includes\CWidgetFieldBadgesList;
 use Modules\HostOverview\Includes\HostProfilesHelper;
-use Modules\HostOverview\Includes\ItemRef;
 use Modules\HostOverview\Includes\MetricMatcher;
 use Modules\HostOverview\Includes\WildcardMetricResolver;
 use Modules\HostOverview\Includes\WidgetForm;
@@ -32,16 +31,6 @@ use function Modules\HostOverview\Includes\problems_state_classes;
 
 class WidgetView extends CControllerDashboardWidgetView
 {
-    /** @var array<int, string> */
-    private const PROBLEM_SEVERITY_BUCKETS = [
-        5 => 'disaster',
-        4 => 'high',
-        3 => 'average',
-        2 => 'warning',
-        1 => 'information',
-        0 => 'not_classified',
-    ];
-
     private array $badges = [];
     private array $metrics = [];
     private ?array $host_details = null;
@@ -592,7 +581,7 @@ class WidgetView extends CControllerDashboardWidgetView
         string $threshold_group,
         array $options = []
     ): array {
-        $item_ref = ItemRef::fromMetric($metric);
+        $item_ref = $this->toItemRef($metric);
         $cell = $this->buildCellModel([
             'cell_id' => $this->makeCellId($row_id),
             'cell_label' => $row_label,
@@ -943,12 +932,20 @@ class WidgetView extends CControllerDashboardWidgetView
         }
 
         $events = API::Problem()->get($params);
-        $counts = array_fill_keys(array_values(self::PROBLEM_SEVERITY_BUCKETS), 0);
+        $severity_map = [
+            5 => 'disaster',
+            4 => 'high',
+            3 => 'average',
+            2 => 'warning',
+            1 => 'information',
+            0 => 'not_classified',
+        ];
+        $counts = array_fill_keys(array_values($severity_map), 0);
         $max_severity = -1;
 
         foreach ($events as $event) {
             $severity = (int) ($event['severity'] ?? 0);
-            $key = self::PROBLEM_SEVERITY_BUCKETS[$severity] ?? 'not_classified';
+            $key = $severity_map[$severity] ?? 'not_classified';
             $counts[$key]++;
 
             if ($severity > $max_severity) {
@@ -1078,6 +1075,19 @@ class WidgetView extends CControllerDashboardWidgetView
     private function clampPercent(float|int $value): int
     {
         return max(0, min(100, (int) round($value)));
+    }
+
+    private function toItemRef(?array $metric): ?array
+    {
+        if ($metric === null || !array_key_exists('itemid', $metric) || !array_key_exists('value_type', $metric)) {
+            return null;
+        }
+
+        return [
+            'itemid' => (string) $metric['itemid'],
+            'name' => $metric['name'] ?? null,
+            'value_type' => (int) $metric['value_type'],
+        ];
     }
 
     private function buildLayoutSignature(array $badges, array $rows): string

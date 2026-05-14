@@ -105,6 +105,19 @@ function format_tags(array $tags): string
     return $parts === [] ? 'No tags' : implode(' • ', $parts);
 }
 
+function format_display_text(string $display_kind, float $value, ?string $prefix = null): string
+{
+    $text = match ($display_kind) {
+        'load' => format_load($value),
+        'interface' => format_bps($value),
+        default => format_percent($value),
+    };
+
+    return ($prefix !== null && $prefix !== '')
+        ? $prefix . ' ' . $text
+        : $text;
+}
+
 function format_display_value(string $display_kind, float $value): string
 {
     return match ($display_kind) {
@@ -112,15 +125,6 @@ function format_display_value(string $display_kind, float $value): string
         'interface' => format_bps($value),
         default => format_percent($value),
     };
-}
-
-function format_display_text(string $display_kind, float $value, ?string $prefix = null): string
-{
-    $text = format_display_value($display_kind, $value);
-
-    return ($prefix !== null && $prefix !== '')
-        ? $prefix . ' ' . $text
-        : $text;
 }
 
 function format_empty_text(?string $prefix = null): string

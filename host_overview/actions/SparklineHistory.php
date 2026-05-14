@@ -10,7 +10,6 @@ namespace Modules\HostOverview\Actions;
 use API;
 use CController;
 use CControllerResponseData;
-use Modules\HostOverview\Includes\ItemRef;
 use Modules\HostOverview\Includes\MetricMatcher;
 use RuntimeException;
 use Throwable;
@@ -136,7 +135,7 @@ class SparklineHistory extends CController
         [$min, $max] = $this->calculateBounds($points, $request);
 
         return [
-            'item_ref' => ItemRef::fromMetric($item),
+            'item_ref' => $this->toItemRef($item),
             'points' => $points,
             'min' => $min,
             'max' => $max,
@@ -267,7 +266,7 @@ class SparklineHistory extends CController
             'time_from' => $time_from,
             'time_till' => $time_till,
             'sortfield' => 'clock',
-            'sortorder' => $sortorder,
+            'sortorder' => $sortorder
         ];
 
         if ($limit !== null) {
@@ -370,6 +369,19 @@ class SparklineHistory extends CController
         return [
             is_finite($min) ? $min : 0,
             is_finite($max) ? $max : 0,
+        ];
+    }
+
+    private function toItemRef(?array $metric): ?array
+    {
+        if ($metric === null || !array_key_exists('itemid', $metric) || !array_key_exists('value_type', $metric)) {
+            return null;
+        }
+
+        return [
+            'itemid' => (string) $metric['itemid'],
+            'name' => $metric['name'] ?? null,
+            'value_type' => (int) $metric['value_type'],
         ];
     }
 
