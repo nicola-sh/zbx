@@ -1,62 +1,32 @@
-These widgets have been tested on Zabbix 7.0.24, 7.2.15 and 7.4.8.
+# Zabbix Host Overview
 
-## Host overview
+A **Zabbix dashboard widget** that shows a compact health summary for one or several hosts: metric bars (CPU, memory, load, swap, interfaces, disks, partitions), optional badges, sparklines, and links into Zabbix. It is aimed at typical Linux and Windows agent templates, with sensible defaults and wildcard-friendly item mapping.
 
-A compact, flexible host summary widget for Zabbix dashboards. It turns standard Linux and Windows template items into a clear at-a-glance overview with badges, status bars, grouped metrics, sparkline history, and quick links to Latest data. The configuration dialog also includes built-in preview and testing tools, so item mapping is easier to validate before you save.
+**Author:** nicola  
+**Widget version:** see `host_overview/manifest.json` (semantic versioning from **0.5.1**).
 
-**Features**
+## Requirements
 
-- Display any combination of Processor, Memory, Load, Swap, Interfaces, Disk utilization, and Partitions.
-- Works out of the box with common Zabbix Linux and Windows templates, with default item names and wildcard matching that can be remapped per widget.
-- Add useful host badges such as Hostname, Uptime, Liveliness, Problems, Maintenance, Tags, free text, or custom links.
-- Set medium and high thresholds for each metric.
-- Choose threshold-based or solid colors, adjust bar height, pick full or short labels, and use rounded or square corners.
-- Show interface traffic with a configurable ceiling and unit (Kbps, Mbps, or Gbps), while long interface names are shortened automatically.
-- Add sparklines for quick historical context directly in the widget.
-- Open built-in Zabbix host and item popup menus from the widget.
-- See live frontend updates for percentage and bitrate changes with animated tickers.
-- Keep interfaces, disks, and partitions organized in consistent multi-row layouts.
-- Test exact-name matching for CPU, Memory, Load, Swap, and Uptime directly in the config dialog.
-- Preview wildcard matches for Interfaces, Disks, and Partitions, including items filtered out by your rules.
-- Customize the Problems badge to hide acknowledged or suppressed issues and optionally pulse when active.
-- Supports all Zabbix themes.
+- Zabbix **7.0**, **7.2**, or **7.4** (tested on 7.0.24, 7.2.15, 7.4.8).
+- Host items aligned with common templates (names and wildcards are configurable in the widget).
 
-**Screenshots**
+## Install
 
-![](https://i.imgur.com/EMDHCrm.png)
+1. Copy the `host_overview` directory into your Zabbix `modules` tree (same layout as other module widgets).
+2. Enable the module under **Administration → General → Modules**, then add the widget on a dashboard.
 
-![](https://i.imgur.com/k5nBeF7.png)
+## Features (high level)
 
-## Banner
+- Single-host or **multi-host** mode: list with traffic-light status, optional display aliases, per-host parameters, in-widget drill-down to detail.
+- Threshold bars, optional solid vs threshold colour modes, bar height, label length, rounded/square corners.
+- Badges (hostname, uptime, liveliness, problems, maintenance, tags, custom text/links).
+- Sparkline history overlay; item and host context menus where supported.
+- Configuration helpers: item **Test** / wildcard preview, per-host accordion editor for overrides.
 
-A widget for creating custom visual banners on your dashboard. Displays titles, descriptive text, and background images with lots of styling options. Perfect for highlighting key information, adding aesthetic elements or adding inline comments to your dashboard.
+## Repository layout
 
-**Features**
+This repository contains **only** the Host Overview widget module (`host_overview/`). There is no extra tooling or unrelated widgets in-tree.
 
-- BB-codes.
-- Add inline images.
-- Horizontal text alignment.
-- Seperate font colors and sizes for the title and description.
-- Background color or image.
-- Three background image display options.
-- Header mode that centers the title and hides everything else.
-- Supports all Zabbix themes.
+## License
 
-**Screenshots**
-
-![](https://i.imgur.com/8EoUFPU.png)
-
-![](https://i.imgur.com/Nttk9na.png)
-
-**Available BB-codes**
-
-| BB-code                                     | Result                                                                                |
-| ------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `[b]bold text[/b]`                          | **bold text**                                                                         |
-| `[u]underlined[/u]`                         | underlined                                                                            |
-| `[i]italic[/i]`                             | _italic_                                                                              |
-| `[s]strike[/s]`                             | ~strike~                                                                              |
-| `[center]centered text[/center]`            | centered text                                                                         |
-| `[color=red]colored[/color]`                | colored text                                                                          |
-| `[img]https://example.com/heart.png[/img]`  | ![image](https://icons.iconarchive.com/icons/paomedia/small-n-flat/16/heart-icon.png) |
-| `[link=http://example.com]hyperlink[/link]` | [hyperlink](https://www.youtube.com/watch?v=dQw4w9WgXcQ)                              |
+MIT — see [LICENSE](LICENSE).
