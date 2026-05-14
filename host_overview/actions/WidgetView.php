@@ -110,10 +110,23 @@ class WidgetView extends CControllerDashboardWidgetView
             $light = $this->computeTrafficLightLevel($rows, $this->fetchProblems());
             $layout_signature = $this->buildLayoutSignature($badges, $rows);
 
+            $alias = trim((string) ($profile['alias'] ?? ''));
+            $zbx_name = trim($this->fetchHostName($hostid)) ?: $hostid;
+            $display_label = $alias !== '' ? $alias : $zbx_name;
+            $bp = (int) ($profile['badges_placement'] ?? 0);
+            $bp = $bp === WidgetForm::MULTI_HOST_BADGES_DETAIL_ONLY
+                ? WidgetForm::MULTI_HOST_BADGES_DETAIL_ONLY
+                : WidgetForm::MULTI_HOST_BADGES_SUMMARY;
+            $summary_badges = $bp === WidgetForm::MULTI_HOST_BADGES_SUMMARY ? $badges : [];
+            $detail_badges = $bp === WidgetForm::MULTI_HOST_BADGES_DETAIL_ONLY ? $badges : [];
+
             $hosts_payload[] = [
                 'hostid' => $hostid,
-                'name' => trim($this->fetchHostName($hostid)) ?: $hostid,
+                'name' => $zbx_name,
+                'display_label' => $display_label,
                 'light' => $light,
+                'summary_badges' => $summary_badges,
+                'detail_badges' => $detail_badges,
                 'badges' => $badges,
                 'rows' => $rows,
                 'layout_signature' => $layout_signature,

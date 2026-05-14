@@ -27,9 +27,11 @@ class CWidgetHostOverview extends CWidget {
     this._overviewClickRoots = new Set();
     this._handleOverviewClick = (event) => this._onOverviewClick(event);
     this._sparklineOverviewContext = null;
-    this._multiExpandRoot = null;
-    this._onMultiExpandPointer = (event) => this._onMultiExpandClick(event);
-    this._onMultiExpandKey = (event) => this._onMultiExpandKeydown(event);
+    this._multiNavBound = null;
+    this._multiNavBackEl = null;
+    this._onMultiNavClick = (event) => this._handleMultiNavClick(event);
+    this._onMultiNavKey = (event) => this._handleMultiNavKey(event);
+    this._onMultiBackClick = (event) => this._handleMultiBackClick(event);
     this.valueTicker = new Map();
     this.prevValues = new Map();
 
@@ -74,7 +76,7 @@ class CWidgetHostOverview extends CWidget {
     }
 
     this._overviewClickRoots.clear();
-    this._detachMultiExpanders();
+    this._detachMultiNavigation();
     this._resetAnimationState();
     this._sparkline?.destroy();
   }
@@ -141,7 +143,12 @@ class CWidgetHostOverview extends CWidget {
 
     this.updateViewModeAttr();
     this._attachOverview();
-    this._attachMultiExpanders();
+    this._attachMultiNavigation();
+
+    if (requiresFullRender && response.multi_host) {
+      this._showMultiListView();
+    }
+
     this._sparkline?.attach();
     this._syncRootModifiers(this._getRuntimeFields());
     this._layoutSignature = nextLayoutSignature;
@@ -187,39 +194,52 @@ class CWidgetHostOverview extends CWidget {
     this._overviewClickRoots = next;
   }
 
-  _attachMultiExpanders() {
+  _attachMultiNavigation() {
     const root = this._body?.querySelector('[data-host-overview-multi="1"]');
 
     if (!root) {
-      this._detachMultiExpanders();
+      this._detachMultiNavigation();
 
       return;
     }
 
-    if (this._multiExpandRoot === root) {
+    if (this._multiNavBound === root) {
       return;
     }
 
-    this._detachMultiExpanders();
-    this._multiExpandRoot = root;
-    root.addEventListener('click', this._onMultiExpandPointer);
-    root.addEventListener('keydown', this._onMultiExpandKey);
+    this._detachMultiNavigation();
+    this._multiNavBound = root;
+    root.addEventListener('click', this._onMultiNavClick);
+    root.addEventListener('keydown', this._onMultiNavKey);
+
+    const back = root.querySelector('[data-host-overview-back]');
+
+    if (back) {
+      back.addEventListener('click', this._onMultiBackClick);
+      this._multiNavBackEl = back;
+    }
   }
 
-  _detachMultiExpanders() {
-    if (!this._multiExpandRoot) {
+  _detachMultiNavigation() {
+    if (!this._multiNavBound) {
       return;
     }
 
-    this._multiExpandRoot.removeEventListener('click', this._onMultiExpandPointer);
-    this._multiExpandRoot.removeEventListener('keydown', this._onMultiExpandKey);
-    this._multiExpandRoot = null;
+    this._multiNavBound.removeEventListener('click', this._onMultiNavClick);
+    this._multiNavBound.removeEventListener('keydown', this._onMultiNavKey);
+
+    if (this._multiNavBackEl) {
+      this._multiNavBackEl.removeEventListener('click', this._onMultiBackClick);
+      this._multiNavBackEl = null;
+    }
+
+    this._multiNavBound = null;
   }
 
-  _onMultiExpandClick(event) {
-    const trigger = event.target.closest('[data-host-overview-expand]');
+  _handleMultiNavClick(event) {
+    const summary = event.target.closest('[data-host-overview-nav]');
 
-    if (!trigger || !this._multiExpandRoot?.contains(trigger)) {
+    if (!summary || !this._multiNavBound?.contains(summary)) {
       return;
     }
 
@@ -227,23 +247,90 @@ class CWidgetHostOverview extends CWidget {
       return;
     }
 
+    if (event.target.closest('a[href]')) {
+      return;
+    }
+
+    if (event.target.closest('.js-badge-host-menu, [data-hintbox], .menu-popup')) {
+      return;
+    }
+
     event.preventDefault();
-    this._toggleHostPanel(trigger);
+    const hostid = summary.getAttribute('data-host-overview-nav');
+
+    if (hostid) {
+      this._openMultiDetail(hostid);
+    }
   }
 
-  _onMultiExpandKeydown(event) {
+  _handleMultiNavKey(event) {
     if (event.key !== 'Enter' && event.key !== ' ') {
       return;
     }
 
-    const trigger = event.target.closest('[data-host-overview-expand]');
+    const summary = event.target.closest('[data-host-overview-nav]');
 
-    if (!trigger || !this._multiExpandRoot?.contains(trigger)) {
+    if (!summary || !this._multiNavBound?.contains(summary)) {
       return;
     }
 
     event.preventDefault();
-    this._toggleHostPanel(trigger);
+    const hostid = summary.getAttribute('data-host-overview-nav');
+
+    if (hostid) {
+      this._openMultiDetail(hostid);
+    }
+  }
+
+  _handleMultiBackClick(event) {
+    event.preventDefault();
+    this._showMultiListView();
+  }
+
+  _openMultiDetail(hostid) {
+    const root = this._getWidgetRoot();
+    const multi = this._body?.querySelector('[data-host-overview-multi="1"]');
+
+    if (!root || !multi || !hostid) {
+      return;
+    }
+
+    root.classList.add('host-overview--multi-detail');
+    multi.querySelector('.host-overview-multi-list-view')?.setAttribute('hidden', 'hidden');
+    multi.querySelector('.host-overview-multi-detail-view')?.removeAttribute('hidden');
+
+    for (const panel of multi.querySelectorAll('[data-host-detail-panel]')) {
+      const match = panel.getAttribute('data-host-detail-panel') === hostid;
+
+      if (match) {
+        panel.removeAttribute('hidden');
+      }
+      else {
+        panel.setAttribute('hidden', 'hidden');
+      }
+    }
+
+    this._sparkline?.scheduleRedraw();
+  }
+
+  _showMultiListView() {
+    const root = this._getWidgetRoot();
+    const multi = this._body?.querySelector('[data-host-overview-multi="1"]');
+
+    if (!multi) {
+      return;
+    }
+
+    root?.classList.remove('host-overview--multi-detail');
+    multi.querySelector('.host-overview-multi-detail-view')?.setAttribute('hidden', 'hidden');
+    multi.querySelector('.host-overview-multi-list-view')?.removeAttribute('hidden');
+
+    for (const panel of multi.querySelectorAll('[data-host-detail-panel]')) {
+      panel.setAttribute('hidden', 'hidden');
+    }
+
+    this._sparkline?.close();
+    this._sparkline?.scheduleRedraw();
   }
 
   _escapeSelector(value) {
@@ -254,33 +341,6 @@ class CWidgetHostOverview extends CWidget {
     }
 
     return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  }
-
-  _toggleHostPanel(trigger) {
-    const hostid = trigger.getAttribute('data-host-overview-expand');
-
-    if (!hostid || !this._body) {
-      return;
-    }
-
-    const panel = this._body.querySelector(`[data-host-detail="${this._escapeSelector(hostid)}"]`);
-
-    if (!panel) {
-      return;
-    }
-
-    const expanded = !panel.hasAttribute('hidden');
-
-    if (expanded) {
-      panel.setAttribute('hidden', 'hidden');
-      trigger.setAttribute('aria-expanded', 'false');
-    }
-    else {
-      panel.removeAttribute('hidden');
-      trigger.setAttribute('aria-expanded', 'true');
-    }
-
-    this._sparkline?.scheduleRedraw();
   }
 
   _applyTrafficLight(element, light) {
@@ -326,14 +386,20 @@ class CWidgetHostOverview extends CWidget {
     }
 
     for (const [hostid, payload] of Object.entries(hostsMap)) {
-      const summary = root.querySelector(`[data-host-overview-expand="${this._escapeSelector(hostid)}"]`);
+      const summary = root.querySelector(`[data-host-overview-nav="${this._escapeSelector(hostid)}"]`);
       const lightEl = summary?.querySelector('.host-overview-light');
 
       if (lightEl && payload?.light) {
         this._applyTrafficLight(lightEl, payload.light);
       }
 
-      const panel = root.querySelector(`[data-host-detail="${this._escapeSelector(hostid)}"]`);
+      const summaryToolbar = summary?.querySelector('.host-overview-multi-summary-toolbar');
+
+      if (summaryToolbar) {
+        this._patchBadges(summaryToolbar, payload?.badges || {});
+      }
+
+      const panel = root.querySelector(`[data-host-detail-panel="${this._escapeSelector(hostid)}"]`);
       const overview = panel?.querySelector('[data-host-overview-role="overview"]');
 
       if (!overview) {

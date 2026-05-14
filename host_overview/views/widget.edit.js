@@ -323,7 +323,7 @@ window.form = new (class {
   }
 
   async lookupMetricMatch({input, excludeInput, button, preview, state, mode = "single", metricType = ""}) {
-    const hostid = this.getSelectedHostId();
+    const hostid = this.getMetricLookupHostId(input);
     const search = input.value.trim();
     const exclude = excludeInput?.value.trim() ?? "";
 
@@ -791,30 +791,176 @@ window.form = new (class {
     preview.replaceChildren(content);
   }
 
+  getMetricLookupHostId(input) {
+    const slot = input?.closest(".js-host-slot");
+
+    if (slot) {
+      const hostRoot = slot.querySelector('[id$="_hostid"]');
+      const hid = this.readHostIdFromMultiselectContainer(hostRoot);
+
+      if (hid) {
+        return hid;
+      }
+    }
+
+    return this.getSelectedHostId();
+  }
+
+  readHostIdFromMultiselectContainer(hostRoot) {
+    if (!hostRoot) {
+      return "";
+    }
+
+    for (const input of hostRoot.querySelectorAll('input[name="hostid[]"]')) {
+      if (input.value) {
+        return String(input.value).trim();
+      }
+    }
+
+    for (const selector of ['input[name="hostid"]', 'input[type="hidden"][name^="hostid"]']) {
+      const input = hostRoot.querySelector(selector);
+
+      if (input?.value) {
+        return String(input.value).trim();
+      }
+    }
+
+    return "";
+  }
+
   initHostProfilesHostSync() {
     const hostRoot = document.getElementById("hostid");
     const profilesInput = document.querySelector('[name="host_profiles"]');
 
-    if (!hostRoot || !profilesInput) {
+    if (!profilesInput) {
       return;
     }
 
-    const run = () => this.syncHostProfilesFieldValue(hostRoot, profilesInput);
+    const run = () => this.syncHostProfilesCombined(hostRoot, profilesInput);
 
-    hostRoot.addEventListener("change", run);
+    document.querySelectorAll(".js-host-slot").forEach((slot) => {
+      slot.addEventListener("change", run);
+      slot.addEventListener("input", run);
+    });
+
+    if (hostRoot) {
+      hostRoot.addEventListener("change", run);
+    }
 
     try {
       const overlay = overlays_stack.getById("widget_properties");
 
       if (overlay?.$dialogue?.[0]) {
-        overlay.$dialogue[0].addEventListener("overlay.reload", run);
+        overlay.$dialogue[0].addEventListener("overlay.reload", () => {
+          run();
+          this.inflateMultiHostSlotsFromJson(profilesInput);
+        });
       }
     }
     catch (_err) {
       // overlays_stack may be unavailable outside the dashboard overlay.
     }
 
+    this.inflateMultiHostSlotsFromJson(profilesInput);
     run();
+  }
+
+  inflateMultiHostSlotsFromJson(profilesInput) {
+    if (!profilesInput?.value) {
+      return;
+    }
+
+    let profiles = [];
+
+    try {
+      profiles = JSON.parse(profilesInput.value || "[]");
+    }
+    catch (_err) {
+      return;
+    }
+
+    if (!Array.isArray(profiles)) {
+      return;
+    }
+
+    const rows = [...document.querySelectorAll(".js-host-slot")];
+
+    for (let i = 0; i < rows.length; i++) {
+      const slot = rows[i];
+      const p = profiles[i];
+
+      if (!p || !p.hostid) {
+        continue;
+      }
+
+      const aliasInput = slot.querySelector('input[name*="display_alias"], textarea[name*="display_alias"]');
+
+      if (aliasInput && typeof p.alias === "string") {
+        aliasInput.value = p.alias;
+      }
+
+      const bp = Number.parseInt(p.badges_placement ?? 0, 10) || 0;
+
+      slot.querySelectorAll('input[name*="badges_placement"]').forEach((radio) => {
+        radio.checked = String(radio.value) === String(bp);
+      });
+
+      const ov = slot.querySelector('input[name*="overrides"], textarea[name*="overrides"]');
+
+      if (ov) {
+        ov.value = typeof p.overrides === "object" ? JSON.stringify(p.overrides ?? {}) : String(p.overrides ?? "{}");
+      }
+    }
+  }
+
+  syncHostProfilesCombined(hostRoot, profilesInput) {
+    const slotProfiles = [];
+
+    const rows = [...document.querySelectorAll(".js-host-slot")];
+
+    for (const slot of rows) {
+      const hostField = slot.querySelector('[id$="_hostid"]');
+      const hid = this.readHostIdFromMultiselectContainer(hostField);
+
+      if (!hid) {
+        continue;
+      }
+
+      const aliasInput = slot.querySelector('input[name*="display_alias"], textarea[name*="display_alias"]');
+      const alias = aliasInput?.value?.trim() ?? "";
+      const bpRadio = slot.querySelector('input[name*="badges_placement"]:checked');
+      const badges_placement = Number.parseInt(bpRadio?.value ?? "0", 10) || 0;
+      const ovInput = slot.querySelector('input[name*="overrides"], textarea[name*="overrides"]');
+      let overrides = {};
+
+      try {
+        overrides = JSON.parse(ovInput?.value || "{}");
+      }
+      catch (_err) {
+        overrides = {};
+      }
+
+      if (!overrides || typeof overrides !== "object") {
+        overrides = {};
+      }
+
+      slotProfiles.push({
+        hostid: hid,
+        alias,
+        badges_placement: badges_placement === 1 ? 1 : 0,
+        overrides,
+      });
+    }
+
+    if (slotProfiles.length > 0) {
+      profilesInput.value = JSON.stringify(slotProfiles);
+
+      return;
+    }
+
+    if (hostRoot) {
+      this.syncHostProfilesFieldValue(hostRoot, profilesInput);
+    }
   }
 
   collectOrderedHostIds(hostRoot) {
@@ -861,16 +1007,25 @@ window.form = new (class {
     }
 
     const byHost = {};
+    const byMeta = {};
 
     for (const entry of profiles) {
       if (entry && entry.hostid) {
-        byHost[String(entry.hostid)] =
+        const id = String(entry.hostid);
+
+        byHost[id] =
           entry.overrides && typeof entry.overrides === "object" ? entry.overrides : {};
+        byMeta[id] = {
+          alias: typeof entry.alias === "string" ? entry.alias : "",
+          badges_placement: Number.parseInt(entry.badges_placement ?? 0, 10) || 0,
+        };
       }
     }
 
     const next = ordered.map((hostid) => ({
       hostid,
+      alias: byMeta[hostid]?.alias ?? "",
+      badges_placement: byMeta[hostid]?.badges_placement === 1 ? 1 : 0,
       overrides: byHost[hostid] || {},
     }));
 
