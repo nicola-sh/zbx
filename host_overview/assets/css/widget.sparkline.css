@@ -1,0 +1,65 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 nicola
+ */
+
+/* Sparkline View */
+.dashboard-widget-host_overview .host-overview-container.sparkline-active {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.dashboard-widget-host_overview .sparkline-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  container-type: inline-size;
+  font-size: var(--sparkline-font-size);
+  padding: 0 var(--sparkline-overlay-padding-inline) var(--sparkline-overlay-padding-bottom);
+  box-sizing: border-box;
+  overflow: auto;
+  background: var(--sparkline-overlay-bg);
+  border-radius: inherit;
+}
+
+.dashboard-widget-host_overview .sparkline-overlay.visible {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.dashboard-widget-host_overview .sparkline-overlay .sparkline-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  min-height: 0;
+}
+
+.dashboard-widget-host_overview .sparkline-overlay .sparkline-canvas {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+  box-sizing: border-box;
+  border: var(--sparkline-border-width) solid var(--sparkline-border-color);
+  border-radius: var(--canvas-radius);
+}
+
+.dashboard-widget-host_overview .sparkline-overlay.visible .sparkline-canvas {
+  cursor: crosshair;
+}
+
+.dashboard-widget-host_overview .sparkline-overlay .sparkline-y-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--sparkline-label-padding-y) 0;
+  color: var(--sparkline-label-color);
+  font-size: var(--sparkline-font-size);
+  line-height: 1;
+  text-transform: none;
+}

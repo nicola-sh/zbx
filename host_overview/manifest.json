@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2.0,
+  "id": "host_overview",
+  "type": "widget",
+  "name": "Zabbix Host Overview",
+  "namespace": "HostOverview",
+  "version": "0.5.1",
+  "author": "nicola",
+  "description": "Dashboard widget: multi-metric host summary (CPU, memory, load, swap, interfaces, disks, partitions), badges, sparklines, and per-host overrides. Works with common Zabbix agent templates.",
+  "widget": {
+    "size": {
+      "width": 38,
+      "height": 4
+    },
+    "js_class": "CWidgetHostOverview"
+  },
+  "actions": {
+    "widget.host_overview.lookup": {
+      "class": "MetricLookup",
+      "layout": "layout.json"
+    },
+    "widget.host_overview.sparkline": {
+      "class": "SparklineHistory",
+      "layout": "layout.json"
+    },
+    "widget.host_overview.view": {
+      "class": "WidgetView"
+    }
+  },
+  "assets": {
+    "css": [
+      "widget.edit.css",
+      "widget.config.css",
+      "widget.toolbar.css",
+      "widget.default.css",
+      "widget.sparkline.css"
+    ],
+    "js": ["class.sparkline.js", "class.widget.js"]
+  }
+}
