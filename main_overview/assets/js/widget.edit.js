@@ -20,6 +20,12 @@ window.form = new (class {
     this.perHostLabels = options?.per_host_labels && typeof options.per_host_labels === "object"
       ? options.per_host_labels
       : {};
+    this.lookupUi = options?.lookup_ui && typeof options.lookup_ui === "object"
+      ? options.lookup_ui
+      : {};
+    this.metricCheckboxRows = Array.isArray(options?.metric_checkbox_rows)
+      ? options.metric_checkbox_rows
+      : [];
     this.metricLookupAction = typeof options?.item_lookup_action === "string"
       ? options.item_lookup_action
       : "";
@@ -41,6 +47,22 @@ window.form = new (class {
     this.initPerHostAccordionEditor();
     this.initMetricLookupAssistants();
 
+  }
+
+  lu(key, fallback = "") {
+    const v = this.lookupUi?.[key];
+
+    return typeof v === "string" && v !== "" ? v : fallback;
+  }
+
+  luFmt(key, ...parts) {
+    let s = this.lu(key, "");
+
+    for (const p of parts) {
+      s = s.replace("%s", String(p));
+    }
+
+    return s;
   }
 
   initColorPickers(colorPickerClass) {
@@ -228,18 +250,25 @@ window.form = new (class {
 
   getMetricLookupStaleText(mode) {
     return mode === "wildcard"
-      ? "Pattern or excludes changed. Test again to refresh the preview."
-      : "Input changed. Test again to refresh the preview.";
+      ? this.lu("stale_wildcard", "")
+      : this.lu("stale_single", "");
   }
 
   getMetricLookupEmptyText(mode, metricType) {
     if (mode !== "wildcard") {
-      return "Enter an item name to preview.";
+      return this.lu("wildcard_empty_single", "");
     }
 
-    const [, plural] = this.getMetricTypeLabels(metricType);
-
-    return `Enter a wildcard pattern to preview matching ${plural}.`;
+    switch (metricType) {
+      case "disk":
+        return this.lu("wildcard_empty_disk", "");
+      case "partition":
+        return this.lu("wildcard_empty_partition", "");
+      case "interface":
+        return this.lu("wildcard_empty_interface", "");
+      default:
+        return this.lu("wildcard_empty_default", "");
+    }
   }
 
   async lookupMetricMatch({input, excludeInput, button, preview, state, mode = "single", metricType = ""}) {
@@ -248,7 +277,7 @@ window.form = new (class {
     const exclude = excludeInput?.value.trim() ?? "";
 
     if (!hostid) {
-      this.renderMetricLookupNotice(preview, "warning", "Pick a host first.");
+      this.renderMetricLookupNotice(preview, "warning", this.lu("pick_host", ""));
       return;
     }
 
@@ -258,7 +287,7 @@ window.form = new (class {
     }
 
     this.abortMetricLookupRequest(state);
-    this.renderMetricLookupNotice(preview, "muted", "Checking for matches...");
+    this.renderMetricLookupNotice(preview, "muted", this.lu("checking", ""));
 
     const curl = new Curl("zabbix.php");
     curl.setArgument("action", this.metricLookupAction);
@@ -306,7 +335,7 @@ window.form = new (class {
           ? result.error.messages.filter(Boolean)
           : [];
 
-        throw new Error(messages[0] ?? "Could not check item matches right now.");
+        throw new Error(messages[0] ?? this.lu("lookup_failed", ""));
       }
 
       this.renderMetricLookupResult(preview, input, result, {mode, metricType});
@@ -322,7 +351,7 @@ window.form = new (class {
         "error",
         error instanceof Error && error.message
           ? error.message
-          : "Could not check item matches right now."
+          : this.lu("lookup_failed", "")
       );
     }
     finally {
@@ -342,7 +371,7 @@ window.form = new (class {
     const raw = await response.text();
 
     if (raw === "") {
-      throw new Error("The lookup endpoint returned an empty response.");
+      throw new Error(this.lu("lookup_empty_response", ""));
     }
 
     try {
@@ -358,10 +387,10 @@ window.form = new (class {
       });
 
       if (contentType.includes("text/html") || this.looksLikeHtmlDocument(raw)) {
-        throw new Error("The lookup endpoint returned an HTML page instead of JSON.");
+        throw new Error(this.lu("lookup_html_error", ""));
       }
 
-      throw new Error("Could not read the lookup response.");
+      throw new Error(this.lu("read_response_error", ""));
     }
   }
 
@@ -391,20 +420,20 @@ window.form = new (class {
 
     switch (status) {
       case "exact":
-        summary.textContent = `Exact match: ${matchName}.`;
+        summary.textContent = this.luFmt("exact_fmt", matchName);
         fragment.append(summary);
         this.showMetricLookupPreview(preview, "success", fragment);
         return;
 
       case "unique_partial":
-        summary.textContent = `Unique partial match: ${matchName}.`;
+        summary.textContent = this.luFmt("unique_partial_fmt", matchName);
         fragment.append(summary);
         fragment.append(this.createMetricCandidateList([{name: matchName}], input, preview));
         this.showMetricLookupPreview(preview, "success", fragment);
         return;
 
       case "ambiguous":
-        summary.textContent = `${candidateCount} matching item names found. Choose one exact name:`;
+        summary.textContent = this.luFmt("ambiguous_fmt", String(candidateCount));
         fragment.append(summary);
         fragment.append(this.createMetricCandidateList(candidates, input, preview, hasMoreCandidates));
         this.showMetricLookupPreview(preview, "warning", fragment);
@@ -412,22 +441,35 @@ window.form = new (class {
 
       case "none":
         if (candidateCount > 0) {
-          summary.textContent = "No exact or unique partial match yet. Choose an exact item name:";
+          summary.textContent = this.lu("none_partial", "");
           fragment.append(summary);
           fragment.append(this.createMetricCandidateList(candidates, input, preview, hasMoreCandidates));
           this.showMetricLookupPreview(preview, "warning", fragment);
           return;
         }
 
-        summary.textContent = "No matching item names found.";
+        summary.textContent = this.lu("none_no_items", "");
         fragment.append(summary);
         this.showMetricLookupPreview(preview, "error", fragment);
         return;
 
       default:
-        summary.textContent = "Enter an item name to preview.";
+        summary.textContent = this.lu("enter_name", "");
         fragment.append(summary);
         this.showMetricLookupPreview(preview, "muted", fragment);
+    }
+  }
+
+  wildcardNoMatchMessage(metricType) {
+    switch (metricType) {
+      case "disk":
+        return this.lu("wildcard_no_disk", "");
+      case "partition":
+        return this.lu("wildcard_no_partition", "");
+      case "interface":
+        return this.lu("wildcard_no_interface", "");
+      default:
+        return this.lu("wildcard_no_default", "");
     }
   }
 
@@ -435,7 +477,6 @@ window.form = new (class {
     const metricType = typeof result?.metric_type === "string" && result.metric_type !== ""
       ? result.metric_type
       : fallbackMetricType;
-    const [singular, plural] = this.getMetricTypeLabels(metricType);
     const status = typeof result?.status === "string" ? result.status : "none";
     const rowCount = Number.parseInt(result?.row_count ?? 0, 10) || 0;
     const rows = Array.isArray(result?.rows)
@@ -447,15 +488,17 @@ window.form = new (class {
     const hasMoreRows = Boolean(result?.has_more_rows);
     const hasMoreExcludedRows = Boolean(result?.has_more_excluded_rows);
     const fragment = document.createDocumentFragment();
+    const matchesTitle = this.luFmt("matches_heading_fmt", String(rowCount));
+    const filteredTitle = this.lu("filtered_heading", "");
 
     switch (status) {
       case "matches":
-        fragment.append(this.createMetricPreviewSection(`MATCHES (${rowCount})`, rows, {
+        fragment.append(this.createMetricPreviewSection(matchesTitle, rows, {
           hasMoreRows,
         }));
 
         if (excludedRows.length > 0) {
-          fragment.append(this.createMetricPreviewSection("FILTERED OUT", excludedRows, {
+          fragment.append(this.createMetricPreviewSection(filteredTitle, excludedRows, {
             hasMoreRows: hasMoreExcludedRows,
             filtered: true,
           }));
@@ -466,7 +509,7 @@ window.form = new (class {
 
       case "none":
         if (excludedRows.length > 0) {
-          fragment.append(this.createMetricPreviewSection("FILTERED OUT", excludedRows, {
+          fragment.append(this.createMetricPreviewSection(filteredTitle, excludedRows, {
             hasMoreRows: hasMoreExcludedRows,
             filtered: true,
           }));
@@ -474,29 +517,37 @@ window.form = new (class {
           return;
         }
 
-        this.renderMetricLookupNotice(preview, "error", `No matching ${plural} found.`);
+        this.renderMetricLookupNotice(preview, "error", this.wildcardNoMatchMessage(metricType));
         return;
 
       case "invalid_pattern":
-        this.renderMetricLookupNotice(preview, "warning", metricType === "interface"
-          ? "Use at least two * wildcards to preview matching interfaces."
-          : `Use at least one * wildcard to preview matching ${plural}.`);
+        this.renderMetricLookupNotice(
+          preview,
+          "warning",
+          metricType === "interface"
+            ? this.lu("wildcard_invalid_iface", "")
+            : this.lu("wildcard_invalid_other", "")
+        );
         return;
 
       case "too_broad":
         this.renderMetricLookupNotice(
           preview,
           "warning",
-          `Include some fixed text around * so the preview can narrow matching ${plural}.`
+          this.lu("wildcard_too_broad", "")
         );
         return;
 
       case "empty":
-        this.renderMetricLookupNotice(preview, "muted", `Enter a wildcard pattern to preview matching ${plural}.`);
+        this.renderMetricLookupNotice(
+          preview,
+          "muted",
+          this.getMetricLookupEmptyText("wildcard", metricType)
+        );
         return;
 
       default:
-        this.renderMetricLookupNotice(preview, "error", `No matching ${plural} found.`);
+        this.renderMetricLookupNotice(preview, "error", this.wildcardNoMatchMessage(metricType));
     }
   }
 
@@ -526,7 +577,7 @@ window.form = new (class {
       const note = document.createElement("div");
 
       note.className = "item-match-preview-note";
-      note.textContent = "Refine the search to narrow the list.";
+      note.textContent = this.lu("refine_candidates", "");
       container.append(note);
     }
 
@@ -543,9 +594,7 @@ window.form = new (class {
     });
 
     if (hasMoreRows) {
-      container.append(this.createMetricPreviewNote(
-        "Only the first few rows are shown. Refine the pattern to narrow the list."
-      ));
+      container.append(this.createMetricPreviewNote(this.lu("refine_rows", "")));
     }
 
     return container;
@@ -633,27 +682,11 @@ window.form = new (class {
     button.addEventListener("click", () => {
       input.value = name;
       input.dispatchEvent(new Event("input", {bubbles: true}));
-      this.renderMetricLookupNotice(preview, "success", `Exact item name applied: ${name}.`);
+      this.renderMetricLookupNotice(preview, "success", this.luFmt("apply_fmt", name));
       input.focus();
     });
 
     return button;
-  }
-
-  getMetricTypeLabels(metricType) {
-    switch (metricType) {
-      case "disk":
-        return ["disk", "disks"];
-
-      case "partition":
-        return ["partition", "partitions"];
-
-      case "interface":
-        return ["interface", "interfaces"];
-
-      default:
-        return ["row", "rows"];
-    }
   }
 
   getNamedInputValue(name, contextRoot = null) {
@@ -915,17 +948,23 @@ window.form = new (class {
 
     wrap.className = "js-hp-metrics-show";
 
-    const rows = [
-      ["0", "Processor"],
-      ["1", "Memory"],
-      ["2", "Load"],
-      ["3", "Swap"],
-      ["4", "Interfaces"],
-      ["5", "Disk util."],
-      ["6", "Partitions"],
-    ];
+    const rows = this.metricCheckboxRows.length > 0
+      ? this.metricCheckboxRows.map((r) => [String(r.value ?? ""), String(r.label ?? "")])
+      : [
+        ["0", "Processor"],
+        ["1", "Memory"],
+        ["2", "Load"],
+        ["3", "Swap"],
+        ["4", "Interfaces"],
+        ["5", "Disk util."],
+        ["6", "Partitions"],
+      ];
 
     for (const [val, lab] of rows) {
+      if (val === "") {
+        continue;
+      }
+
       const labEl = document.createElement("label");
       const cb = document.createElement("input");
 
@@ -1122,8 +1161,8 @@ window.form = new (class {
       }
     });
 
-    body.appendChild(this.buildPerHostSection(L.section_metrics ?? "Metrics", this.buildMetricsShowSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_badges_json ?? "Badges override", this.buildBadgesJsonSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_metrics ?? "Метрики", this.buildMetricsShowSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_badges_json ?? "Значки (JSON)", this.buildBadgesJsonSection(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_display, this.buildDisplayBadges(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_proc, this.buildProcessorMemoryLoad(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_swap, this.buildSwapSection(hostid, profile)));
@@ -1544,7 +1583,7 @@ window.form = new (class {
 
     btn.type = "button";
     btn.className = "js-item-match-test";
-    btn.textContent = "Test";
+    btn.textContent = this.lu("test", "Test");
 
     const preview = document.createElement("div");
 
@@ -1599,7 +1638,7 @@ window.form = new (class {
 
     btn.type = "button";
     btn.className = "js-item-match-test";
-    btn.textContent = "Test";
+    btn.textContent = this.lu("test", "Test");
 
     const preview = document.createElement("div");
 
@@ -1762,7 +1801,7 @@ window.form = new (class {
     const defaultType = badgeTypeOptions.find(({value}) => String(value) === '4')?.value
       ?? badgeTypeOptions[0]?.value
       ?? '0';
-    const defaultLabel = badgeTypeLabels.get(String(defaultType)) ?? 'Hostname';
+    const defaultLabel = badgeTypeLabels.get(String(defaultType)) ?? badgeTypeLabels.get("0") ?? "";
     const allowsMultiple = (type) => multipleBadgeTypes.has(String(type));
     const showsTextInput = (type) => badgeTypesWithText.has(String(type));
     const showsUrlInput = (type) => badgeTypesWithUrl.has(String(type));

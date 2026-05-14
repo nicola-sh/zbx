@@ -21,14 +21,14 @@ class CWidgetFieldBadgesList extends CWidgetField {
     public const BADGE_TAGS        = 7;
 
     public const BADGE_TYPE_LABELS = [
-        self::BADGE_HOSTNAME    => 'Hostname',
-        self::BADGE_UPTIME      => 'Uptime',
-        self::BADGE_LIVELINESS  => 'Liveliness',
-        self::BADGE_PROBLEMS    => 'Problems',
-        self::BADGE_TEXT        => 'Text',
-        self::BADGE_LINK        => 'Link',
-        self::BADGE_MAINTENANCE => 'Maintenance',
-        self::BADGE_TAGS        => 'Tags',
+        self::BADGE_HOSTNAME    => 'Имя хоста',
+        self::BADGE_UPTIME      => 'Аптайм',
+        self::BADGE_LIVELINESS  => 'Живость',
+        self::BADGE_PROBLEMS    => 'Проблемы',
+        self::BADGE_TEXT        => 'Текст',
+        self::BADGE_LINK        => 'Ссылка',
+        self::BADGE_MAINTENANCE => 'Обслуживание',
+        self::BADGE_TAGS        => 'Теги',
     ];
 
     public const SIDE_LEFT  = 'left';
@@ -65,7 +65,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
             $pos = $index + 1;
 
             if (!self::badgeTypeExists($type)) {
-                $errors[] = _s('Badge %1$s: Unsupported badge type.', $pos);
+                $errors[] = _s('Значок %1$s: неподдерживаемый тип.', $pos);
                 continue;
             }
 
@@ -75,7 +75,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
 
             if (self::badgeTypeUsesTextField($type) && trim($badge['text'] ?? '') === '') {
                 $errors[] = _s(
-                    'Badge %1$s: Display text cannot be empty for a %2$s badge.',
+                    'Значок %1$s: для типа «%2$s» текст отображения не может быть пустым.',
                     $pos,
                     _(self::BADGE_TYPE_LABELS[$type])
                 );
@@ -85,11 +85,11 @@ class CWidgetFieldBadgesList extends CWidgetField {
                 $safe_url = self::sanitizeLinkUrl($badge['url'] ?? null);
 
                 if (trim($badge['url'] ?? '') === '') {
-                    $errors[] = _s('Badge %1$s: URL cannot be empty for a Link badge.', $pos);
+                    $errors[] = _s('Значок %1$s: для ссылки URL обязателен.', $pos);
                 }
                 elseif ($safe_url === null) {
                     $errors[] = _s(
-                        'Badge %1$s: URL must use http://, https://, or a relative path such as zabbix.php?action=...',
+                        'Значок %1$s: URL должен начинаться с http://, https:// или быть относительным путём (например zabbix.php?action=...).',
                         $pos
                     );
                 }
@@ -98,8 +98,8 @@ class CWidgetFieldBadgesList extends CWidgetField {
 
         foreach ($single_badge_counts as $type => $count) {
             if ($count > 1) {
-                $label = self::BADGE_TYPE_LABELS[$type] ?? _('This');
-                $errors[] = _s('%1$s badge can only be added once.', _($label));
+                $label = self::BADGE_TYPE_LABELS[$type] ?? _('этот');
+                $errors[] = _s('Значок «%1$s» можно добавить только один раз.', _($label));
             }
         }
 
