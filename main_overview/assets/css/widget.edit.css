@@ -177,8 +177,23 @@
   opacity: 0.8;
 }
 
-.main-overview-per-host-root {
-  margin: 10px 0 14px;
+.main-overview-hidden-metrics {
+  display: none !important;
+}
+
+.main-overview-add-host-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.js-hp-metrics-show {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
 }
 
 .main-overview-per-host-hint {

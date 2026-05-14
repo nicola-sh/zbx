@@ -20,6 +20,9 @@ window.form = new (class {
     this.perHostLabels = options?.per_host_labels && typeof options.per_host_labels === "object"
       ? options.per_host_labels
       : {};
+    this.metricLookupAction = typeof options?.item_lookup_action === "string"
+      ? options.item_lookup_action
+      : "";
     this._hostAccordionRefreshTimer = null;
 
     // Color pickers
@@ -34,7 +37,7 @@ window.form = new (class {
     }
     // Field toggles
     this.initColorSchemeToggle();
-    this.initFieldDependencies();
+    this.initBadgesTable();
     this.initPerHostAccordionEditor();
     this.initMetricLookupAssistants();
 
@@ -91,124 +94,6 @@ window.form = new (class {
     update();
   }
 
-  initFieldDependencies() {
-    this.initCheckBoxListToggle({
-      listId: "metrics_show",
-      optionValue: "4",
-      checkId: "interfaces_high",
-      radiosContainerId: "interfaces_unit",
-    });
-
-    this.initCheckBoxListToggle({
-      listId: "metrics_show",
-      optionValue: "2",
-      checkId: "load_high",
-    });
-
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "0",
-      textBoxName: "item_name_cpu",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "0",
-      textBoxName: "th_cpu_1",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "0",
-      textBoxName: "th_cpu_2",
-    });
-
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "1",
-      textBoxName: "item_name_ram",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "1",
-      textBoxName: "th_ram_1",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "1",
-      textBoxName: "th_ram_2",
-    });
-
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "2",
-      textBoxName: "item_name_load",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "2",
-      textBoxName: "th_load_1",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "2",
-      textBoxName: "th_load_2",
-    });
-
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "3",
-      textBoxName: "item_name_swap",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "3",
-      textBoxName: "th_swap_1",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "3",
-      textBoxName: "th_swap_2",
-    });
-
-    this.initCheckBoxListToggle({
-      listId: "metrics_show",
-      optionValue: "3",
-      checkId: "item_swap_invert",
-    });
-
-    this.initBadgesTable();
-
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "4",
-      textBoxName: "th_iface_1",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "4",
-      textBoxName: "th_iface_2",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "5",
-      textBoxName: "th_disk_1",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "5",
-      textBoxName: "th_disk_2",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "6",
-      textBoxName: "th_partition_1",
-    });
-    this.initTextBoxToggle({
-      listId: "metrics_show",
-      optionValue: "6",
-      textBoxName: "th_partition_2",
-    });
-  }
-
   initMetricLookupAssistants() {
     if (!this.metricLookupAction) {
       return;
@@ -221,8 +106,9 @@ window.form = new (class {
   }
 
   bindMetricAssistant(assistant) {
-    const metricList = document.getElementById("metrics_show");
-
+    const contextRoot = assistant.closest(".js-per-host-block");
+    const metricList = contextRoot?.querySelector(".js-hp-metrics-show")
+      || document.getElementById("metrics_show");
     const fieldName = assistant.dataset.fieldName ?? "";
     const metricValue = assistant.dataset.metricValue ?? "";
     const mode = assistant.dataset.lookupMode ?? "single";
@@ -237,7 +123,6 @@ window.form = new (class {
       excludeInput = ctx?.querySelector(`[data-override-key="${excludeFieldName}"]`)
         || document.querySelector(`input[name="${excludeFieldName}"]`);
     }
-    const contextRoot = assistant.closest(".js-per-host-block");
     const relatedInputs = this.getMetricLookupRelatedInputs(metricType, contextRoot);
     const button = assistant.querySelector(".js-item-match-test");
     const preview = assistant.querySelector(".js-item-match-preview");
@@ -400,7 +285,7 @@ window.form = new (class {
 
           requestBody.interfaces_unit = unit !== undefined && unit !== ""
             ? unit
-            : this.getCheckedRadioValue("interfaces_unit");
+            : this.getCheckedRadioValue("interfaces_unit", ctx ?? undefined);
         }
       }
 
@@ -908,6 +793,15 @@ window.form = new (class {
       // overlays_stack may be unavailable outside the dashboard overlay.
     }
 
+    const refreshBtn = document.querySelector(".js-ho-refresh-host-panels");
+
+    if (refreshBtn && !refreshBtn.dataset.hoBound) {
+      refreshBtn.dataset.hoBound = "1";
+      refreshBtn.addEventListener("click", () => {
+        this.refreshHostAccordion();
+      });
+    }
+
     this.refreshHostAccordion();
   }
 
@@ -972,7 +866,208 @@ window.form = new (class {
     }
 
     this.initMetricLookupAssistants();
+    this.initScopedPerHostDependencies();
+    this.syncGlobalHiddenMetricsFromFirstHost();
     this.writePerHostProfilesToHidden();
+  }
+
+  defaultMetricSelection() {
+    return ["0", "1", "2", "3", "4", "5", "6"];
+  }
+
+  readHiddenGlobalMetricsSelection() {
+    const hidden = document.querySelector(".main-overview-hidden-metrics");
+
+    if (!hidden) {
+      return null;
+    }
+
+    const boxes = hidden.querySelectorAll('input[type="checkbox"][name="metrics_show[]"]');
+
+    if (!boxes.length) {
+      return null;
+    }
+
+    const vals = [...hidden.querySelectorAll('input[type="checkbox"][name="metrics_show[]"]:checked')]
+      .map((c) => c.value);
+
+    return vals.length ? vals : null;
+  }
+
+  buildMetricsShowSection(hostid, profile) {
+    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
+    let selected = Array.isArray(ov.metrics_show) ? ov.metrics_show.map(String) : null;
+
+    if (!selected || selected.length === 0) {
+      selected = this.readHiddenGlobalMetricsSelection() ?? this.defaultMetricSelection();
+    }
+
+    const wrap = document.createElement("div");
+
+    wrap.className = "js-hp-metrics-show";
+
+    const rows = [
+      ["0", "Processor"],
+      ["1", "Memory"],
+      ["2", "Load"],
+      ["3", "Swap"],
+      ["4", "Interfaces"],
+      ["5", "Disk util."],
+      ["6", "Partitions"],
+    ];
+
+    for (const [val, lab] of rows) {
+      const labEl = document.createElement("label");
+      const cb = document.createElement("input");
+
+      cb.type = "checkbox";
+      cb.value = val;
+      cb.checked = selected.includes(val);
+      labEl.append(cb, document.createTextNode(` ${lab}`));
+      wrap.appendChild(labEl);
+    }
+
+    return wrap;
+  }
+
+  buildBadgesJsonSection(hostid, profile) {
+    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
+    const frag = document.createDocumentFragment();
+    const hint = document.createElement("div");
+
+    hint.className = "main-overview-per-host-hint";
+    hint.textContent = this.perHostLabels.label_badges_json_hint ?? "";
+    frag.appendChild(hint);
+
+    const ta = document.createElement("textarea");
+
+    ta.className = "main-overview-phost-textarea";
+    ta.rows = 4;
+    ta.dataset.overrideKey = "badges";
+
+    if (typeof ov.badges === "string") {
+      ta.value = ov.badges;
+    }
+    else if (ov.badges !== undefined) {
+      try {
+        ta.value = JSON.stringify(ov.badges, null, 2);
+      }
+      catch (_e) {
+        ta.value = "";
+      }
+    }
+    else {
+      ta.value = "";
+    }
+
+    frag.appendChild(ta);
+
+    return frag;
+  }
+
+  syncGlobalHiddenMetricsFromFirstHost() {
+    const hidden = document.querySelector(".main-overview-hidden-metrics");
+    const first = document.querySelector(".js-per-host-block .js-hp-metrics-show");
+
+    if (!hidden || !first) {
+      return;
+    }
+
+    const targetBoxes = hidden.querySelectorAll('input[type="checkbox"][name="metrics_show[]"]');
+    const src = [...first.querySelectorAll('input[type="checkbox"]')];
+
+    if (!targetBoxes.length || !src.length) {
+      return;
+    }
+
+    for (const tb of targetBoxes) {
+      const match = src.find((s) => s.value === tb.value);
+
+      if (match) {
+        tb.checked = !!match.checked;
+      }
+    }
+  }
+
+  initScopedPerHostDependencies() {
+    for (const block of document.querySelectorAll(".js-per-host-block")) {
+      this.initScopedPerHostDependenciesForBlock(block);
+    }
+  }
+
+  initScopedPerHostDependenciesForBlock(block) {
+    const mlist = block.querySelector(".js-hp-metrics-show");
+    const hostid = block.dataset?.hostid ?? "";
+
+    if (!mlist || !hostid) {
+      return;
+    }
+
+    const setDisabled = (selector, enabled) => {
+      const el = block.querySelector(selector);
+
+      if (el) {
+        el.disabled = !enabled;
+      }
+    };
+
+    const wireMetric = (opt, fn) => {
+      const cb = mlist.querySelector(`input[type="checkbox"][value="${opt}"]`);
+
+      if (!cb) {
+        return;
+      }
+
+      const run = () => fn(cb.checked);
+
+      cb.addEventListener("change", run);
+      run();
+    };
+
+    wireMetric("4", (on) => {
+      setDisabled('[data-override-key="interfaces_high"]', on);
+      block.querySelectorAll(`input[name="hp_iu_${hostid}"]`).forEach((r) => {
+        r.disabled = !on;
+      });
+    });
+
+    wireMetric("2", (on) => setDisabled('[data-override-key="load_high"]', on));
+
+    const wireText = (opt, key) => {
+      wireMetric(opt, (on) => setDisabled(`[data-override-key="${key}"]`, on));
+    };
+
+    wireText("0", "item_name_cpu");
+    wireText("0", "th_cpu_1");
+    wireText("0", "th_cpu_2");
+    wireText("1", "item_name_ram");
+    wireText("1", "th_ram_1");
+    wireText("1", "th_ram_2");
+    wireText("2", "item_name_load");
+    wireText("2", "th_load_1");
+    wireText("2", "th_load_2");
+    wireText("3", "item_name_swap");
+    wireText("3", "th_swap_1");
+    wireText("3", "th_swap_2");
+    wireMetric("3", (on) => {
+      const inv = block.querySelector('[data-override-key="item_swap_invert"]');
+
+      if (inv) {
+        inv.disabled = !on;
+      }
+    });
+    wireText("4", "th_iface_1");
+    wireText("4", "th_iface_2");
+    wireText("4", "item_name_interface");
+    wireText("4", "interfaces_exclude");
+    wireText("5", "item_name_disk");
+    wireText("5", "th_disk_1");
+    wireText("5", "th_disk_2");
+    wireText("5", "disks_exclude");
+    wireText("6", "item_name_partition");
+    wireText("6", "th_partition_1");
+    wireText("6", "th_partition_2");
+    wireText("6", "partitions_exclude");
   }
 
   createPerHostAccordion(hostid, profile, L) {
@@ -1018,6 +1113,8 @@ window.form = new (class {
       }
     });
 
+    body.appendChild(this.buildPerHostSection(L.section_metrics ?? "Metrics", this.buildMetricsShowSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_badges_json ?? "Badges override", this.buildBadgesJsonSection(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_display, this.buildDisplayBadges(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_proc, this.buildProcessorMemoryLoad(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_swap, this.buildSwapSection(hostid, profile)));
@@ -1281,6 +1378,8 @@ window.form = new (class {
     const frag = document.createDocumentFragment();
     const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
     const reserved = new Set([
+      "metrics_show",
+      "badges",
       "item_name_cpu",
       "item_name_ram",
       "item_name_load",
@@ -1539,6 +1638,15 @@ window.form = new (class {
     const alias = aliasInput?.value?.trim() ?? "";
     const bp = block.querySelector(`input[name="hp_bp_${hostid}"]:checked`)?.value ?? "0";
     const overrides = {};
+    const mlist = block.querySelector(".js-hp-metrics-show");
+
+    if (mlist) {
+      const arr = [...mlist.querySelectorAll('input[type="checkbox"]:checked')].map((c) => c.value);
+
+      if (arr.length) {
+        overrides.metrics_show = arr;
+      }
+    }
 
     for (const el of block.querySelectorAll("[data-override-key]")) {
       const k = el.getAttribute("data-override-key");
@@ -1906,71 +2014,5 @@ window.form = new (class {
       });
     });
     syncJson();
-  }
-
-  // Link a checkbox within a CheckBoxList to dependent fields
-  initCheckBoxListToggle({ listId, optionValue, checkId, radiosContainerId }) {
-    const container = document.getElementById(listId);
-    if (!container) return;
-
-    const show = container.querySelector(`input[type="checkbox"][value="${optionValue}"]`);
-    if (!show) return;
-
-    // Find the target element — try by ID first, then by name attribute
-    let check = checkId ? document.getElementById(checkId) : null;
-    if (!check && checkId) {
-      check = document.querySelector(`input[name="${checkId}"]`);
-    }
-
-    const radiosContainer = radiosContainerId
-      ? document.getElementById(radiosContainerId)
-      : null;
-    const radios = radiosContainer
-      ? radiosContainer.querySelectorAll('input[type="radio"]')
-      : null;
-
-    const setRadiosEnabled = (enabled) => {
-      if (!radios) return;
-      radios.forEach((radio) => {
-        radio.disabled = !enabled;
-      });
-    };
-
-    const update = () => {
-      const enabled = !!show.checked;
-
-      if (check) {
-        check.disabled = !enabled;
-        if (!enabled) {
-          if (check.type === 'checkbox') {
-            check.checked = false;
-          }
-        }
-      }
-
-      setRadiosEnabled(enabled);
-    };
-
-    show.addEventListener("change", update);
-    update();
-  }
-
-  // Link a checkbox within a CheckBoxList to a text input field
-  initTextBoxToggle({ listId, optionValue, textBoxName }) {
-    const container = document.getElementById(listId);
-    if (!container) return;
-
-    const show = container.querySelector(`input[type="checkbox"][value="${optionValue}"]`);
-    if (!show) return;
-
-    const textBox = document.querySelector(`input[name="${textBoxName}"]`);
-    if (!textBox) return;
-
-    const update = () => {
-      textBox.disabled = !show.checked;
-    };
-
-    show.addEventListener("change", update);
-    update();
   }
 })();
