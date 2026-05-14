@@ -28,35 +28,23 @@ $form
         : null
     );
 
-for ($slot = 0; $slot < WidgetForm::MULTI_HOST_SLOT_COUNT; $slot++) {
-    $n = $slot + 1;
-    $pfx = 'mh' . $slot . '_';
-    $fieldset = (new CWidgetFormFieldsetCollapsibleView(_s('Host #%1$d (optional)', $n)))
-        ->addClass('js-host-slot');
-
-    $fieldset
-        ->addItem([
-            new CLabel($data['fields'][$pfx . 'hostid']->getLabel(), $data['fields'][$pfx . 'hostid']->getName()),
-            new CFormField((new CWidgetFieldMultiSelectHostView($data['fields'][$pfx . 'hostid']))->getView()),
-        ])
-        ->addItem([
-            new CLabel($data['fields'][$pfx . 'display_alias']->getLabel(), $data['fields'][$pfx . 'display_alias']->getName()),
-            new CFormField($form->registerField(new CWidgetFieldTextBoxView($data['fields'][$pfx . 'display_alias']))->getView()),
-        ])
-        ->addItem([
-            new CLabel($data['fields'][$pfx . 'badges_placement']->getLabel(), $data['fields'][$pfx . 'badges_placement']->getName()),
-            new CFormField((new CWidgetFieldRadioButtonListView($data['fields'][$pfx . 'badges_placement']))->getView()),
-        ])
-        ->addItem([
-            (new CLabel($data['fields'][$pfx . 'overrides']->getLabel(), $data['fields'][$pfx . 'overrides']->getName()))
-                ->addItem(makeHelpIcon(_(
-                    'Optional JSON object with field names from this form (for example item_name_cpu, th_cpu_1, metrics_show). Use {} to rely on the global defaults below for this host only.'
-                ))),
-            new CFormField($form->registerField(new CWidgetFieldTextBoxView($data['fields'][$pfx . 'overrides']))->getView()),
-        ]);
-
-    $form->addFieldset($fieldset);
-}
+$form
+    ->addItem(
+        (new CDiv())
+            ->addClass('host-overview-per-host-root')
+            ->addItem(
+                (new CDiv())
+                    ->addClass('host-overview-per-host-hint')
+                    ->addItem(_(
+                        'For each host you select in the field above, a collapsible section is created here — similar to the global groups below, but only for that host. Leave a field empty to use the global default.'
+                    ))
+            )
+            ->addItem(
+                (new CDiv())
+                    ->addClass('js-host-accordion-mount')
+                    ->setAttribute('id', 'js-host-accordion-mount')
+            )
+    );
 
 $form
     ->addFieldset(
@@ -239,6 +227,36 @@ $form
         'badge_types_with_text' => CWidgetFieldBadgesList::getTextFieldBadgeTypes(),
         'badge_types_with_url' => CWidgetFieldBadgesList::getUrlFieldBadgeTypes(),
         'item_lookup_action' => 'widget.host_overview.lookup',
+        'per_host_labels' => [
+            'empty' => _('Select one or more hosts in the field above.'),
+            'section_display' => _('Display & badges'),
+            'section_proc' => _('Processor, Memory and Load'),
+            'section_swap' => _('Swap'),
+            'section_if' => _('Interfaces'),
+            'section_disk' => _('Disk utilization'),
+            'section_part' => _('Partitions'),
+            'section_adv' => _('More overrides (JSON)'),
+            'label_alias' => _('Display alias'),
+            'label_badges' => _('Badges'),
+            'bp_summary' => _('Next to name (summary row)'),
+            'bp_detail' => _('Only in detail view'),
+            'label_cpu' => _('Processor item'),
+            'label_ram' => _('Memory item'),
+            'label_load' => _('Load item'),
+            'label_load_high' => _('Load ceiling'),
+            'label_swap' => _('Swap item'),
+            'label_swap_inv' => _('Invert swap'),
+            'label_iface' => _('Interface pattern'),
+            'label_iface_ex' => _('Interface filter'),
+            'label_iface_high' => _('Interface ceiling'),
+            'label_iface_unit' => _('Interface unit'),
+            'label_disk' => _('Disk pattern'),
+            'label_disk_ex' => _('Disk filter'),
+            'label_part' => _('Partition pattern'),
+            'label_part_ex' => _('Partition filter'),
+            'label_extras' => _('Additional keys as JSON (merged into overrides)'),
+            'placeholder_extras' => _('Example: {"metrics_show":["0","1"]}'),
+        ],
     ], JSON_THROW_ON_ERROR) . ');')
     ->show();
 

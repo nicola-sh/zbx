@@ -18,9 +18,10 @@ window.form = new (class {
     this.badgeTypesWithUrl = Array.isArray(options?.badge_types_with_url)
       ? options.badge_types_with_url.map(String)
       : [];
-    this.metricLookupAction = typeof options?.item_lookup_action === "string"
-      ? options.item_lookup_action
-      : "";
+    this.perHostLabels = options?.per_host_labels && typeof options.per_host_labels === "object"
+      ? options.per_host_labels
+      : {};
+    this._hostAccordionRefreshTimer = null;
 
     // Color pickers
     if (
@@ -35,8 +36,8 @@ window.form = new (class {
     // Field toggles
     this.initColorSchemeToggle();
     this.initFieldDependencies();
+    this.initPerHostAccordionEditor();
     this.initMetricLookupAssistants();
-    this.initHostProfilesHostSync();
 
   }
 
@@ -214,94 +215,129 @@ window.form = new (class {
       return;
     }
 
-    const metricList = document.getElementById("metrics_show");
-
-    document.querySelectorAll(".js-item-match-assistant").forEach((assistant) => {
-      const fieldName = assistant.dataset.fieldName ?? "";
-      const metricValue = assistant.dataset.metricValue ?? "";
-      const mode = assistant.dataset.lookupMode ?? "single";
-      const metricType = assistant.dataset.metricType ?? "";
-      const excludeFieldName = assistant.dataset.excludeFieldName ?? "";
-      const input = document.querySelector(`input[name="${fieldName}"]`);
-      const excludeInput = excludeFieldName !== ""
-        ? document.querySelector(`input[name="${excludeFieldName}"]`)
-        : null;
-      const relatedInputs = this.getMetricLookupRelatedInputs(metricType);
-      const button = assistant.querySelector(".js-item-match-test");
-      const preview = assistant.querySelector(".js-item-match-preview");
-      const metricToggle = metricList?.querySelector(
-        `input[type="checkbox"][value="${metricValue}"]`
-      ) ?? null;
-      const state = {abortController: null, updateEnabled: null};
-
-      if (!fieldName || !input || !button || !preview) {
-        return;
-      }
-
-      const updateEnabled = () => {
-        const enabled = !input.disabled && (metricToggle ? metricToggle.checked : true);
-
-        button.disabled = !enabled;
-
-        if (!enabled) {
-          this.abortMetricLookupRequest(state);
-          this.hideMetricLookupPreview(preview);
-        }
-      };
-      state.updateEnabled = updateEnabled;
-
-      button.addEventListener("click", () => {
-        this.lookupMetricMatch({input, excludeInput, button, preview, state, mode, metricType});
-      });
-
-      const markPreviewStale = () => {
-        this.abortMetricLookupRequest(state);
-
-        if (!preview.hidden) {
-          this.renderMetricLookupNotice(
-            preview,
-            "muted",
-            this.getMetricLookupStaleText(mode)
-          );
-        }
-      };
-
-      input.addEventListener("input", markPreviewStale);
-      excludeInput?.addEventListener("input", markPreviewStale);
-      relatedInputs.forEach(({element, eventName}) => {
-        element.addEventListener(eventName, markPreviewStale);
-      });
-
-      input.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" && !button.disabled) {
-          event.preventDefault();
-          button.click();
-        }
-      });
-
-      if (metricToggle) {
-        metricToggle.addEventListener("change", updateEnabled);
-      }
-
-      updateEnabled();
+    document.querySelectorAll(".js-item-match-assistant:not([data-ho-assistant-bound])").forEach((assistant) => {
+      assistant.setAttribute("data-ho-assistant-bound", "1");
+      this.bindMetricAssistant(assistant);
     });
   }
 
-  getMetricLookupRelatedInputs(metricType) {
+  bindMetricAssistant(assistant) {
+    const metricList = document.getElementById("metrics_show");
+
+    const fieldName = assistant.dataset.fieldName ?? "";
+    const metricValue = assistant.dataset.metricValue ?? "";
+    const mode = assistant.dataset.lookupMode ?? "single";
+    const metricType = assistant.dataset.metricType ?? "";
+    const excludeFieldName = assistant.dataset.excludeFieldName ?? "";
+    const input = this.resolveAssistantInput(assistant, fieldName);
+    let excludeInput = null;
+
+    if (excludeFieldName !== "") {
+      const ctx = assistant.closest(".js-per-host-block");
+
+      excludeInput = ctx?.querySelector(`[data-override-key="${excludeFieldName}"]`)
+        || document.querySelector(`input[name="${excludeFieldName}"]`);
+    }
+    const contextRoot = assistant.closest(".js-per-host-block");
+    const relatedInputs = this.getMetricLookupRelatedInputs(metricType, contextRoot);
+    const button = assistant.querySelector(".js-item-match-test");
+    const preview = assistant.querySelector(".js-item-match-preview");
+    const metricToggle = metricList?.querySelector(
+      `input[type="checkbox"][value="${metricValue}"]`
+    ) ?? null;
+    const state = {abortController: null, updateEnabled: null};
+
+    if (!fieldName || !input || !button || !preview) {
+      return;
+    }
+
+    const updateEnabled = () => {
+      const enabled = !input.disabled && (metricToggle ? metricToggle.checked : true);
+
+      button.disabled = !enabled;
+
+      if (!enabled) {
+        this.abortMetricLookupRequest(state);
+        this.hideMetricLookupPreview(preview);
+      }
+    };
+    state.updateEnabled = updateEnabled;
+
+    button.addEventListener("click", () => {
+      this.lookupMetricMatch({input, excludeInput, button, preview, state, mode, metricType});
+    });
+
+    const markPreviewStale = () => {
+      this.abortMetricLookupRequest(state);
+
+      if (!preview.hidden) {
+        this.renderMetricLookupNotice(
+          preview,
+          "muted",
+          this.getMetricLookupStaleText(mode)
+        );
+      }
+    };
+
+    input.addEventListener("input", markPreviewStale);
+    excludeInput?.addEventListener("input", markPreviewStale);
+    relatedInputs.forEach(({element, eventName}) => {
+      element.addEventListener(eventName, markPreviewStale);
+    });
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !button.disabled) {
+        event.preventDefault();
+        button.click();
+      }
+    });
+
+    if (metricToggle) {
+      metricToggle.addEventListener("change", updateEnabled);
+    }
+
+    updateEnabled();
+  }
+
+  resolveAssistantInput(assistant, fieldName) {
+    const scoped = assistant.querySelector(".item-match-controls input[type=\"text\"]")
+      || assistant.querySelector(".item-match-controls textarea")
+      || assistant.querySelector(".item-match-controls input[name]");
+
+    if (scoped) {
+      return scoped;
+    }
+
+    return document.querySelector(`input[name="${fieldName}"]`)
+      || document.querySelector(`textarea[name="${fieldName}"]`);
+  }
+
+  getMetricLookupRelatedInputs(metricType, contextRoot = null) {
     if (metricType !== "interface") {
       return [];
     }
 
+    const root = contextRoot || document;
     const related = [];
-    const interfaceHigh = document.querySelector('input[name="interfaces_high"]');
+    const interfaceHigh = root.querySelector('[data-override-key="interfaces_high"]')
+      || document.querySelector('input[name="interfaces_high"]');
 
     if (interfaceHigh) {
       related.push({element: interfaceHigh, eventName: "input"});
     }
 
-    document.querySelectorAll('input[name="interfaces_unit"]').forEach((radio) => {
-      related.push({element: radio, eventName: "change"});
-    });
+    const unitRadios = root.querySelectorAll('input[type="radio"][name^="hp_iu_"]');
+
+    if (unitRadios.length > 0) {
+      unitRadios.forEach((radio) => {
+        related.push({element: radio, eventName: "change"});
+      });
+    }
+    else {
+      document.querySelectorAll('input[name="interfaces_unit"]').forEach((radio) => {
+        related.push({element: radio, eventName: "change"});
+      });
+    }
 
     return related;
   }
@@ -355,8 +391,17 @@ window.form = new (class {
         requestBody.exclude = exclude;
 
         if (metricType === "interface") {
-          requestBody.interfaces_high = this.getNamedInputValue("interfaces_high");
-          requestBody.interfaces_unit = this.getCheckedRadioValue("interfaces_unit");
+          const ctx = input?.closest(".js-per-host-block");
+          const hi = ctx?.querySelector('[data-override-key="interfaces_high"]')?.value?.trim();
+
+          requestBody.interfaces_high = hi !== undefined && hi !== ""
+            ? hi
+            : this.getNamedInputValue("interfaces_high");
+          const unit = ctx?.querySelector('input[type="radio"][name^="hp_iu_"]:checked')?.value;
+
+          requestBody.interfaces_unit = unit !== undefined && unit !== ""
+            ? unit
+            : this.getCheckedRadioValue("interfaces_unit");
         }
       }
 
@@ -727,14 +772,16 @@ window.form = new (class {
     }
   }
 
-  getNamedInputValue(name) {
-    const input = document.querySelector(`input[name="${name}"]`);
+  getNamedInputValue(name, contextRoot = null) {
+    const root = contextRoot || document;
+    const input = root.querySelector(`input[name="${name}"]`);
 
     return input?.value ?? "";
   }
 
-  getCheckedRadioValue(name) {
-    const input = document.querySelector(`input[name="${name}"]:checked`);
+  getCheckedRadioValue(name, contextRoot = null) {
+    const root = contextRoot || document;
+    const input = root.querySelector(`input[name="${name}"]:checked`);
 
     return input?.value ?? "";
   }
@@ -792,59 +839,60 @@ window.form = new (class {
   }
 
   getMetricLookupHostId(input) {
-    const slot = input?.closest(".js-host-slot");
+    const block = input?.closest(".js-per-host-block");
 
-    if (slot) {
-      const hostRoot = slot.querySelector('[id$="_hostid"]');
-      const hid = this.readHostIdFromMultiselectContainer(hostRoot);
-
-      if (hid) {
-        return hid;
-      }
+    if (block?.dataset?.hostid) {
+      return String(block.dataset.hostid).trim();
     }
 
     return this.getSelectedHostId();
   }
 
-  readHostIdFromMultiselectContainer(hostRoot) {
-    if (!hostRoot) {
-      return "";
-    }
+  initPerHostAccordionEditor() {
+    this._captureProfilesFromHidden();
 
-    for (const input of hostRoot.querySelectorAll('input[name="hostid[]"]')) {
-      if (input.value) {
-        return String(input.value).trim();
-      }
-    }
-
-    for (const selector of ['input[name="hostid"]', 'input[type="hidden"][name^="hostid"]']) {
-      const input = hostRoot.querySelector(selector);
-
-      if (input?.value) {
-        return String(input.value).trim();
-      }
-    }
-
-    return "";
-  }
-
-  initHostProfilesHostSync() {
-    const hostRoot = document.getElementById("hostid");
+    const mount = document.getElementById("js-host-accordion-mount");
     const profilesInput = document.querySelector('[name="host_profiles"]');
+    const hostRoot = document.getElementById("hostid");
 
-    if (!profilesInput) {
+    if (!mount || !profilesInput) {
       return;
     }
 
-    const run = () => this.syncHostProfilesCombined(hostRoot, profilesInput);
+    this._perHostMount = mount;
+    this._perHostProfilesInput = profilesInput;
+    this._perHostHostRoot = hostRoot;
 
-    document.querySelectorAll(".js-host-slot").forEach((slot) => {
-      slot.addEventListener("change", run);
-      slot.addEventListener("input", run);
-    });
+    const schedule = () => {
+      if (this._hostAccordionRefreshTimer) {
+        clearTimeout(this._hostAccordionRefreshTimer);
+      }
+
+      this._hostAccordionRefreshTimer = setTimeout(() => this.refreshHostAccordion(), 80);
+    };
+
+    mount.addEventListener("input", schedule);
+    mount.addEventListener("change", schedule);
 
     if (hostRoot) {
-      hostRoot.addEventListener("change", run);
+      hostRoot.addEventListener("change", schedule);
+
+      try {
+        const mo = new MutationObserver(schedule);
+
+        mo.observe(hostRoot, {childList: true, subtree: true, attributes: true});
+        this._perHostMutationObserver = mo;
+      }
+      catch (_e) {
+        // ignore
+      }
+    }
+
+    const form = document.querySelector("#widget-dialogue-form") || document.querySelector("form");
+
+    if (form && !form.dataset.hoPerhostSync) {
+      form.dataset.hoPerhostSync = "1";
+      form.addEventListener("submit", () => this.writePerHostProfilesToHidden(), true);
     }
 
     try {
@@ -852,8 +900,8 @@ window.form = new (class {
 
       if (overlay?.$dialogue?.[0]) {
         overlay.$dialogue[0].addEventListener("overlay.reload", () => {
-          run();
-          this.inflateMultiHostSlotsFromJson(profilesInput);
+          this._captureProfilesFromHidden();
+          schedule();
         });
       }
     }
@@ -861,106 +909,684 @@ window.form = new (class {
       // overlays_stack may be unavailable outside the dashboard overlay.
     }
 
-    this.inflateMultiHostSlotsFromJson(profilesInput);
-    run();
+    this.refreshHostAccordion();
   }
 
-  inflateMultiHostSlotsFromJson(profilesInput) {
-    if (!profilesInput?.value) {
-      return;
-    }
-
+  _captureProfilesFromHidden() {
+    this._profilesByHostId = new Map();
+    const raw = document.querySelector('[name="host_profiles"]')?.value;
     let profiles = [];
 
     try {
-      profiles = JSON.parse(profilesInput.value || "[]");
+      profiles = JSON.parse(raw || "[]");
     }
-    catch (_err) {
-      return;
+    catch (_e) {
+      profiles = [];
     }
 
     if (!Array.isArray(profiles)) {
-      return;
+      profiles = [];
     }
 
-    const rows = [...document.querySelectorAll(".js-host-slot")];
-
-    for (let i = 0; i < rows.length; i++) {
-      const slot = rows[i];
-      const p = profiles[i];
-
-      if (!p || !p.hostid) {
-        continue;
-      }
-
-      const aliasInput = slot.querySelector('input[name*="display_alias"], textarea[name*="display_alias"]');
-
-      if (aliasInput && typeof p.alias === "string") {
-        aliasInput.value = p.alias;
-      }
-
-      const bp = Number.parseInt(p.badges_placement ?? 0, 10) || 0;
-
-      slot.querySelectorAll('input[name*="badges_placement"]').forEach((radio) => {
-        radio.checked = String(radio.value) === String(bp);
-      });
-
-      const ov = slot.querySelector('input[name*="overrides"], textarea[name*="overrides"]');
-
-      if (ov) {
-        ov.value = typeof p.overrides === "object" ? JSON.stringify(p.overrides ?? {}) : String(p.overrides ?? "{}");
+    for (const p of profiles) {
+      if (p && p.hostid) {
+        this._profilesByHostId.set(String(p.hostid), p);
       }
     }
   }
 
-  syncHostProfilesCombined(hostRoot, profilesInput) {
-    const slotProfiles = [];
+  refreshHostAccordion() {
+    const mount = this._perHostMount;
+    const hostRoot = this._perHostHostRoot;
+    const profilesInput = this._perHostProfilesInput;
 
-    const rows = [...document.querySelectorAll(".js-host-slot")];
-
-    for (const slot of rows) {
-      const hostField = slot.querySelector('[id$="_hostid"]');
-      const hid = this.readHostIdFromMultiselectContainer(hostField);
-
-      if (!hid) {
-        continue;
-      }
-
-      const aliasInput = slot.querySelector('input[name*="display_alias"], textarea[name*="display_alias"]');
-      const alias = aliasInput?.value?.trim() ?? "";
-      const bpRadio = slot.querySelector('input[name*="badges_placement"]:checked');
-      const badges_placement = Number.parseInt(bpRadio?.value ?? "0", 10) || 0;
-      const ovInput = slot.querySelector('input[name*="overrides"], textarea[name*="overrides"]');
-      let overrides = {};
-
-      try {
-        overrides = JSON.parse(ovInput?.value || "{}");
-      }
-      catch (_err) {
-        overrides = {};
-      }
-
-      if (!overrides || typeof overrides !== "object") {
-        overrides = {};
-      }
-
-      slotProfiles.push({
-        hostid: hid,
-        alias,
-        badges_placement: badges_placement === 1 ? 1 : 0,
-        overrides,
-      });
+    if (!mount || !profilesInput) {
+      return;
     }
 
-    if (slotProfiles.length > 0) {
-      profilesInput.value = JSON.stringify(slotProfiles);
+    this.writePerHostProfilesToHidden();
+    this._captureProfilesFromHidden();
+
+    const ordered = hostRoot ? this.collectOrderedHostIds(hostRoot) : [];
+    const L = this.perHostLabels;
+
+    mount.replaceChildren();
+
+    if (ordered.length === 0) {
+      const empty = document.createElement("div");
+
+      empty.className = "host-overview-per-host-empty";
+      empty.textContent = L.empty ?? "";
+      mount.appendChild(empty);
+      profilesInput.value = "[]";
 
       return;
     }
 
-    if (hostRoot) {
-      this.syncHostProfilesFieldValue(hostRoot, profilesInput);
+    for (const hostid of ordered) {
+      const existing = this._profilesByHostId.get(String(hostid));
+      const profile = existing && typeof existing === "object"
+        ? existing
+        : {hostid: String(hostid), alias: "", badges_placement: 0, overrides: {}};
+
+      mount.appendChild(this.createPerHostAccordion(String(hostid), profile, L));
     }
+
+    this.initMetricLookupAssistants();
+    this.writePerHostProfilesToHidden();
+  }
+
+  createPerHostAccordion(hostid, profile, L) {
+    const root = document.createElement("div");
+
+    root.className = "host-overview-phost js-per-host-block";
+    root.dataset.hostid = String(hostid);
+
+    const head = document.createElement("button");
+
+    head.type = "button";
+    head.className = "host-overview-phost-head";
+    head.setAttribute("aria-expanded", "true");
+
+    const arrow = document.createElement("span");
+
+    arrow.className = "host-overview-phost-arrow";
+    arrow.textContent = "\u25BC";
+
+    const title = document.createElement("span");
+
+    title.className = "host-overview-phost-title";
+    title.textContent = this.getHostAccordionTitle(hostid, profile);
+
+    head.append(arrow, title);
+
+    const body = document.createElement("div");
+
+    body.className = "host-overview-phost-body";
+
+    head.addEventListener("click", () => {
+      const hidden = body.hasAttribute("hidden");
+
+      if (hidden) {
+        body.removeAttribute("hidden");
+        head.setAttribute("aria-expanded", "true");
+        arrow.textContent = "\u25BC";
+      }
+      else {
+        body.setAttribute("hidden", "hidden");
+        head.setAttribute("aria-expanded", "false");
+        arrow.textContent = "\u25B6";
+      }
+    });
+
+    body.appendChild(this.buildPerHostSection(L.section_display, this.buildDisplayBadges(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_proc, this.buildProcessorMemoryLoad(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_swap, this.buildSwapSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_if, this.buildInterfacesSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_disk, this.buildDiskSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_part, this.buildPartitionsSection(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_adv, this.buildAdvancedExtras(hostid, profile)));
+
+    root.append(head, body);
+
+    return root;
+  }
+
+  getHostAccordionTitle(hostid, profile) {
+    const alias = typeof profile.alias === "string" ? profile.alias.trim() : "";
+
+    if (alias !== "") {
+      return `${alias} (${hostid})`;
+    }
+
+    const hostRoot = document.getElementById("hostid");
+
+    if (hostRoot) {
+      for (const inp of hostRoot.querySelectorAll('input[name="hostid[]"]')) {
+        if (String(inp.value).trim() === String(hostid)) {
+          const label = inp.closest("li")?.textContent?.trim();
+
+          if (label) {
+            return `${label} (${hostid})`;
+          }
+
+          break;
+        }
+      }
+    }
+
+    return String(hostid);
+  }
+
+  buildPerHostSection(titleText, inner) {
+    const wrap = document.createElement("div");
+
+    wrap.className = "host-overview-phost-section";
+
+    const h = document.createElement("button");
+
+    h.type = "button";
+    h.className = "host-overview-phost-section-head";
+
+    const ar = document.createElement("span");
+
+    ar.className = "host-overview-phost-arrow";
+    ar.textContent = "\u25BC";
+
+    const t = document.createElement("span");
+
+    t.className = "host-overview-phost-section-title";
+    t.textContent = titleText;
+
+    const b = document.createElement("div");
+
+    b.className = "host-overview-phost-section-body";
+
+    h.append(ar, t);
+
+    h.addEventListener("click", () => {
+      const hidden = b.hasAttribute("hidden");
+
+      if (hidden) {
+        b.removeAttribute("hidden");
+        ar.textContent = "\u25BC";
+      }
+      else {
+        b.setAttribute("hidden", "hidden");
+        ar.textContent = "\u25B6";
+      }
+    });
+
+    b.appendChild(inner);
+    wrap.append(h, b);
+
+    return wrap;
+  }
+
+  buildDisplayBadges(hostid, profile) {
+    const frag = document.createDocumentFragment();
+
+    frag.appendChild(this.makeLabeledRow(
+      this.perHostLabels.label_alias ?? "",
+      this.makeTextInput({value: profile.alias ?? "", dataHostMeta: "alias"})
+    ));
+
+    const bpWrap = document.createElement("div");
+
+    bpWrap.className = "host-overview-phost-row";
+    bpWrap.appendChild(this.makeInlineLabel(this.perHostLabels.label_badges ?? ""));
+
+    const bp0 = document.createElement("label");
+    const bp1 = document.createElement("label");
+    const r0 = document.createElement("input");
+    const r1 = document.createElement("input");
+
+    r0.type = "radio";
+    r1.type = "radio";
+    r0.name = `hp_bp_${hostid}`;
+    r1.name = `hp_bp_${hostid}`;
+    r0.value = "0";
+    r1.value = "1";
+    r0.checked = Number(profile.badges_placement ?? 0) !== 1;
+    r1.checked = Number(profile.badges_placement ?? 0) === 1;
+    bp0.append(r0, document.createTextNode(` ${this.perHostLabels.bp_summary ?? ""}`));
+    bp1.append(r1, document.createTextNode(` ${this.perHostLabels.bp_detail ?? ""}`));
+    bpWrap.append(bp0, bp1);
+    frag.appendChild(bpWrap);
+
+    return frag;
+  }
+
+  buildProcessorMemoryLoad(hostid, profile) {
+    const frag = document.createDocumentFragment();
+    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
+
+    frag.appendChild(this.makeItemAssistantRow(
+      this.perHostLabels.label_cpu ?? "",
+      "item_name_cpu",
+      "0",
+      ov.item_name_cpu ?? ""
+    ));
+    frag.appendChild(this.makeThresholdPair(ov, "th_cpu_1", "th_cpu_2"));
+
+    frag.appendChild(this.makeItemAssistantRow(
+      this.perHostLabels.label_ram ?? "",
+      "item_name_ram",
+      "1",
+      ov.item_name_ram ?? ""
+    ));
+    frag.appendChild(this.makeThresholdPair(ov, "th_ram_1", "th_ram_2"));
+
+    frag.appendChild(this.makeItemAssistantRow(
+      this.perHostLabels.label_load ?? "",
+      "item_name_load",
+      "2",
+      ov.item_name_load ?? ""
+    ));
+    frag.appendChild(this.makeNumberRow(this.perHostLabels.label_load_high ?? "", "load_high", ov.load_high ?? ""));
+    frag.appendChild(this.makeThresholdPair(ov, "th_load_1", "th_load_2"));
+
+    return frag;
+  }
+
+  buildSwapSection(hostid, profile) {
+    const frag = document.createDocumentFragment();
+    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
+
+    frag.appendChild(this.makeItemAssistantRow(
+      this.perHostLabels.label_swap ?? "",
+      "item_name_swap",
+      "3",
+      ov.item_name_swap ?? ""
+    ));
+
+    const inv = document.createElement("div");
+
+    inv.className = "host-overview-phost-row";
+    const cb = document.createElement("input");
+
+    cb.type = "checkbox";
+    cb.dataset.overrideKey = "item_swap_invert";
+    cb.checked = String(ov.item_swap_invert ?? "1") === "1" || ov.item_swap_invert === 1 || ov.item_swap_invert === true;
+    inv.appendChild(this.makeInlineLabel(this.perHostLabels.label_swap_inv ?? ""));
+    inv.appendChild(cb);
+    frag.appendChild(inv);
+
+    frag.appendChild(this.makeThresholdPair(ov, "th_swap_1", "th_swap_2"));
+
+    return frag;
+  }
+
+  buildInterfacesSection(hostid, profile) {
+    const frag = document.createDocumentFragment();
+    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
+
+    frag.appendChild(this.makePatternAssistantRow(
+      this.perHostLabels.label_iface ?? "",
+      "item_name_interface",
+      "interface",
+      "4",
+      ov.item_name_interface ?? ""
+    ));
+
+    frag.appendChild(this.makeTextRow(
+      this.perHostLabels.label_iface_ex ?? "",
+      "interfaces_exclude",
+      ov.interfaces_exclude ?? ""
+    ));
+
+    frag.appendChild(this.makeNumberRow(
+      this.perHostLabels.label_iface_high ?? "",
+      "interfaces_high",
+      ov.interfaces_high ?? ""
+    ));
+
+    const unit = String(ov.interfaces_unit ?? "");
+    const wrap = document.createElement("div");
+
+    wrap.className = "host-overview-phost-row";
+    wrap.appendChild(this.makeInlineLabel(this.perHostLabels.label_iface_unit ?? ""));
+
+    for (const [val, lab] of [["0", "Kbps"], ["1", "Mbps"], ["2", "Gbps"]]) {
+      const labEl = document.createElement("label");
+      const r = document.createElement("input");
+
+      r.type = "radio";
+      r.name = `hp_iu_${hostid}`;
+      r.value = val;
+      r.checked = (unit === "" && val === "2") || unit === val;
+      labEl.append(r, document.createTextNode(` ${lab}`));
+      wrap.appendChild(labEl);
+    }
+
+    frag.appendChild(wrap);
+
+    return frag;
+  }
+
+  buildDiskSection(hostid, profile) {
+    const frag = document.createDocumentFragment();
+    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
+
+    frag.appendChild(this.makePatternAssistantRow(
+      this.perHostLabels.label_disk ?? "",
+      "item_name_disk",
+      "disk",
+      "5",
+      ov.item_name_disk ?? ""
+    ));
+    frag.appendChild(this.makeTextRow(this.perHostLabels.label_disk_ex ?? "", "disks_exclude", ov.disks_exclude ?? ""));
+    frag.appendChild(this.makeThresholdPair(ov, "th_disk_1", "th_disk_2"));
+
+    return frag;
+  }
+
+  buildPartitionsSection(hostid, profile) {
+    const frag = document.createDocumentFragment();
+    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
+
+    frag.appendChild(this.makePatternAssistantRow(
+      this.perHostLabels.label_part ?? "",
+      "item_name_partition",
+      "partition",
+      "6",
+      ov.item_name_partition ?? ""
+    ));
+    frag.appendChild(this.makeTextRow(this.perHostLabels.label_part_ex ?? "", "partitions_exclude", ov.partitions_exclude ?? ""));
+    frag.appendChild(this.makeThresholdPair(ov, "th_partition_1", "th_partition_2"));
+
+    return frag;
+  }
+
+  buildAdvancedExtras(hostid, profile) {
+    const frag = document.createDocumentFragment();
+    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
+    const reserved = new Set([
+      "item_name_cpu",
+      "item_name_ram",
+      "item_name_load",
+      "item_name_swap",
+      "item_name_disk",
+      "item_name_partition",
+      "item_name_interface",
+      "item_swap_invert",
+      "load_high",
+      "interfaces_high",
+      "interfaces_unit",
+      "th_cpu_1",
+      "th_cpu_2",
+      "th_ram_1",
+      "th_ram_2",
+      "th_load_1",
+      "th_load_2",
+      "th_swap_1",
+      "th_swap_2",
+      "th_disk_1",
+      "th_disk_2",
+      "th_partition_1",
+      "th_partition_2",
+      "interfaces_exclude",
+      "disks_exclude",
+      "partitions_exclude",
+    ]);
+    const extra = {};
+
+    for (const [k, v] of Object.entries(ov)) {
+      if (!reserved.has(k)) {
+        extra[k] = v;
+      }
+    }
+
+    const ta = document.createElement("textarea");
+
+    ta.className = "host-overview-phost-textarea";
+    ta.rows = 5;
+    ta.dataset.hostMeta = "extras";
+    ta.placeholder = this.perHostLabels.placeholder_extras ?? "";
+    ta.value = Object.keys(extra).length ? JSON.stringify(extra, null, 2) : "";
+
+    frag.appendChild(this.makeLabeledRow(this.perHostLabels.label_extras ?? "", ta));
+
+    return frag;
+  }
+
+  makeLabeledRow(labelText, control) {
+    const row = document.createElement("div");
+
+    row.className = "host-overview-phost-row";
+    row.appendChild(this.makeInlineLabel(labelText));
+    row.appendChild(control);
+
+    return row;
+  }
+
+  makeInlineLabel(text) {
+    const span = document.createElement("span");
+
+    span.className = "host-overview-phost-label";
+    span.textContent = text;
+
+    return span;
+  }
+
+  makeTextInput({value, dataHostMeta}) {
+    const input = document.createElement("input");
+
+    input.type = "text";
+    input.className = "host-overview-phost-input";
+    input.value = value ?? "";
+
+    if (dataHostMeta) {
+      input.dataset.hostMeta = dataHostMeta;
+    }
+
+    return input;
+  }
+
+  makeTextRow(label, key, value) {
+    const input = document.createElement("input");
+
+    input.type = "text";
+    input.className = "host-overview-phost-input";
+    input.dataset.overrideKey = key;
+    input.value = value ?? "";
+
+    return this.makeLabeledRow(label, input);
+  }
+
+  makeNumberRow(label, key, value) {
+    const input = document.createElement("input");
+
+    input.type = "number";
+    input.className = "host-overview-phost-input";
+    input.dataset.overrideKey = key;
+    input.value = value === undefined || value === null ? "" : String(value);
+
+    return this.makeLabeledRow(label, input);
+  }
+
+  makeThresholdPair(ov, k1, k2) {
+    const wrap = document.createElement("div");
+
+    wrap.className = "host-overview-phost-row host-overview-phost-row--split";
+
+    const mk = (key) => {
+      const input = document.createElement("input");
+
+      input.type = "number";
+      input.className = "host-overview-phost-input";
+      input.dataset.overrideKey = key;
+      input.placeholder = key;
+      input.value = ov[key] !== undefined && ov[key] !== null && String(ov[key]) !== ""
+        ? String(ov[key])
+        : "";
+
+      return input;
+    };
+
+    wrap.appendChild(mk(k1));
+    wrap.appendChild(mk(k2));
+
+    return wrap;
+  }
+
+  makeItemAssistantRow(label, fieldName, metricValue, value) {
+    const row = document.createElement("div");
+
+    row.className = "host-overview-phost-row host-overview-phost-row--stack";
+    row.appendChild(this.makeInlineLabel(label));
+
+    const assistant = document.createElement("div");
+
+    assistant.className = "item-match-assistant js-item-match-assistant";
+    assistant.dataset.fieldName = fieldName;
+    assistant.dataset.metricValue = metricValue;
+
+    const controls = document.createElement("div");
+
+    controls.className = "item-match-controls";
+
+    const input = document.createElement("input");
+
+    input.type = "text";
+    input.className = "host-overview-phost-input";
+    input.dataset.overrideKey = fieldName;
+    input.value = value ?? "";
+
+    const btn = document.createElement("button");
+
+    btn.type = "button";
+    btn.className = "js-item-match-test";
+    btn.textContent = "Test";
+
+    const preview = document.createElement("div");
+
+    preview.className = "item-match-preview js-item-match-preview";
+    preview.hidden = true;
+
+    controls.append(input, btn);
+    assistant.append(controls, preview);
+    row.appendChild(assistant);
+
+    return row;
+  }
+
+  makePatternAssistantRow(label, fieldName, metricType, metricToggleValue, value) {
+    const row = document.createElement("div");
+
+    row.className = "host-overview-phost-row host-overview-phost-row--stack";
+    row.appendChild(this.makeInlineLabel(label));
+
+    const assistant = document.createElement("div");
+
+    assistant.className = "item-match-assistant js-item-match-assistant";
+    assistant.dataset.fieldName = fieldName;
+    assistant.dataset.metricValue = String(metricToggleValue ?? "");
+    assistant.dataset.lookupMode = "wildcard";
+    assistant.dataset.metricType = metricType;
+
+    if (metricType === "partition") {
+      assistant.dataset.excludeFieldName = "partitions_exclude";
+    }
+
+    if (metricType === "disk") {
+      assistant.dataset.excludeFieldName = "disks_exclude";
+    }
+
+    if (metricType === "interface") {
+      assistant.dataset.excludeFieldName = "interfaces_exclude";
+    }
+
+    const controls = document.createElement("div");
+
+    controls.className = "item-match-controls";
+
+    const input = document.createElement("input");
+
+    input.type = "text";
+    input.className = "host-overview-phost-input";
+    input.dataset.overrideKey = fieldName;
+    input.value = value ?? "";
+
+    const btn = document.createElement("button");
+
+    btn.type = "button";
+    btn.className = "js-item-match-test";
+    btn.textContent = "Test";
+
+    const preview = document.createElement("div");
+
+    preview.className = "item-match-preview js-item-match-preview";
+    preview.hidden = true;
+
+    controls.append(input, btn);
+    assistant.append(controls, preview);
+    row.appendChild(assistant);
+
+    return row;
+  }
+
+  writePerHostProfilesToHidden() {
+    const profilesInput = this._perHostProfilesInput || document.querySelector('[name="host_profiles"]');
+    const hostRoot = this._perHostHostRoot || document.getElementById("hostid");
+
+    if (!profilesInput || !hostRoot) {
+      return;
+    }
+
+    const ordered = this.collectOrderedHostIds(hostRoot);
+    const blocks = [...document.querySelectorAll(".js-per-host-block")];
+    const profiles = ordered.map((hid) => {
+      const block = blocks.find((n) => n.dataset.hostid === String(hid));
+
+      if (block) {
+        return this.serializePerHostBlock(block, hid);
+      }
+
+      const fallback = this._profilesByHostId?.get(String(hid));
+
+      if (fallback && typeof fallback === "object") {
+        return fallback;
+      }
+
+      return {hostid: String(hid), alias: "", badges_placement: 0, overrides: {}};
+    });
+
+    profilesInput.value = JSON.stringify(profiles);
+  }
+
+  serializePerHostBlock(block, hostid) {
+    const aliasInput = block.querySelector('[data-host-meta="alias"]');
+    const alias = aliasInput?.value?.trim() ?? "";
+    const bp = block.querySelector(`input[name="hp_bp_${hostid}"]:checked`)?.value ?? "0";
+    const overrides = {};
+
+    for (const el of block.querySelectorAll("[data-override-key]")) {
+      const k = el.getAttribute("data-override-key");
+
+      if (!k) {
+        continue;
+      }
+
+      if (el.type === "checkbox") {
+        overrides[k] = el.checked ? "1" : "0";
+      }
+      else {
+        const v = String(el.value ?? "").trim();
+
+        if (v !== "") {
+          overrides[k] = v;
+        }
+      }
+    }
+
+    const iu = block.querySelector(`input[name="hp_iu_${hostid}"]:checked`);
+
+    if (iu) {
+      overrides.interfaces_unit = iu.value;
+    }
+
+    const extras = block.querySelector('[data-host-meta="extras"]')?.value?.trim();
+
+    if (extras) {
+      try {
+        const parsed = JSON.parse(extras);
+
+        if (parsed && typeof parsed === "object") {
+          Object.assign(overrides, parsed);
+        }
+      }
+      catch (_e) {
+        // ignore invalid JSON in extras
+      }
+    }
+
+    return {
+      hostid: String(hostid),
+      alias,
+      badges_placement: bp === "1" ? 1 : 0,
+      overrides,
+    };
   }
 
   collectOrderedHostIds(hostRoot) {
@@ -989,47 +1615,6 @@ window.form = new (class {
     }
 
     return [...new Set(collected)];
-  }
-
-  syncHostProfilesFieldValue(hostRoot, profilesInput) {
-    const ordered = this.collectOrderedHostIds(hostRoot);
-    let profiles = [];
-
-    try {
-      profiles = JSON.parse(profilesInput.value || "[]");
-    }
-    catch (_err) {
-      profiles = [];
-    }
-
-    if (!Array.isArray(profiles)) {
-      profiles = [];
-    }
-
-    const byHost = {};
-    const byMeta = {};
-
-    for (const entry of profiles) {
-      if (entry && entry.hostid) {
-        const id = String(entry.hostid);
-
-        byHost[id] =
-          entry.overrides && typeof entry.overrides === "object" ? entry.overrides : {};
-        byMeta[id] = {
-          alias: typeof entry.alias === "string" ? entry.alias : "",
-          badges_placement: Number.parseInt(entry.badges_placement ?? 0, 10) || 0,
-        };
-      }
-    }
-
-    const next = ordered.map((hostid) => ({
-      hostid,
-      alias: byMeta[hostid]?.alias ?? "",
-      badges_placement: byMeta[hostid]?.badges_placement === 1 ? 1 : 0,
-      overrides: byHost[hostid] || {},
-    }));
-
-    profilesInput.value = JSON.stringify(next);
   }
 
   // Badge editor: add, remove, reorder, and keep the hidden JSON in sync.
