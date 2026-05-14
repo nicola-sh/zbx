@@ -27,6 +27,13 @@ $form
         : null
     );
 
+$hidden_metrics_wrap = (new CDiv())->addClass('main-overview-hidden-metrics');
+$metrics_field_view = (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))->setColumns(3);
+
+foreach ($form->registerField($metrics_field_view)->getView() as $metrics_view_part) {
+    $hidden_metrics_wrap->addItem($metrics_view_part);
+}
+
 $form
     ->addItem(
         (new CDiv())
@@ -86,14 +93,7 @@ $form
                 new CWidgetFieldRadioButtonListView($data['fields']['bar_height'])
             )
     )
-    ->addItem(
-        (new CDiv())
-            ->addClass('main-overview-hidden-metrics')
-            ->addItem(
-                (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))
-                    ->setColumns(3)
-            )
-    )
+    ->addItem($hidden_metrics_wrap)
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView(_('Stored host profiles (auto-synced)')))
             ->addClass('js-host-profiles-sync-fieldset')
