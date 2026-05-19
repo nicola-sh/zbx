@@ -788,25 +788,35 @@ window.form = new (class {
     this._perHostMount = mount;
     this._perHostProfilesInput = profilesInput;
     this._perHostHostRoot = hostRoot;
+    this._hostLabelCache = new Map();
 
-    const schedule = () => {
+    const scheduleProfilesSync = () => {
+      if (this._hostProfilesSyncTimer) {
+        clearTimeout(this._hostProfilesSyncTimer);
+      }
+
+      this._hostProfilesSyncTimer = setTimeout(() => this.writePerHostProfilesToHidden(), 200);
+    };
+
+    const scheduleHostListRebuild = () => {
       if (this._hostAccordionRefreshTimer) {
         clearTimeout(this._hostAccordionRefreshTimer);
       }
 
+      this._hostLabelCache.clear();
       this._hostAccordionRefreshTimer = setTimeout(() => this.refreshHostAccordion(), 80);
     };
 
-    mount.addEventListener("input", schedule);
-    mount.addEventListener("change", schedule);
+    mount.addEventListener("input", scheduleProfilesSync);
+    mount.addEventListener("change", scheduleProfilesSync);
 
     if (hostRoot) {
-      hostRoot.addEventListener("change", schedule);
+      hostRoot.addEventListener("change", scheduleHostListRebuild);
 
       try {
-        const mo = new MutationObserver(schedule);
+        const mo = new MutationObserver(scheduleHostListRebuild);
 
-        mo.observe(hostRoot, {childList: true, subtree: true, attributes: true});
+        mo.observe(hostRoot, {childList: true, subtree: true});
         this._perHostMutationObserver = mo;
       }
       catch (_e) {
@@ -827,7 +837,8 @@ window.form = new (class {
       if (overlay?.$dialogue?.[0]) {
         overlay.$dialogue[0].addEventListener("overlay.reload", () => {
           this._captureProfilesFromHidden();
-          schedule();
+          this._hostLabelCache?.clear();
+          scheduleHostListRebuild();
         });
       }
     }
@@ -1176,22 +1187,88 @@ window.form = new (class {
     return root;
   }
 
-  getHostAccordionTitle(hostid, profile) {
-    const alias = typeof profile.alias === "string" ? profile.alias.trim() : "";
+  getHostMultiselectJQuery() {
+    const wrapper = this.resolveHostMultiselectRoot();
 
-    if (alias !== "") {
-      return `${alias} (${hostid})`;
+    if (!wrapper || typeof jQuery === "undefined") {
+      return null;
+    }
+
+    const inner = wrapper.querySelector('[data-field-type="multiselect"]');
+    const $el = inner ? jQuery(inner) : jQuery(wrapper);
+
+    return $el.data("multiSelect") ? $el : null;
+  }
+
+  resolveHostLabel(hostid) {
+    const id = String(hostid ?? "").trim();
+
+    if (id === "") {
+      return "";
+    }
+
+    if (this._hostLabelCache?.has(id)) {
+      return this._hostLabelCache.get(id);
+    }
+
+    const $ms = this.getHostMultiselectJQuery();
+
+    if ($ms && typeof $ms.multiSelect === "function") {
+      try {
+        const data = $ms.multiSelect("getData") || [];
+        const found = data.find((item) => String(item.id) === id);
+
+        if (found?.name) {
+          const label = `${found.prefix ?? ""}${found.name}`.trim();
+
+          this._hostLabelCache.set(id, label);
+
+          return label;
+        }
+      }
+      catch (_e) {
+        // ignore
+      }
     }
 
     const hostRoot = this.resolveHostMultiselectRoot();
 
     if (hostRoot) {
-      for (const inp of hostRoot.querySelectorAll('input[name="hostid[]"]')) {
-        if (String(inp.value).trim() === String(hostid)) {
-          const label = inp.closest("li")?.textContent?.trim();
+      for (const li of hostRoot.querySelectorAll("li[data-id]")) {
+        if (String(li.dataset.id).trim() === id) {
+          const fromData = String(li.dataset.label ?? "").trim();
 
-          if (label) {
-            return `${label} (${hostid})`;
+          if (fromData !== "") {
+            this._hostLabelCache.set(id, fromData);
+
+            return fromData;
+          }
+
+          const span = li.querySelector(".subfilter-enabled span[title]");
+
+          if (span?.title) {
+            const label = String(span.title).trim();
+
+            this._hostLabelCache.set(id, label);
+
+            return label;
+          }
+
+          break;
+        }
+      }
+
+      for (const inp of hostRoot.querySelectorAll('input[type="hidden"][name="hostid[]"]')) {
+        if (String(inp.value).trim() === id) {
+          const name = inp.getAttribute("data-name");
+
+          if (name) {
+            const prefix = inp.getAttribute("data-prefix") || "";
+            const label = `${prefix}${name}`.trim();
+
+            this._hostLabelCache.set(id, label);
+
+            return label;
           }
 
           break;
@@ -1199,7 +1276,29 @@ window.form = new (class {
       }
     }
 
-    return String(hostid);
+    return "";
+  }
+
+  getHostAccordionTitle(hostid, profile) {
+    const alias = typeof profile.alias === "string" ? profile.alias.trim() : "";
+    const zbx_name = this.resolveHostLabel(hostid);
+
+    if (alias !== "") {
+      return zbx_name !== "" ? `${alias} (${zbx_name})` : alias;
+    }
+
+    return zbx_name !== "" ? zbx_name : String(hostid);
+  }
+
+  updatePerHostAccordionTitle(block, hostid) {
+    const title = block?.querySelector(".main-overview-phost-title");
+    const aliasInput = block?.querySelector('[data-host-meta="alias"]');
+
+    if (!title || !aliasInput) {
+      return;
+    }
+
+    title.textContent = this.getHostAccordionTitle(hostid, {alias: aliasInput.value});
   }
 
   buildPerHostSection(titleText, inner) {
@@ -1249,10 +1348,19 @@ window.form = new (class {
 
   buildDisplayBadges(hostid, profile) {
     const frag = document.createDocumentFragment();
+    const aliasInput = this.makeTextInput({value: profile.alias ?? "", dataHostMeta: "alias"});
+
+    aliasInput.addEventListener("input", () => {
+      const block = aliasInput.closest(".js-per-host-block");
+
+      if (block) {
+        this.updatePerHostAccordionTitle(block, hostid);
+      }
+    });
 
     frag.appendChild(this.makeLabeledRow(
       this.perHostLabels.label_alias ?? "",
-      this.makeTextInput({value: profile.alias ?? "", dataHostMeta: "alias"})
+      aliasInput
     ));
 
     const bpWrap = document.createElement("div");
