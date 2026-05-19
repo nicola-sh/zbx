@@ -23,6 +23,7 @@ class CWidgetMainOverview extends CWidget {
     this.rendered = false;
     this._runtimeFields = this._fields || {};
     this._layoutSignature = '';
+    this._multiDetailHostId = null;
     this._overviewClickRoots = new Set();
     this._handleOverviewClick = (event) => this._onOverviewClick(event);
     this._sparklineOverviewContext = null;
@@ -61,8 +62,33 @@ class CWidgetMainOverview extends CWidget {
     });
   }
 
+  onActivate() {
+    this._attachOverview();
+    this._attachMultiNavigation();
+    this._sparkline?.scheduleRedraw();
+  }
+
   onDeactivate() {
     this._sparkline?.close();
+    for (const root of this._overviewClickRoots) {
+      root.removeEventListener('click', this._handleOverviewClick);
+    }
+
+    this._overviewClickRoots.clear();
+    this._detachMultiNavigation();
+    this._resetAnimationState();
+  }
+
+  onClearContents() {
+    this._sparkline?.close();
+    for (const root of this._overviewClickRoots) {
+      root.removeEventListener('click', this._handleOverviewClick);
+    }
+
+    this._overviewClickRoots.clear();
+    this._detachMultiNavigation();
+    this._resetAnimationState();
+    this._sparklineOverviewContext = null;
   }
 
   onResize() {
@@ -94,6 +120,20 @@ class CWidgetMainOverview extends CWidget {
     return this._body?.querySelector('[data-main-overview-role="sparkline"]') || null;
   }
 
+  _isHiddenHeaderMode() {
+    if (typeof this.getViewMode !== 'function') {
+      return false;
+    }
+
+    const mode = this.getViewMode();
+
+    if (typeof ZBX_WIDGET_VIEW_MODE_HIDDEN_HEADER !== 'undefined') {
+      return mode === ZBX_WIDGET_VIEW_MODE_HIDDEN_HEADER;
+    }
+
+    return Boolean(mode);
+  }
+
   updateViewModeAttr() {
     try {
       if (!this._body || typeof this.getViewMode !== 'function') {
@@ -102,7 +142,7 @@ class CWidgetMainOverview extends CWidget {
 
       const root = this._getWidgetRoot();
       if (root) {
-        root.classList.toggle('hidden_header', this.getViewMode());
+        root.classList.toggle('hidden_header', this._isHiddenHeaderMode());
       }
     } catch (_) {}
   }
@@ -171,6 +211,7 @@ class CWidgetMainOverview extends CWidget {
     const requiresFullRender = !this.rendered
       || this.isFieldsReferredDataUpdated()
       || nextLayoutSignature !== this._layoutSignature;
+    const previousDetailHostId = this._captureCurrentDetailHostId();
 
     this._multiHost = Boolean(response.multi_host);
 
@@ -193,8 +234,16 @@ class CWidgetMainOverview extends CWidget {
     this._attachOverview();
     this._attachMultiNavigation();
 
-    if (requiresFullRender && response.multi_host) {
-      this._showMultiListView();
+    if (response.multi_host) {
+      if (requiresFullRender) {
+        this._restoreMultiHostView(previousDetailHostId);
+      }
+      else if (this._multiDetailHostId && !this._hasHostDetailPanel(this._multiDetailHostId)) {
+        this._showMultiListView();
+      }
+    }
+    else {
+      this._multiDetailHostId = null;
     }
 
     this._sparkline?.attach();
@@ -358,6 +407,7 @@ class CWidgetMainOverview extends CWidget {
       }
     }
 
+    this._multiDetailHostId = hostid;
     this._sparkline?.scheduleRedraw();
   }
 
@@ -377,8 +427,49 @@ class CWidgetMainOverview extends CWidget {
       panel.setAttribute('hidden', 'hidden');
     }
 
+    this._multiDetailHostId = null;
     this._sparkline?.close();
     this._sparkline?.scheduleRedraw();
+  }
+
+  _captureCurrentDetailHostId() {
+    if (!this._multiHost) {
+      return null;
+    }
+
+    const multi = this._body?.querySelector('[data-main-overview-multi="1"]');
+    if (!multi) {
+      return this._multiDetailHostId;
+    }
+
+    const panel = multi.querySelector('[data-host-detail-panel]:not([hidden])');
+    const hostid = panel?.getAttribute('data-host-detail-panel');
+
+    return hostid ? hostid : this._multiDetailHostId;
+  }
+
+  _hasHostDetailPanel(hostid) {
+    if (!hostid) {
+      return false;
+    }
+
+    const multi = this._body?.querySelector('[data-main-overview-multi="1"]');
+    if (!multi) {
+      return false;
+    }
+
+    return Boolean(multi.querySelector(`[data-host-detail-panel="${this._escapeSelector(hostid)}"]`));
+  }
+
+  _restoreMultiHostView(previousDetailHostId) {
+    const detailHostId = this._multiDetailHostId || previousDetailHostId;
+
+    if (detailHostId && this._hasHostDetailPanel(detailHostId)) {
+      this._openMultiDetail(detailHostId);
+      return;
+    }
+
+    this._showMultiListView();
   }
 
   _escapeSelector(value) {
@@ -818,9 +909,11 @@ class CWidgetMainOverview extends CWidget {
     const base = this._runtimeFields || this._fields || {};
     const ctx = this._sparklineOverviewContext;
 
-    if (ctx?.dataset?.hostOverviewConfig) {
+    const configJson = ctx?.dataset?.mainOverviewConfig ?? ctx?.dataset?.hostOverviewConfig;
+
+    if (configJson) {
       try {
-        const parsed = JSON.parse(ctx.dataset.hostOverviewConfig);
+        const parsed = JSON.parse(configJson);
 
         if (parsed && typeof parsed === 'object') {
           return {...base, ...parsed};

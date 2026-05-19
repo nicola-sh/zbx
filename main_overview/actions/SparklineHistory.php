@@ -27,6 +27,8 @@ class SparklineHistory extends CController
     ];
 
     private const MAX_POINTS = 200;
+    private const MAX_HISTORY_FETCH = self::MAX_POINTS * 20;
+    private const MAX_TREND_FETCH = 2048;
     private const TREND_BLEND_SECONDS = 43200;
     private const RECENT_HISTORY_SECONDS = 7200;
     private const HISTORY_GAP_FLOOR = 300;
@@ -259,6 +261,8 @@ class SparklineHistory extends CController
         string $sortorder = 'ASC',
         ?int $limit = null
     ): array {
+        $effective_limit = $limit ?? self::MAX_HISTORY_FETCH;
+        $fetch_sortorder = $sortorder === 'ASC' ? 'DESC' : $sortorder;
         $params = [
             'output' => ['value', 'clock'],
             'history' => $value_type,
@@ -266,12 +270,9 @@ class SparklineHistory extends CController
             'time_from' => $time_from,
             'time_till' => $time_till,
             'sortfield' => 'clock',
-            'sortorder' => $sortorder
+            'sortorder' => $fetch_sortorder,
+            'limit' => $effective_limit
         ];
-
-        if ($limit !== null) {
-            $params['limit'] = $limit;
-        }
 
         $records = API::History()->get($params);
 
@@ -282,7 +283,7 @@ class SparklineHistory extends CController
             ];
         }, $records);
 
-        if ($sortorder === 'DESC') {
+        if ($fetch_sortorder === 'DESC') {
             usort($points, static fn(array $left, array $right): int => $left['t'] <=> $right['t']);
         }
 
@@ -297,15 +298,20 @@ class SparklineHistory extends CController
             'time_from' => $time_from,
             'time_till' => $time_till,
             'sortfield' => 'clock',
-            'sortorder' => 'ASC',
+            'sortorder' => 'DESC',
+            'limit' => self::MAX_TREND_FETCH,
         ]);
 
-        return array_map(static function(array $record): array {
+        $points = array_map(static function(array $record): array {
             return [
                 't' => (int) ($record['clock'] ?? 0),
                 'v' => (float) ($record['value_avg'] ?? 0),
             ];
         }, $records);
+
+        usort($points, static fn(array $left, array $right): int => $left['t'] <=> $right['t']);
+
+        return $points;
     }
 
     private function applyMetricTransforms(array $points, array $request): array
@@ -334,8 +340,7 @@ class SparklineHistory extends CController
         for ($i = 0; $i < self::MAX_POINTS; $i++) {
             $downsampled[] = $points[(int) floor($i * $stride)];
         }
-
-        $downsampled[] = $points[count($points) - 1];
+        $downsampled[self::MAX_POINTS - 1] = $points[count($points) - 1];
 
         return $downsampled;
     }

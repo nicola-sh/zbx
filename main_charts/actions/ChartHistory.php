@@ -106,7 +106,7 @@ class ChartHistory extends CController
 
         foreach ($requested as $entry) {
             $key = (string) ($entry['key'] ?? '');
-            $item = $this->resolveSeriesItem($entry, $collection['metrics'], $matcher);
+            $item = $this->resolveSeriesItem($entry, $collection['metrics'], $matcher, $hostid);
 
             if ($item === null) {
                 $datasets[] = [
@@ -190,13 +190,14 @@ class ChartHistory extends CController
         return $normalized;
     }
 
-    private function resolveSeriesItem(array $entry, array $metrics, MetricMatcher $matcher): ?array
+    private function resolveSeriesItem(array $entry, array $metrics, MetricMatcher $matcher, string $hostid): ?array
     {
         $itemid = $entry['itemid'] ?? null;
 
         if ($itemid !== null) {
             $items = API::Item()->get([
                 'output' => ['itemid', 'name', 'value_type'],
+                'hostids' => [$hostid],
                 'itemids' => [$itemid],
                 'limit' => 1,
             ]);

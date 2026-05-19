@@ -108,5 +108,4 @@ $root->addItem($chart_wrap);
 
 $view
     ->addItem($root)
-    ->setVar('config_json', json_encode($config, JSON_THROW_ON_ERROR))
     ->show();
