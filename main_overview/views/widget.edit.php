@@ -123,10 +123,10 @@ $form
     ->includeJsFile('widget.edit.js.php')
     ->addJavaScript('form.init(' . json_encode([
         'color_picker_class' => $color_picker_class,
-        'badge_type_options' => CWidgetFieldBadgesList::getBadgeTypeOptions(),
-        'badge_multiple_types' => CWidgetFieldBadgesList::getMultipleBadgeTypes(),
-        'badge_types_with_text' => CWidgetFieldBadgesList::getTextFieldBadgeTypes(),
-        'badge_types_with_url' => CWidgetFieldBadgesList::getUrlFieldBadgeTypes(),
+        'badge_type_options' => getBadgeTypeOptionsSafe(),
+        'badge_multiple_types' => getMultipleBadgeTypesSafe(),
+        'badge_types_with_text' => getTextFieldBadgeTypesSafe(),
+        'badge_types_with_url' => getUrlFieldBadgeTypesSafe(),
         'item_lookup_action' => 'widget.main_overview.lookup',
         'metric_checkbox_rows' => [
             ['value' => (string) WidgetForm::METRIC_CPU, 'label' => 'CPU'],
@@ -218,6 +218,75 @@ $form
         ],
     ], JSON_THROW_ON_ERROR) . ');')
     ->show();
+
+function getBadgeTypeOptionsSafe(): array
+{
+    if (method_exists(CWidgetFieldBadgesList::class, 'getBadgeTypeOptions')) {
+        return CWidgetFieldBadgesList::getBadgeTypeOptions();
+    }
+
+    $options = [];
+
+    foreach (CWidgetFieldBadgesList::BADGE_TYPE_LABELS as $value => $label) {
+        $options[] = [
+            'value' => (string) $value,
+            'label' => _m($label),
+        ];
+    }
+
+    return $options;
+}
+
+function getMultipleBadgeTypesSafe(): array
+{
+    if (method_exists(CWidgetFieldBadgesList::class, 'getMultipleBadgeTypes')) {
+        return CWidgetFieldBadgesList::getMultipleBadgeTypes();
+    }
+
+    $types = [];
+
+    foreach (CWidgetFieldBadgesList::BADGE_TYPE_LABELS as $type => $_label) {
+        if (CWidgetFieldBadgesList::badgeTypeAllowsMultiple((int) $type)) {
+            $types[] = (string) $type;
+        }
+    }
+
+    return array_values($types);
+}
+
+function getTextFieldBadgeTypesSafe(): array
+{
+    if (method_exists(CWidgetFieldBadgesList::class, 'getTextFieldBadgeTypes')) {
+        return CWidgetFieldBadgesList::getTextFieldBadgeTypes();
+    }
+
+    $types = [];
+
+    foreach (CWidgetFieldBadgesList::BADGE_TYPE_LABELS as $type => $_label) {
+        if (CWidgetFieldBadgesList::badgeTypeUsesTextField((int) $type)) {
+            $types[] = (string) $type;
+        }
+    }
+
+    return array_values($types);
+}
+
+function getUrlFieldBadgeTypesSafe(): array
+{
+    if (method_exists(CWidgetFieldBadgesList::class, 'getUrlFieldBadgeTypes')) {
+        return CWidgetFieldBadgesList::getUrlFieldBadgeTypes();
+    }
+
+    $types = [];
+
+    foreach (CWidgetFieldBadgesList::BADGE_TYPE_LABELS as $type => $_label) {
+        if (CWidgetFieldBadgesList::badgeTypeUsesUrlField((int) $type)) {
+            $types[] = (string) $type;
+        }
+    }
+
+    return array_values($types);
+}
 
 function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?string $metric_value = null): array
 {

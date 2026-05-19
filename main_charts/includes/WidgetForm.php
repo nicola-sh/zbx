@@ -38,35 +38,32 @@ class WidgetForm extends CWidgetForm
                 new CWidgetFieldMultiSelectOverrideHost()
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('chart_period', 'Period'))
+                (new CWidgetFieldRadioButtonList('chart_period', 'Period', [
+                    '1h' => '1 hour',
+                    '3h' => '3 hours',
+                    '12h' => '12 hours',
+                    '1d' => '1 day',
+                    '3d' => '3 days',
+                    '1w' => '1 week',
+                    '30d' => '30 days',
+                ]))
                     ->setDefault(self::DEFAULT_PERIOD)
-                    ->setValues([
-                        ['value' => '1h', 'label' => '1 hour'],
-                        ['value' => '3h', 'label' => '3 hours'],
-                        ['value' => '12h', 'label' => '12 hours'],
-                        ['value' => '1d', 'label' => '1 day'],
-                        ['value' => '3d', 'label' => '3 days'],
-                        ['value' => '1w', 'label' => '1 week'],
-                        ['value' => '30d', 'label' => '30 days'],
-                    ])
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('chart_type', 'Chart type'))
-                    ->setDefault((string) self::CHART_TYPE_LINE)
-                    ->setValues([
-                        ['value' => (string) self::CHART_TYPE_LINE, 'label' => 'Line'],
-                        ['value' => (string) self::CHART_TYPE_AREA, 'label' => 'Area'],
-                        ['value' => (string) self::CHART_TYPE_BAR, 'label' => 'Bar'],
-                    ])
+                (new CWidgetFieldRadioButtonList('chart_type', 'Chart type', [
+                    self::CHART_TYPE_LINE => 'Line',
+                    self::CHART_TYPE_AREA => 'Area',
+                    self::CHART_TYPE_BAR => 'Bar',
+                ]))
+                    ->setDefault(self::CHART_TYPE_LINE)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('legend_position', 'Legend'))
-                    ->setDefault((string) self::LEGEND_TOP)
-                    ->setValues([
-                        ['value' => (string) self::LEGEND_TOP, 'label' => 'Top'],
-                        ['value' => (string) self::LEGEND_BOTTOM, 'label' => 'Bottom'],
-                        ['value' => (string) self::LEGEND_HIDDEN, 'label' => 'Hidden'],
-                    ])
+                (new CWidgetFieldRadioButtonList('legend_position', 'Legend', [
+                    self::LEGEND_TOP => 'Top',
+                    self::LEGEND_BOTTOM => 'Bottom',
+                    self::LEGEND_HIDDEN => 'Hidden',
+                ]))
+                    ->setDefault(self::LEGEND_TOP)
             )
             ->addField(
                 (new CWidgetFieldCheckBox('chart_stacked', 'Stacked (area/bar)'))
