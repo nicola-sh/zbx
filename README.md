@@ -1,6 +1,6 @@
 # zbx
 
-Zabbix dashboard widgets. This tree includes **Main Overview** — a compact health summary for one or several hosts: metric bars (CPU, memory, load, swap, interfaces, disks, partitions), optional badges, sparklines, and links into Zabbix. It targets typical Linux and Windows agent templates, with sensible defaults and wildcard-friendly item mapping.
+Zabbix dashboard widgets. This tree includes **Main Overview** and **Host Charts** — a compact health summary for one or several hosts: metric bars (CPU, memory, load, swap, interfaces, disks, partitions), optional badges, sparklines, and links into Zabbix. It targets typical Linux and Windows agent templates, with sensible defaults and wildcard-friendly item mapping.
 
 **Author:** nicola  
 **Widget version:** see `main_overview/manifest.json` (semantic versioning from **0.5.1**).
@@ -25,7 +25,8 @@ Zabbix dashboard widgets. This tree includes **Main Overview** — a compact hea
 
 ## Repository layout
 
-- `main_overview/` — Main Overview widget module.
+- `main_overview/` — Main Overview widget module (metric bars, badges, sparklines).
+- `main_charts/` — Host Charts widget module (Chart.js time-series graphs).
 
 ## License
 

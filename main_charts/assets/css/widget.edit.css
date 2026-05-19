@@ -1,0 +1,19 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 nicola
+ */
+
+.main-charts-series-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #768d99;
+  line-height: 1.4;
+}
+
+.main-charts-series-hint + .main-charts-series-hint {
+  margin-top: 0;
+}
+
+button.js-charts-reset-series {
+  margin-top: 8px;
+}
