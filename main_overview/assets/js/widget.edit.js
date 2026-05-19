@@ -20,6 +20,9 @@ window.form = new (class {
     this.perHostLabels = options?.per_host_labels && typeof options.per_host_labels === "object"
       ? options.per_host_labels
       : {};
+    this.thresholdUi = options?.threshold_ui && typeof options.threshold_ui === "object"
+      ? options.threshold_ui
+      : {};
     this.lookupUi = options?.lookup_ui && typeof options.lookup_ui === "object"
       ? options.lookup_ui
       : {};
@@ -46,7 +49,14 @@ window.form = new (class {
     this.initBadgesTable();
     this.initPerHostAccordionEditor();
     this.initMetricLookupAssistants();
+    this.initGlobalThresholdScales();
 
+  }
+
+  th(key, fallback = "") {
+    const v = this.thresholdUi?.[key];
+
+    return typeof v === "string" && v !== "" ? v : fallback;
   }
 
   lu(key, fallback = "") {
@@ -93,6 +103,8 @@ window.form = new (class {
 
     const thresholdRows = [...document.querySelectorAll(".js-threshold-color-row")];
     const solidRows = [...document.querySelectorAll(".js-solid-color-row")];
+    const thresholdBlocks = [...document.querySelectorAll(".js-threshold-group, .js-threshold-block")];
+    const colorsGrid = document.querySelector(".js-threshold-colors-grid");
     const radios = container.querySelectorAll('input[type="radio"]');
 
     const toggleRows = (rows, visible) => {
@@ -107,13 +119,355 @@ window.form = new (class {
 
       toggleRows(solidRows, showSolid);
       toggleRows(thresholdRows, !showSolid);
+      toggleRows(thresholdBlocks, !showSolid);
+
+      if (colorsGrid) {
+        colorsGrid.classList.toggle("is-solid-mode", showSolid);
+      }
+
+      this.refreshAllThresholdScales();
     };
 
     radios.forEach((radio) => {
       radio.addEventListener("change", update);
     });
 
+    for (const input of document.querySelectorAll(
+      'input[name="th_color_1"], input[name="th_color_2"], input[name="th_color_3"]'
+    )) {
+      input.addEventListener("input", () => this.refreshAllThresholdScales());
+      input.addEventListener("change", () => this.refreshAllThresholdScales());
+    }
+
     update();
+  }
+
+  initGlobalThresholdScales() {
+    for (const group of document.querySelectorAll(".js-threshold-group")) {
+      this.mountThresholdScale(group);
+    }
+  }
+
+  refreshAllThresholdScales() {
+    for (const block of document.querySelectorAll(".js-threshold-block, .js-threshold-group")) {
+      this.updateThresholdScale(block);
+    }
+  }
+
+  readFormNumberByName(name, root = document) {
+    const input = root.querySelector(`input[name="${name}"]`);
+
+    if (!input) {
+      return null;
+    }
+
+    const n = Number.parseInt(String(input.value ?? "").trim(), 10);
+
+    return Number.isFinite(n) ? n : null;
+  }
+
+  readGlobalThresholdPair(highKey, mediumKey) {
+    let medium = this.readFormNumberByName(mediumKey);
+    let high = this.readFormNumberByName(highKey);
+
+    if (medium === null) {
+      medium = this.readFormNumberByName("th_num_2");
+    }
+
+    if (high === null) {
+      high = this.readFormNumberByName("th_num_1");
+    }
+
+    if (medium === null) {
+      medium = 70;
+    }
+
+    if (high === null) {
+      high = 85;
+    }
+
+    return {medium, high};
+  }
+
+  readThresholdColors() {
+    const pick = (name, fallback) => {
+      const input = document.querySelector(`input[name="${name}"]`);
+      let raw = input?.value ?? fallback;
+
+      if (typeof raw === "string" && raw.startsWith("#")) {
+        raw = raw.slice(1);
+      }
+
+      raw = String(raw).trim().replace(/^#/, "");
+
+      return /^[0-9a-fA-F]{6}$/.test(raw) ? `#${raw}` : fallback;
+    };
+
+    return {
+      green: pick("th_color_3", "#4C9F38"),
+      yellow: pick("th_color_2", "#FF851B"),
+      red: pick("th_color_1", "#FF4136"),
+    };
+  }
+
+  mountThresholdScale(container) {
+    const mount = container.querySelector(".js-threshold-scale-mount");
+
+    if (!mount || mount.dataset.mounted === "1") {
+      return mount?.querySelector(".js-threshold-block") ?? container;
+    }
+
+    mount.dataset.mounted = "1";
+    const block = this.createThresholdScaleElement(container);
+
+    mount.appendChild(block);
+
+    return block;
+  }
+
+  createThresholdScaleElement(container) {
+    const highKey = container.dataset.thresholdHigh ?? "";
+    const mediumKey = container.dataset.thresholdMedium ?? "";
+    const metric = container.dataset.thresholdMetric ?? "";
+
+    const block = document.createElement("div");
+
+    block.className = "ho-threshold-block js-threshold-block";
+    block.dataset.thresholdHigh = highKey;
+    block.dataset.thresholdMedium = mediumKey;
+
+    if (metric !== "") {
+      block.dataset.thresholdMetric = metric;
+    }
+
+    if (container.classList.contains("js-threshold-group")) {
+      block.dataset.thresholdScope = "global";
+    }
+    else {
+      block.dataset.thresholdScope = "host";
+    }
+
+    const title = document.createElement("div");
+
+    title.className = "ho-threshold-scale-title";
+    title.textContent = this.th("scale_title", "Bar color ranges");
+
+    const inputs = document.createElement("div");
+
+    inputs.className = "ho-threshold-scale-inputs";
+
+    const mkField = (labelText, key, placeholder) => {
+      const wrap = document.createElement("label");
+
+      wrap.className = "ho-threshold-scale-field";
+
+      const lab = document.createElement("span");
+
+      lab.className = "ho-threshold-scale-field-label";
+      lab.textContent = labelText;
+
+      const input = document.createElement("input");
+
+      input.type = "number";
+      input.min = "0";
+      input.max = "100";
+      input.className = "ho-threshold-scale-input";
+      input.placeholder = placeholder;
+      input.dataset.thresholdRole = key === highKey ? "high" : "medium";
+
+      if (!container.classList.contains("js-threshold-group")) {
+        input.dataset.overrideKey = key;
+        input.classList.add("main-overview-phost-input");
+      }
+
+      wrap.append(lab, input);
+
+      return {wrap, input};
+    };
+
+    const mediumField = mkField(
+      this.th("medium_label", "Yellow from (%)"),
+      mediumKey,
+      this.th("inherit_hint", "Global")
+    );
+    const highField = mkField(
+      this.th("high_label", "Red from (%)"),
+      highKey,
+      this.th("inherit_hint", "Global")
+    );
+
+    inputs.append(mediumField.wrap, highField.wrap);
+
+    const bar = document.createElement("div");
+
+    bar.className = "ho-threshold-scale-bar";
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-hidden", "true");
+
+    const segGreen = document.createElement("span");
+    const segYellow = document.createElement("span");
+    const segRed = document.createElement("span");
+
+    segGreen.className = "ho-threshold-scale-seg ho-threshold-scale-seg--green";
+    segYellow.className = "ho-threshold-scale-seg ho-threshold-scale-seg--yellow";
+    segRed.className = "ho-threshold-scale-seg ho-threshold-scale-seg--red";
+    bar.append(segGreen, segYellow, segRed);
+
+    const legend = document.createElement("div");
+
+    legend.className = "ho-threshold-scale-legend";
+
+    const legGreen = document.createElement("span");
+    const legYellow = document.createElement("span");
+    const legRed = document.createElement("span");
+
+    legGreen.className = "ho-threshold-scale-legend-item ho-threshold-scale-legend-item--green";
+    legYellow.className = "ho-threshold-scale-legend-item ho-threshold-scale-legend-item--yellow";
+    legRed.className = "ho-threshold-scale-legend-item ho-threshold-scale-legend-item--red";
+
+    legend.append(legGreen, legYellow, legRed);
+
+    const note = document.createElement("div");
+
+    note.className = "ho-threshold-scale-note";
+    note.hidden = true;
+
+    block.append(title, inputs, bar, legend, note);
+    block._scaleRefs = {
+      mediumInput: mediumField.input,
+      highInput: highField.input,
+      segGreen,
+      segYellow,
+      segRed,
+      legGreen,
+      legYellow,
+      legRed,
+      note,
+    };
+
+    const schedule = () => this.updateThresholdScale(block);
+
+    for (const input of [mediumField.input, highField.input]) {
+      input.addEventListener("input", schedule);
+      input.addEventListener("change", schedule);
+    }
+
+    if (container.classList.contains("js-threshold-group")) {
+      const existingMedium = container.querySelector(`input[name="${mediumKey}"]`);
+      const existingHigh = container.querySelector(`input[name="${highKey}"]`);
+
+      if (existingMedium) {
+        existingMedium.closest("li, .form-field, label, .horlist-item, tr, .ho-threshold-group-fields > *")
+          ?.classList?.add("ho-threshold-native-input-hidden");
+        existingMedium.classList.add("ho-threshold-native-input-hidden");
+        existingMedium.tabIndex = -1;
+        existingMedium.setAttribute("aria-hidden", "true");
+
+        const syncFromNative = () => {
+          mediumField.input.value = existingMedium.value;
+          this.updateThresholdScale(block);
+        };
+
+        existingMedium.addEventListener("input", syncFromNative);
+        existingMedium.addEventListener("change", syncFromNative);
+        mediumField.input.addEventListener("input", () => {
+          existingMedium.value = mediumField.input.value;
+          existingMedium.dispatchEvent(new Event("input", {bubbles: true}));
+        });
+        syncFromNative();
+      }
+
+      if (existingHigh) {
+        existingHigh.classList.add("ho-threshold-native-input-hidden");
+        existingHigh.tabIndex = -1;
+        existingHigh.setAttribute("aria-hidden", "true");
+
+        const syncFromNative = () => {
+          highField.input.value = existingHigh.value;
+          this.updateThresholdScale(block);
+        };
+
+        existingHigh.addEventListener("input", syncFromNative);
+        existingHigh.addEventListener("change", syncFromNative);
+        highField.input.addEventListener("input", () => {
+          existingHigh.value = highField.input.value;
+          existingHigh.dispatchEvent(new Event("input", {bubbles: true}));
+        });
+        syncFromNative();
+      }
+    }
+
+    this.updateThresholdScale(block);
+
+    return block;
+  }
+
+  updateThresholdScale(block) {
+    const refs = block._scaleRefs;
+
+    if (!refs) {
+      return;
+    }
+
+    const highKey = block.dataset.thresholdHigh ?? "";
+    const mediumKey = block.dataset.thresholdMedium ?? "";
+    const scope = block.dataset.thresholdScope ?? "host";
+    let medium = Number.parseInt(String(refs.mediumInput.value ?? "").trim(), 10);
+    let high = Number.parseInt(String(refs.highInput.value ?? "").trim(), 10);
+    const colors = this.readThresholdColors();
+
+    if (!Number.isFinite(medium) || refs.mediumInput.value === "") {
+      const global = this.readGlobalThresholdPair(highKey, mediumKey);
+
+      medium = global.medium;
+      refs.mediumInput.placeholder = String(global.medium);
+    }
+
+    if (!Number.isFinite(high) || refs.highInput.value === "") {
+      const global = this.readGlobalThresholdPair(highKey, mediumKey);
+
+      high = global.high;
+      refs.highInput.placeholder = String(global.high);
+    }
+
+    medium = Math.max(0, Math.min(100, medium));
+    high = Math.max(0, Math.min(100, high));
+
+    const invalid = high <= medium;
+
+    if (invalid && scope === "host") {
+      const global = this.readGlobalThresholdPair(highKey, mediumKey);
+
+      medium = global.medium;
+      high = global.high;
+    }
+
+    refs.note.hidden = !invalid || scope === "global";
+    refs.note.textContent = this.th("invalid_order", "Red threshold must be greater than yellow.");
+    block.classList.toggle("is-invalid", invalid && scope === "global");
+
+    refs.segGreen.style.width = `${medium}%`;
+    refs.segYellow.style.width = `${Math.max(0, high - medium)}%`;
+    refs.segRed.style.width = `${Math.max(0, 100 - high)}%`;
+    refs.segGreen.style.backgroundColor = colors.green;
+    refs.segYellow.style.backgroundColor = colors.yellow;
+    refs.segRed.style.backgroundColor = colors.red;
+    refs.legGreen.style.setProperty("--ho-zone-color", colors.green);
+    refs.legYellow.style.setProperty("--ho-zone-color", colors.yellow);
+    refs.legRed.style.setProperty("--ho-zone-color", colors.red);
+    refs.legGreen.textContent = this.thFmt("legend_green", medium);
+    refs.legYellow.textContent = this.thFmt("legend_yellow", medium, high);
+    refs.legRed.textContent = this.thFmt("legend_red", high);
+  }
+
+  thFmt(key, ...parts) {
+    let s = this.th(key, "");
+
+    for (const p of parts) {
+      s = s.replace("%s", String(p));
+    }
+
+    return s;
   }
 
   initMetricLookupAssistants() {
@@ -839,6 +1193,7 @@ window.form = new (class {
           this._captureProfilesFromHidden();
           this._hostLabelCache?.clear();
           scheduleHostListRebuild();
+          this.initGlobalThresholdScales();
         });
       }
     }
@@ -922,6 +1277,7 @@ window.form = new (class {
     this.initScopedPerHostDependencies();
     this.syncGlobalHiddenMetricsFromFirstHost();
     this.writePerHostProfilesToHidden();
+    this.refreshAllThresholdScales();
   }
 
   defaultMetricSelection() {
@@ -1399,7 +1755,7 @@ window.form = new (class {
       "0",
       ov.item_name_cpu ?? ""
     ));
-    frag.appendChild(this.makeThresholdPair(ov, "th_cpu_1", "th_cpu_2"));
+    frag.appendChild(this.makeThresholdScaleBlock(ov, "th_cpu_1", "th_cpu_2", "cpu"));
 
     frag.appendChild(this.makeItemAssistantRow(
       this.perHostLabels.label_ram ?? "",
@@ -1407,7 +1763,7 @@ window.form = new (class {
       "1",
       ov.item_name_ram ?? ""
     ));
-    frag.appendChild(this.makeThresholdPair(ov, "th_ram_1", "th_ram_2"));
+    frag.appendChild(this.makeThresholdScaleBlock(ov, "th_ram_1", "th_ram_2", "ram"));
 
     frag.appendChild(this.makeItemAssistantRow(
       this.perHostLabels.label_load ?? "",
@@ -1416,7 +1772,7 @@ window.form = new (class {
       ov.item_name_load ?? ""
     ));
     frag.appendChild(this.makeNumberRow(this.perHostLabels.label_load_high ?? "", "load_high", ov.load_high ?? ""));
-    frag.appendChild(this.makeThresholdPair(ov, "th_load_1", "th_load_2"));
+    frag.appendChild(this.makeThresholdScaleBlock(ov, "th_load_1", "th_load_2", "load"));
 
     return frag;
   }
@@ -1444,7 +1800,7 @@ window.form = new (class {
     inv.appendChild(cb);
     frag.appendChild(inv);
 
-    frag.appendChild(this.makeThresholdPair(ov, "th_swap_1", "th_swap_2"));
+    frag.appendChild(this.makeThresholdScaleBlock(ov, "th_swap_1", "th_swap_2", "swap"));
 
     return frag;
   }
@@ -1492,6 +1848,7 @@ window.form = new (class {
     }
 
     frag.appendChild(wrap);
+    frag.appendChild(this.makeThresholdScaleBlock(ov, "th_iface_1", "th_iface_2", "iface"));
 
     return frag;
   }
@@ -1508,7 +1865,7 @@ window.form = new (class {
       ov.item_name_disk ?? ""
     ));
     frag.appendChild(this.makeTextRow(this.perHostLabels.label_disk_ex ?? "", "disks_exclude", ov.disks_exclude ?? ""));
-    frag.appendChild(this.makeThresholdPair(ov, "th_disk_1", "th_disk_2"));
+    frag.appendChild(this.makeThresholdScaleBlock(ov, "th_disk_1", "th_disk_2", "disk"));
 
     return frag;
   }
@@ -1525,7 +1882,7 @@ window.form = new (class {
       ov.item_name_partition ?? ""
     ));
     frag.appendChild(this.makeTextRow(this.perHostLabels.label_part_ex ?? "", "partitions_exclude", ov.partitions_exclude ?? ""));
-    frag.appendChild(this.makeThresholdPair(ov, "th_partition_1", "th_partition_2"));
+    frag.appendChild(this.makeThresholdScaleBlock(ov, "th_partition_1", "th_partition_2", "partition"));
 
     return frag;
   }
@@ -1639,27 +1996,38 @@ window.form = new (class {
     return this.makeLabeledRow(label, input);
   }
 
-  makeThresholdPair(ov, k1, k2) {
+  makeThresholdScaleBlock(ov, highKey, mediumKey, metricKey = "") {
     const wrap = document.createElement("div");
 
-    wrap.className = "main-overview-phost-row main-overview-phost-row--split";
+    wrap.className = "ho-threshold-block-wrap js-threshold-block-wrap";
+    wrap.dataset.thresholdHigh = highKey;
+    wrap.dataset.thresholdMedium = mediumKey;
 
-    const mk = (key) => {
-      const input = document.createElement("input");
+    if (metricKey !== "") {
+      wrap.dataset.thresholdMetric = metricKey;
+    }
 
-      input.type = "number";
-      input.className = "main-overview-phost-input";
-      input.dataset.overrideKey = key;
-      input.placeholder = key;
-      input.value = ov[key] !== undefined && ov[key] !== null && String(ov[key]) !== ""
-        ? String(ov[key])
-        : "";
+    const mount = document.createElement("div");
 
-      return input;
-    };
+    mount.className = "ho-threshold-scale-mount js-threshold-scale-mount";
 
-    wrap.appendChild(mk(k1));
-    wrap.appendChild(mk(k2));
+    wrap.appendChild(mount);
+
+    const block = this.createThresholdScaleElement(wrap);
+
+    const refs = block._scaleRefs;
+
+    if (refs) {
+      if (ov[mediumKey] !== undefined && ov[mediumKey] !== null && String(ov[mediumKey]) !== "") {
+        refs.mediumInput.value = String(ov[mediumKey]);
+      }
+
+      if (ov[highKey] !== undefined && ov[highKey] !== null && String(ov[highKey]) !== "") {
+        refs.highInput.value = String(ov[highKey]);
+      }
+
+      this.updateThresholdScale(block);
+    }
 
     return wrap;
   }

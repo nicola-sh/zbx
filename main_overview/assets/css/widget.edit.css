@@ -196,12 +196,173 @@
  */
 .form-grid > .main-overview-add-host-row,
 .form-grid > .js-host-accordion-mount,
-.form-grid > .main-overview-hidden-metrics {
+.form-grid > .main-overview-hidden-metrics,
+.form-grid > .main-overview-settings-intro,
+.form-grid > .main-overview-global-thresholds-fieldset,
+.form-grid > fieldset.main-overview-global-thresholds-fieldset {
   grid-column: 1 / -1;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+}
+
+.main-overview-settings-intro {
+  margin: 4px 0 0;
+}
+
+.main-overview-settings-intro-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--font-alt-color, #6a737d);
+}
+
+.main-overview-section-lead {
+  grid-column: 1 / -1;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--font-alt-color, #555);
+  background: var(--color-form-field-focus-background, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.08));
+}
+
+.ho-threshold-colors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.ho-threshold-colors-grid.is-solid-mode .js-threshold-color-row {
+  display: none !important;
+}
+
+.ho-threshold-group {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.1));
+  background: var(--color-form-field-focus-background, rgba(0, 0, 0, 0.02));
+}
+
+.ho-threshold-group-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: var(--font-color, #1f2328);
+}
+
+.ho-threshold-group-hint {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--font-alt-color, #6a737d);
+}
+
+.ho-threshold-group-fields {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ho-threshold-block,
+.ho-threshold-block-wrap {
+  margin-top: 4px;
+}
+
+.ho-threshold-scale-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--font-alt-color, #6a737d);
+  margin-bottom: 8px;
+}
+
+.ho-threshold-scale-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.ho-threshold-scale-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 7rem;
+}
+
+.ho-threshold-scale-field-label {
+  font-size: 11px;
+  color: var(--font-alt-color, #6a737d);
+}
+
+.ho-threshold-scale-input {
+  width: 5.5rem;
+  max-width: 100%;
+}
+
+.ho-threshold-scale-bar {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.ho-threshold-scale-seg {
+  height: 100%;
+  min-width: 0;
+  transition: width 0.15s ease, background-color 0.15s ease;
+}
+
+.ho-threshold-scale-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+}
+
+.ho-threshold-scale-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--font-alt-color, #555);
+}
+
+.ho-threshold-scale-legend-item::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--ho-zone-color, #ccc);
+  flex-shrink: 0;
+}
+
+.ho-threshold-scale-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #c23030;
+}
+
+.ho-threshold-block.is-invalid .ho-threshold-scale-bar {
+  outline: 1px solid rgba(194, 48, 48, 0.45);
 }
 
 .main-overview-add-host-row {
@@ -255,10 +416,11 @@
 
 .main-overview-phost {
   border: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.1));
-  border-radius: 6px;
-  margin-bottom: 8px;
+  border-radius: 8px;
+  margin-bottom: 10px;
   overflow: hidden;
   background: var(--color-form-field-focus-background, rgba(0, 0, 0, 0.02));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .main-overview-phost-head {
