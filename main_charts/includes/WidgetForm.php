@@ -32,56 +32,56 @@ class WidgetForm extends CWidgetForm
     {
         return $this
             ->addField(
-                (new CWidgetFieldMultiSelectHost('hostid', _c('Host')))
+                (new CWidgetFieldMultiSelectHost('hostid', 'Host'))
             )
             ->addField(
                 new CWidgetFieldMultiSelectOverrideHost()
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('chart_period', _c('Period')))
+                (new CWidgetFieldRadioButtonList('chart_period', 'Period'))
                     ->setDefault(self::DEFAULT_PERIOD)
                     ->setValues([
-                        ['value' => '1h', 'label' => _c('1 hour')],
-                        ['value' => '3h', 'label' => _c('3 hours')],
-                        ['value' => '12h', 'label' => _c('12 hours')],
-                        ['value' => '1d', 'label' => _c('1 day')],
-                        ['value' => '3d', 'label' => _c('3 days')],
-                        ['value' => '1w', 'label' => _c('1 week')],
-                        ['value' => '30d', 'label' => _c('30 days')],
+                        ['value' => '1h', 'label' => '1 hour'],
+                        ['value' => '3h', 'label' => '3 hours'],
+                        ['value' => '12h', 'label' => '12 hours'],
+                        ['value' => '1d', 'label' => '1 day'],
+                        ['value' => '3d', 'label' => '3 days'],
+                        ['value' => '1w', 'label' => '1 week'],
+                        ['value' => '30d', 'label' => '30 days'],
                     ])
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('chart_type', _c('Chart type')))
+                (new CWidgetFieldRadioButtonList('chart_type', 'Chart type'))
                     ->setDefault((string) self::CHART_TYPE_LINE)
                     ->setValues([
-                        ['value' => (string) self::CHART_TYPE_LINE, 'label' => _c('Line')],
-                        ['value' => (string) self::CHART_TYPE_AREA, 'label' => _c('Area')],
-                        ['value' => (string) self::CHART_TYPE_BAR, 'label' => _c('Bar')],
+                        ['value' => (string) self::CHART_TYPE_LINE, 'label' => 'Line'],
+                        ['value' => (string) self::CHART_TYPE_AREA, 'label' => 'Area'],
+                        ['value' => (string) self::CHART_TYPE_BAR, 'label' => 'Bar'],
                     ])
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('legend_position', _c('Legend')))
+                (new CWidgetFieldRadioButtonList('legend_position', 'Legend'))
                     ->setDefault((string) self::LEGEND_TOP)
                     ->setValues([
-                        ['value' => (string) self::LEGEND_TOP, 'label' => _c('Top')],
-                        ['value' => (string) self::LEGEND_BOTTOM, 'label' => _c('Bottom')],
-                        ['value' => (string) self::LEGEND_HIDDEN, 'label' => _c('Hidden')],
+                        ['value' => (string) self::LEGEND_TOP, 'label' => 'Top'],
+                        ['value' => (string) self::LEGEND_BOTTOM, 'label' => 'Bottom'],
+                        ['value' => (string) self::LEGEND_HIDDEN, 'label' => 'Hidden'],
                     ])
             )
             ->addField(
-                (new CWidgetFieldCheckBox('chart_stacked', _c('Stacked (area/bar)')))
+                (new CWidgetFieldCheckBox('chart_stacked', 'Stacked (area/bar)'))
                     ->setDefault(0)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('chart_fill', _c('Fill under line')))
+                (new CWidgetFieldCheckBox('chart_fill', 'Fill under line'))
                     ->setDefault(1)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('show_grid', _c('Show grid')))
+                (new CWidgetFieldCheckBox('show_grid', 'Show grid'))
                     ->setDefault(1)
             )
             ->addField(
-                (new CWidgetFieldTextBox('chart_series', _c('Series (JSON)')))
+                (new CWidgetFieldTextBox('chart_series', 'Series (JSON)'))
                     ->setDefault(ChartSeriesHelper::encode(ChartSeriesHelper::defaults()))
             );
     }
@@ -92,7 +92,7 @@ class WidgetForm extends CWidgetForm
 
         if (!self::hasConfiguredValue($this->getFieldValue('hostid'))
                 && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))) {
-            $this->addFieldError($errors, 'hostid', _c('cannot be empty'));
+            $this->addFieldError($errors, 'hostid', 'cannot be empty');
         }
 
         $raw = trim((string) $this->getFieldValue('chart_series'));
@@ -105,7 +105,7 @@ class WidgetForm extends CWidgetForm
             json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         }
         catch (JsonException) {
-            $this->addFieldError($errors, 'chart_series', _c('must be valid JSON'));
+            $this->addFieldError($errors, 'chart_series', 'must be valid JSON');
         }
 
         $series = ChartSeriesHelper::parse($raw);
@@ -115,7 +115,7 @@ class WidgetForm extends CWidgetForm
                 $this->addFieldError(
                     $errors,
                     'chart_series',
-                    _cs('series %1$s: item name cannot be empty', (string) ($index + 1))
+                    'series '.($index + 1).': item name cannot be empty'
                 );
             }
         }
@@ -125,8 +125,8 @@ class WidgetForm extends CWidgetForm
 
     private function addFieldError(array &$errors, string $field_name, string $message): void
     {
-        $errors[] = _cs(
-            'Invalid parameter "%1$s": %2$s.',
+        $errors[] = sprintf(
+            'Invalid parameter "%s": %s.',
             $this->getField($field_name)->getErrorLabel(),
             $message
         );

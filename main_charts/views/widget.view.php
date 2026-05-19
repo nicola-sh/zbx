@@ -59,7 +59,9 @@ $root->addItem($header);
 
 $missing = array_values(array_filter(
     $series,
-    static fn(array $entry): bool => ($entry['status'] ?? '') === 'missing'
+    static function (array $entry): bool {
+        return ($entry['status'] ?? '') === 'missing';
+    }
 ));
 
 if ($missing !== []) {
@@ -70,7 +72,7 @@ if ($missing !== []) {
             (new CDiv())
                 ->addClass('main-charts-warning')
                 ->addItem(
-                    _cs('Item not found: %1$s', (string) ($entry['item_name'] ?? $entry['label'] ?? ''))
+                    'Item not found: '.($entry['item_name'] ?? $entry['label'] ?? '')
                 )
         );
     }

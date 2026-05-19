@@ -14,7 +14,7 @@ final class ChartSeriesHelper
     public const MAX_SERIES = 8;
 
     /**
-     * @return list<array{key: string, label: string, item_name: string, color: string}>
+     * @return array
      */
     public static function defaults(): array
     {
@@ -40,9 +40,9 @@ final class ChartSeriesHelper
     }
 
     /**
-     * @return list<array{key: string, label: string, item_name: string, color: string}>
+     * @return array
      */
-    public static function parse(mixed $raw): array
+    public static function parse($raw): array
     {
         if (is_array($raw)) {
             return self::normalizeList($raw);
@@ -69,8 +69,8 @@ final class ChartSeriesHelper
     }
 
     /**
-     * @param list<mixed> $entries
-     * @return list<array{key: string, label: string, item_name: string, color: string}>
+     * @param array $entries
+     * @return array
      */
     private static function normalizeList(array $entries): array
     {

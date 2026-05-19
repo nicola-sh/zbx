@@ -24,7 +24,7 @@ class WidgetView extends CControllerDashboardWidgetView
             $this->setResponse(new CControllerResponseData([
                 'name' => $this->getInput('name', $this->widget->getName()),
                 'empty' => true,
-                'message' => _c('Select a host to display charts.'),
+                'message' => 'Select a host to display charts.',
                 'config' => $this->fields_values,
                 'layout_signature' => 'empty',
             ]));

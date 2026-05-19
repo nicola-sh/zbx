@@ -6,7 +6,6 @@
  */
 
 use Modules\MainCharts\Includes\ChartSeriesHelper;
-use Modules\MainCharts\Includes\WidgetForm;
 
 $form = new CWidgetFormView($data);
 
@@ -19,7 +18,7 @@ $form
         : null
     )
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_c('Chart')))
+        (new CWidgetFormFieldsetCollapsibleView('Chart'))
             ->addFieldsGroup(new CWidgetFieldsGroupView('', [
                 new CWidgetFieldRadioButtonListView($data['fields']['chart_period']),
             ]))
@@ -30,31 +29,31 @@ $form
                 new CWidgetFieldRadioButtonListView($data['fields']['legend_position']),
             ]))
             ->addItem(getCheckBoxView($form, $data['fields']['chart_stacked'],
-                _c('Stack series when using area or bar charts.')
+                'Stack series when using area or bar charts.'
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['chart_fill'],
-                _c('Fill the area under line charts.')
+                'Fill the area under line charts.'
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['show_grid'],
-                _c('Draw horizontal and vertical grid lines.')
+                'Draw horizontal and vertical grid lines.'
             ))
     )
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_c('Data series')))
+        (new CWidgetFormFieldsetCollapsibleView('Data series'))
             ->addItem([
                 (new CLabel($data['fields']['chart_series']->getLabel(), $data['fields']['chart_series']->getName()))
-                    ->addItem(makeHelpIcon(_c(
-                        'JSON array of series. Each entry needs label, item_name (exact Zabbix item name), and optional key and color (RRGGBB). Example: [{"label":"CPU","item_name":"CPU utilization","color":"458ADC"}]'
-                    ))),
+                    ->addItem(makeHelpIcon(
+                        'JSON array of series. Each entry needs label, item_name (exact Zabbix item name), and optional key and color as RRGGBB hex.'
+                    )),
                 (new CDiv())->addItem($form->registerField(new CWidgetFieldTextBoxView($data['fields']['chart_series']))),
             ])
             ->addItem(
                 (new CDiv())
                     ->addClass('main-charts-series-hint')
-                    ->addItem(_c('Default preset includes CPU and Memory utilization for typical Linux/Windows agent templates.'))
+                    ->addItem('Default preset includes CPU and Memory utilization for typical Linux/Windows agent templates.')
             )
             ->addItem(
-                (new CButton(null, _c('Reset series to defaults')))
+                (new CButton(null, 'Reset series to defaults'))
                     ->addClass('js-charts-reset-series')
                     ->setAttribute('type', 'button')
                     ->setAttribute('data-default-series', ChartSeriesHelper::encode(ChartSeriesHelper::defaults()))
