@@ -17,9 +17,16 @@ use CTag;
 function render_multi_host_root(array $data): CDiv
 {
     $hosts = $data['hosts'] ?? [];
+    $config = is_array($data['config'] ?? null) ? $data['config'] : [];
     $root = (new CDiv())
         ->addClass('main-overview-multi-root')
         ->setAttribute('data-main-overview-multi', '1');
+
+    $theme_style = build_overview_theme_style($config);
+
+    if ($theme_style !== '') {
+        $root->setAttribute('style', $theme_style);
+    }
 
     $list_view = (new CDiv())
         ->addClass('main-overview-multi-list-view')

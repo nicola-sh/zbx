@@ -949,7 +949,17 @@ class MainOverviewSparkline {
     }
 
     const fields = this._getFields();
-    return fields.fill_color ? `#${fields.fill_color}` : '#458ADC';
+    const fromRoot = this._getWidgetRoot()?.style.getPropertyValue('--ho-color-solid').trim()
+      || (typeof getComputedStyle === 'function'
+        ? getComputedStyle(this._getWidgetRoot() || document.documentElement)
+          .getPropertyValue('--ho-color-solid').trim()
+        : '');
+
+    if (fromRoot !== '') {
+      return fromRoot;
+    }
+
+    return fields.fill_color ? `#${String(fields.fill_color).replace(/^#/, '')}` : '#458ADC';
   }
 
   _hasSquareCorners() {

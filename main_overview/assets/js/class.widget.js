@@ -115,6 +115,55 @@ class CWidgetMainOverview extends CWidget {
 
     root.classList.toggle('square-corners', String(fields?.corners) === '1');
     root.classList.toggle('problems-pulse-enabled', String(fields?.problems_pulse) === '1');
+    this._syncThemeColors(fields, root);
+  }
+
+  _normalizeThemeHex(value, fallback) {
+    let hex = String(value ?? fallback).trim().replace(/^#/, '');
+
+    if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+      hex = String(fallback).replace(/^#/, '');
+    }
+
+    return `#${hex.toUpperCase()}`;
+  }
+
+  _hexToRgba(hex, alpha) {
+    const h = hex.replace(/^#/, '');
+    const r = Number.parseInt(h.slice(0, 2), 16);
+    const g = Number.parseInt(h.slice(2, 4), 16);
+    const b = Number.parseInt(h.slice(4, 6), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  _syncThemeColors(fields, root = null) {
+    const el = root || this._getWidgetRoot();
+
+    if (!el || !fields) {
+      return;
+    }
+
+    const green = this._normalizeThemeHex(fields.th_color_3, '4C9F38');
+    const yellow = this._normalizeThemeHex(fields.th_color_2, 'FF851B');
+    const red = this._normalizeThemeHex(fields.th_color_1, 'FF4136');
+    const solid = this._normalizeThemeHex(fields.fill_color, '458ADC');
+
+    const set = (name, value) => el.style.setProperty(name, value);
+
+    set('--ho-color-green', green);
+    set('--ho-color-yellow', yellow);
+    set('--ho-color-red', red);
+    set('--ho-color-solid', solid);
+    set('--sparkline-active-color', solid);
+    set('--ho-freshness-warn-bg', this._hexToRgba(yellow, 0.38));
+    set('--ho-freshness-stale-bg', this._hexToRgba(red, 0.38));
+    set('--ho-maintenance-bg', this._hexToRgba(solid, 0.32));
+    set('--ho-problems-info-bg', this._hexToRgba(solid, 0.34));
+    set('--ho-problems-warning-bg', this._hexToRgba(yellow, 0.4));
+    set('--ho-problems-average-bg', this._hexToRgba(yellow, 0.48));
+    set('--ho-problems-high-bg', this._hexToRgba(red, 0.42));
+    set('--ho-problems-disaster-bg', this._hexToRgba(red, 0.52));
   }
 
   setContents(response) {

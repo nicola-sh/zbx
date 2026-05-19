@@ -122,7 +122,7 @@
   align-self: center;
   overflow: hidden;
   cursor: pointer;
-  background: var(--bar-bg);
+  background: var(--ho-bar-track, var(--bar-bg));
   border-radius: var(--bar-radius);
 }
 
@@ -237,13 +237,13 @@
 }
 
 .dashboard-widget-main_overview .main-overview-light--green {
-  background: #1a7f37;
+  background: var(--ho-color-green, #4c9f38);
 }
 
 .dashboard-widget-main_overview .main-overview-light--yellow {
-  background: #d4a017;
+  background: var(--ho-color-yellow, #ff851b);
 }
 
 .dashboard-widget-main_overview .main-overview-light--red {
-  background: #d73a2a;
+  background: var(--ho-color-red, #ff4136);
 }

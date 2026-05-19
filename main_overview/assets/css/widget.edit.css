@@ -206,6 +206,12 @@
   box-sizing: border-box;
 }
 
+.main-overview-color-hint {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--font-alt-color, #6a737d);
+}
+
 .ho-threshold-colors-inline {
   display: flex;
   flex-wrap: wrap;

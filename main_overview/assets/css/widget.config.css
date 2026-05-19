@@ -5,6 +5,12 @@
 
 /* Runtime Config */
 .dashboard-widget-main_overview {
+  /* Theme colors (overridden per widget from settings: th_color_*, fill_color) */
+  --ho-color-green: #4c9f38;
+  --ho-color-yellow: #ff851b;
+  --ho-color-red: #ff4136;
+  --ho-color-solid: #458adc;
+  --ho-bar-track: rgba(128, 128, 128, 0.16);
   --widget-inline-spacing: 10px;
   --label-width-default: 90px;
   --metric-row-gap: 25px;
@@ -16,36 +22,26 @@
   --metric-fill-transition-duration: 250ms;
   --toolbar-margin-top: var(--metric-row-padding-y);
   --toolbar-margin-bottom: var(--widget-inline-spacing);
-  --badge-height: 30px;
-  --badge-padding-x: 12px;
-  --badge-radius: 8px;
-  --badge-icon-size: 14px;
-  --badge-icon-gap: 8px;
-  --bar-radius: 10px;
+  --badge-height: 28px;
+  --badge-padding-x: 10px;
+  --badge-radius: 6px;
+  --badge-icon-size: 13px;
+  --badge-icon-gap: 6px;
+  --bar-radius: 6px;
   --canvas-radius: 4px;
   --dot-size: 5px;
   --dot-gap: 15px;
   --text-col-width: 40px;
   --cell-label-width: 60px;
   --trend-arrow-size: 14px;
-  --muted-opacity: 0.6;
-  --badge-bg: rgba(0, 0, 0, 0.2);
-  --badge-hover-bg: rgba(0, 0, 0, 0.3);
-  --bar-bg: rgba(0, 0, 0, 0.25);
-  --blue-bg: rgba(70, 130, 220, 0.4);
-  --blue-pulse-bg: rgba(70, 130, 220, 0.15);
-  --yellow-bg: rgba(255, 210, 0, 0.4);
-  --yellow-pulse-bg: rgba(255, 210, 0, 0.15);
-  --orange-bg: rgba(255, 133, 27, 0.4);
-  --orange-pulse-bg: rgba(255, 133, 27, 0.15);
-  --lightred-bg: rgba(230, 80, 40, 0.4);
-  --lightred-pulse-bg: rgba(230, 80, 40, 0.15);
-  --red-bg: rgba(255, 65, 54, 0.4);
-  --red-pulse-bg: rgba(255, 65, 54, 0.15);
-  --sparkline-border-color: rgba(128, 128, 128, 0.3);
+  --muted-opacity: 0.55;
+  --badge-bg: rgba(0, 0, 0, 0.14);
+  --badge-hover-bg: rgba(0, 0, 0, 0.22);
+  --bar-bg: var(--ho-bar-track);
+  --sparkline-border-color: rgba(128, 128, 128, 0.28);
   --sparkline-border-width: 1px;
-  --sparkline-label-color: rgba(128, 128, 128, 0.7);
-  --sparkline-active-color: #458adc;
+  --sparkline-label-color: rgba(128, 128, 128, 0.65);
+  --sparkline-active-color: var(--ho-color-solid);
   --sparkline-active-fg: #fff;
   --sparkline-font-size: 12px;
   --sparkline-overlay-padding-inline: var(--widget-inline-spacing);

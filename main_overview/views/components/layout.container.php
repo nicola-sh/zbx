@@ -9,6 +9,8 @@ namespace Modules\MainOverview\Includes;
 
 use CDiv;
 
+use function Modules\MainOverview\Includes\build_overview_theme_style;
+
 // =============================================================================
 // Container rendering
 // =============================================================================
@@ -18,7 +20,7 @@ function render_overview_container(array $config): CDiv
     $label_length = (int) ($config['label_length'] ?? WidgetForm::LABELS_FULL);
     $label_width = $label_length === WidgetForm::LABELS_SHORT ? 50 : 90;
 
-    $style = implode('; ', [
+    $style = build_overview_theme_style($config) . ' ' . implode('; ', [
         '--bar-height: ' . (int) ($config['bar_height'] ?? WidgetForm::DEFAULT_BAR_HEIGHT) . 'px',
         '--label-width: ' . $label_width . 'px',
     ]) . ';';

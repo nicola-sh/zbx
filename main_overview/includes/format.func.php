@@ -140,6 +140,82 @@ function format_empty_value(): string
 }
 
 // =============================================================================
+// Widget theme (colors from widget settings)
+// =============================================================================
+
+function normalize_widget_hex(mixed $value, string $default): string
+{
+    $hex = strtoupper(preg_replace('/^#/', '', trim((string) $value)));
+
+    return preg_match('/^[0-9A-F]{6}$/', $hex) === 1 ? $hex : strtoupper($default);
+}
+
+function widget_hex_to_rgba(string $hex, float $alpha): string
+{
+    $hex = normalize_widget_hex($hex, '000000');
+    $alpha = max(0.0, min(1.0, $alpha));
+
+    return sprintf(
+        'rgba(%d, %d, %d, %s)',
+        hexdec(substr($hex, 0, 2)),
+        hexdec(substr($hex, 2, 2)),
+        hexdec(substr($hex, 4, 2)),
+        rtrim(rtrim(sprintf('%.2f', $alpha), '0'), '.')
+    );
+}
+
+/**
+ * Inline CSS custom properties for metric bars, badges, sparkline, traffic lights.
+ *
+ * @param array<string, mixed> $config Widget field values (th_color_*, fill_color).
+ */
+function build_overview_theme_style(array $config): string
+{
+    $green = normalize_widget_hex(
+        $config['th_color_3'] ?? null,
+        WidgetForm::DEFAULT_COLOR_THRESHOLD_LOW
+    );
+    $yellow = normalize_widget_hex(
+        $config['th_color_2'] ?? null,
+        WidgetForm::DEFAULT_COLOR_THRESHOLD_MEDIUM
+    );
+    $red = normalize_widget_hex(
+        $config['th_color_1'] ?? null,
+        WidgetForm::DEFAULT_COLOR_THRESHOLD_HIGH
+    );
+    $solid = normalize_widget_hex(
+        $config['fill_color'] ?? null,
+        WidgetForm::DEFAULT_COLOR_FILL
+    );
+
+    $vars = [
+        '--ho-color-green: #' . $green,
+        '--ho-color-yellow: #' . $yellow,
+        '--ho-color-red: #' . $red,
+        '--ho-color-solid: #' . $solid,
+        '--ho-bar-track: rgba(128, 128, 128, 0.16)',
+        '--ho-freshness-warn-bg: ' . widget_hex_to_rgba($yellow, 0.38),
+        '--ho-freshness-stale-bg: ' . widget_hex_to_rgba($red, 0.38),
+        '--ho-maintenance-bg: ' . widget_hex_to_rgba($solid, 0.32),
+        '--ho-problems-info-bg: ' . widget_hex_to_rgba($solid, 0.34),
+        '--ho-problems-warning-bg: ' . widget_hex_to_rgba($yellow, 0.4),
+        '--ho-problems-average-bg: ' . widget_hex_to_rgba($yellow, 0.48),
+        '--ho-problems-high-bg: ' . widget_hex_to_rgba($red, 0.42),
+        '--ho-problems-disaster-bg: ' . widget_hex_to_rgba($red, 0.52),
+        '--ho-problems-info-pulse: ' . widget_hex_to_rgba($solid, 0.16),
+        '--ho-problems-warning-pulse: ' . widget_hex_to_rgba($yellow, 0.18),
+        '--ho-problems-average-pulse: ' . widget_hex_to_rgba($yellow, 0.2),
+        '--ho-problems-high-pulse: ' . widget_hex_to_rgba($red, 0.2),
+        '--ho-problems-disaster-pulse: ' . widget_hex_to_rgba($red, 0.24),
+        '--sparkline-active-color: #' . $solid,
+        '--badge-bg: rgba(0, 0, 0, 0.14)',
+        '--badge-hover-bg: rgba(0, 0, 0, 0.22)',
+    ];
+
+    return implode('; ', $vars) . ';';
+}
+
+// =============================================================================
 // State class resolvers
 // =============================================================================
 
