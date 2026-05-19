@@ -23,7 +23,7 @@ function render_sparkline_overlay(): CDiv
         ->addClass('sparkline-overlay')
         ->setAttribute('data-main-overview-role', 'sparkline')
         ->setAttribute('aria-hidden', 'true')
-        ->setAttribute('aria-label', _m('View sparkline'))
+        ->setAttribute('aria-label', 'View sparkline')
         ->setAttribute('role', 'dialog');
 
     $toolbar = (new CDiv())->addClass('toolbar');
@@ -32,9 +32,9 @@ function render_sparkline_overlay(): CDiv
 
     $left->addItem(
         _sparkline_link(
-            [render_icon('back', ['badge-icon']), (new CTag('span', true))->addItem(_m('Back'))],
+            [render_icon('back', ['badge-icon']), (new CTag('span', true))->addItem('Back')],
             ['badge', 'link', 'js-sparkline-close'],
-            ['aria-label' => _m('Back to overview')]
+            ['aria-label' => 'Back to overview']
         )
     );
 

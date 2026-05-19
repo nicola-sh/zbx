@@ -446,7 +446,7 @@ class WidgetView extends CControllerDashboardWidgetView
             'id' => $id,
             'type' => $type,
             'side' => $side,
-            'text' => $status === 1 ? _m('Maintenance') : '',
+            'text' => $status === 1 ? 'Maintenance' : '',
             'hidden' => $status !== 1,
         ];
     }

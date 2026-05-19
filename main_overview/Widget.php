@@ -7,13 +7,8 @@
 
 namespace Modules\MainOverview;
 
-use Modules\MainOverview\Includes\I18n;
 use Zabbix\Core\CWidget;
 
 class Widget extends CWidget
 {
-    public function init(): void
-    {
-        I18n::boot();
-    }
 }

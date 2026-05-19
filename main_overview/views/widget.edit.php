@@ -34,17 +34,17 @@ foreach ($form->registerField($metrics_field_view)->getView() as $metrics_view_p
     $hidden_metrics_wrap->addItem($metrics_view_part);
 }
 
-$global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView(_m('Global: appearance')))
+$global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Global: appearance'))
     ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
-        _m('Open metric and badge links in the current browser tab.')
+        'Open metric and badge links in the current browser tab.'
     ))
     ->addFieldsGroup(new CWidgetFieldsGroupView('', [
         new CWidgetFieldRadioButtonListView($data['fields']['color_scheme']),
     ]))
-    ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], _m('Color: high'), 'js-threshold-color-row'))
-    ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], _m('Color: medium'), 'js-threshold-color-row'))
-    ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], _m('Color: normal'), 'js-threshold-color-row'))
-    ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], _m('Solid color'), 'js-solid-color-row'))
+    ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Color: high', 'js-threshold-color-row'))
+    ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Color: medium', 'js-threshold-color-row'))
+    ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Color: normal', 'js-threshold-color-row'))
+    ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Solid color', 'js-solid-color-row'))
     ->addFieldsGroup(new CWidgetFieldsGroupView('', [
         new CWidgetFieldRadioButtonListView($data['fields']['corners']),
         new CWidgetFieldRadioButtonListView($data['fields']['label_length']),
@@ -58,12 +58,10 @@ $form
             ->addItem(
                 (new CDiv())
                     ->addClass('main-overview-per-host-hint')
-                    ->addItem(_m(
-                        'After you select one or more hosts, a per-host settings block appears below (metrics, items, thresholds). If no panels appear, click "Refresh host panels".'
-                    ))
+                    ->addItem('After you select one or more hosts, a per-host settings block appears below (metrics, items, thresholds). If no panels appear, click "Refresh host panels".')
             )
             ->addItem(
-                (new CButton(null, _m('Refresh host panels')))
+                (new CButton(null, 'Refresh host panels'))
                     ->addClass('js-ho-refresh-host-panels')
             )
     )
@@ -73,31 +71,29 @@ $form
             ->setAttribute('id', 'js-host-accordion-mount')
     )
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_m('Global: badges')))
+        (new CWidgetFormFieldsetCollapsibleView('Global: badges'))
             ->addItem(getBadgesListView($data['fields']['badges']))
             ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
             ->addItem(getBadgeLivelinessItemViews($form, $data['fields']['badge_liveliness_item_name']))
             ->addItem(getFreshnessThresholdViews($form, $data['fields']))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_acknowledged'],
-                _m('Do not count acknowledged problems in the Problems badge tally.')
+                'Do not count acknowledged problems in the Problems badge tally.'
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_suppressed'],
-                _m('Do not count suppressed problems in the Problems badge tally.')
+                'Do not count suppressed problems in the Problems badge tally.'
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_pulse'],
-                _m('Animate the problems badge when there are active incidents.')
+                'Animate the problems badge when there are active incidents.'
             ))
     )
     ->addFieldset($global_appearance_fieldset)
     ->addItem($hidden_metrics_wrap)
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView(_m('Host profiles (sync)')))
+        (new CWidgetFormFieldsetCollapsibleView('Host profiles (sync)'))
             ->addClass('js-host-profiles-sync-fieldset')
             ->addItem([
                 (new CLabel($data['fields']['host_profiles']->getLabel(), $data['fields']['host_profiles']->getName()))
-                    ->addItem(makeHelpIcon(_m(
-                        'JSON is rebuilt automatically from the host list when you save. You can still edit it manually if needed.'
-                    ))),
+                    ->addItem(makeHelpIcon('JSON is rebuilt automatically from the host list when you save. You can still edit it manually if needed.')),
                 new CFormField(
                     $form->registerField(new CWidgetFieldTextBoxView($data['fields']['host_profiles']))->getView()
                 ),
@@ -112,82 +108,80 @@ $form
         'badge_types_with_url' => CWidgetFieldBadgesList::getUrlFieldBadgeTypes(),
         'item_lookup_action' => 'widget.main_overview.lookup',
         'metric_checkbox_rows' => [
-            ['value' => (string) WidgetForm::METRIC_CPU, 'label' => _m('CPU')],
-            ['value' => (string) WidgetForm::METRIC_RAM, 'label' => _m('Memory')],
-            ['value' => (string) WidgetForm::METRIC_LOAD, 'label' => _m('Load')],
-            ['value' => (string) WidgetForm::METRIC_SWAP, 'label' => _m('Swap')],
-            ['value' => (string) WidgetForm::METRIC_INTERFACES, 'label' => _m('Interfaces')],
-            ['value' => (string) WidgetForm::METRIC_DISKS, 'label' => _m('Disk utilization')],
-            ['value' => (string) WidgetForm::METRIC_PARTITIONS, 'label' => _m('Partitions')],
+            ['value' => (string) WidgetForm::METRIC_CPU, 'label' => 'CPU'],
+            ['value' => (string) WidgetForm::METRIC_RAM, 'label' => 'Memory'],
+            ['value' => (string) WidgetForm::METRIC_LOAD, 'label' => 'Load'],
+            ['value' => (string) WidgetForm::METRIC_SWAP, 'label' => 'Swap'],
+            ['value' => (string) WidgetForm::METRIC_INTERFACES, 'label' => 'Interfaces'],
+            ['value' => (string) WidgetForm::METRIC_DISKS, 'label' => 'Disk utilization'],
+            ['value' => (string) WidgetForm::METRIC_PARTITIONS, 'label' => 'Partitions'],
         ],
         'lookup_ui' => [
-            'test' => _m('Test'),
-            'stale_wildcard' => _m('Template or exclusions changed. Click "Test" to refresh the preview.'),
-            'stale_single' => _m('Input changed. Click "Test" to refresh the preview.'),
-            'pick_host' => _m('Select a host first.'),
-            'checking' => _m('Looking up matches…'),
-            'lookup_failed' => _m('Could not run the match check.'),
-            'lookup_empty_response' => _m('Server returned an empty response.'),
-            'lookup_html_error' => _m('Received an HTML page instead of JSON.'),
-            'read_response_error' => _m('Could not read the server response.'),
-            'exact_fmt' => _m('Exact match: %s.'),
-            'unique_partial_fmt' => _m('Single partial match: %s.'),
-            'ambiguous_fmt' => _m('Name matches found: %s. Pick an exact item name:'),
-            'none_partial' => _m('No exact or single partial match yet. Enter an exact item name:'),
-            'none_no_items' => _m('No suitable item names were found.'),
-            'enter_name' => _m('Enter an item name for preview.'),
-            'refine_candidates' => _m('Narrow the query to shorten the list.'),
-            'refine_rows' => _m('Only the first rows are shown. Refine the template to narrow the list.'),
-            'apply_fmt' => _m('Inserted exact item name: %s.'),
-            'matches_heading_fmt' => _m('Matches (%s)'),
-            'filtered_heading' => _m('Excluded by filter'),
-            'wildcard_no_disk' => _m('No matching disks.'),
-            'wildcard_no_partition' => _m('No matching partitions.'),
-            'wildcard_no_interface' => _m('No matching interfaces.'),
-            'wildcard_no_default' => _m('No matches found.'),
-            'wildcard_invalid_iface' => _m('For interfaces use at least two "*" characters in the template.'),
-            'wildcard_invalid_other' => _m('Add at least one "*" character to the template.'),
-            'wildcard_too_broad' => _m('Add fixed text around "*" to narrow the match list.'),
-            'wildcard_empty_disk' => _m('Enter a template with "*" to preview disks.'),
-            'wildcard_empty_partition' => _m('Enter a template with "*" to preview partitions.'),
-            'wildcard_empty_interface' => _m('Enter a template with "*" to preview interfaces.'),
-            'wildcard_empty_default' => _m('Enter a template with "*" for preview.'),
-            'wildcard_empty_single' => _m('Enter an item name for preview.'),
+            'test' => 'Test',
+            'stale_wildcard' => 'Template or exclusions changed. Click "Test" to refresh the preview.',
+            'stale_single' => 'Input changed. Click "Test" to refresh the preview.',
+            'pick_host' => 'Select a host first.',
+            'checking' => 'Looking up matches…',
+            'lookup_failed' => 'Could not run the match check.',
+            'lookup_empty_response' => 'Server returned an empty response.',
+            'lookup_html_error' => 'Received an HTML page instead of JSON.',
+            'read_response_error' => 'Could not read the server response.',
+            'exact_fmt' => 'Exact match: %s.',
+            'unique_partial_fmt' => 'Single partial match: %s.',
+            'ambiguous_fmt' => 'Name matches found: %s. Pick an exact item name:',
+            'none_partial' => 'No exact or single partial match yet. Enter an exact item name:',
+            'none_no_items' => 'No suitable item names were found.',
+            'enter_name' => 'Enter an item name for preview.',
+            'refine_candidates' => 'Narrow the query to shorten the list.',
+            'refine_rows' => 'Only the first rows are shown. Refine the template to narrow the list.',
+            'apply_fmt' => 'Inserted exact item name: %s.',
+            'matches_heading_fmt' => 'Matches (%s)',
+            'filtered_heading' => 'Excluded by filter',
+            'wildcard_no_disk' => 'No matching disks.',
+            'wildcard_no_partition' => 'No matching partitions.',
+            'wildcard_no_interface' => 'No matching interfaces.',
+            'wildcard_no_default' => 'No matches found.',
+            'wildcard_invalid_iface' => 'For interfaces use at least two "*" characters in the template.',
+            'wildcard_invalid_other' => 'Add at least one "*" character to the template.',
+            'wildcard_too_broad' => 'Add fixed text around "*" to narrow the match list.',
+            'wildcard_empty_disk' => 'Enter a template with "*" to preview disks.',
+            'wildcard_empty_partition' => 'Enter a template with "*" to preview partitions.',
+            'wildcard_empty_interface' => 'Enter a template with "*" to preview interfaces.',
+            'wildcard_empty_default' => 'Enter a template with "*" for preview.',
+            'wildcard_empty_single' => 'Enter an item name for preview.',
         ],
         'per_host_labels' => [
-            'empty' => _m('Pick one or more hosts in the field above.'),
-            'section_metrics' => _m('Show metrics'),
-            'section_badges_json' => _m('Custom badge list (optional)'),
-            'label_badges_json_hint' => _m(
-                'Leave empty to use global badges. Paste JSON in the same format as the global list to override badges for this host only.'
-            ),
-            'section_display' => _m('Display'),
-            'section_proc' => _m('CPU, memory, and load'),
-            'section_swap' => _m('Swap'),
-            'section_if' => _m('Interfaces'),
-            'section_disk' => _m('Disk utilization'),
-            'section_part' => _m('Partitions'),
-            'section_adv' => _m('Extra overrides (JSON)'),
-            'label_alias' => _m('Alias'),
-            'label_badges' => _m('Badges'),
-            'bp_summary' => _m('Next to the name (summary)'),
-            'bp_detail' => _m('Details only'),
-            'label_cpu' => _m('Item: CPU'),
-            'label_ram' => _m('Item: memory'),
-            'label_load' => _m('Item: load'),
-            'label_load_high' => _m('Load ceiling'),
-            'label_swap' => _m('Item: swap'),
-            'label_swap_inv' => _m('Invert swap'),
-            'label_iface' => _m('Interface template'),
-            'label_iface_ex' => _m('Interface filter'),
-            'label_iface_high' => _m('Interface ceiling'),
-            'label_iface_unit' => _m('Interface unit'),
-            'label_disk' => _m('Disk template'),
-            'label_disk_ex' => _m('Disk filter'),
-            'label_part' => _m('Partition template'),
-            'label_part_ex' => _m('Partition filter'),
-            'label_extras' => _m('Extra JSON fields (merged with overrides)'),
-            'placeholder_extras' => _m('Example: {"metrics_show":["0","1"]}'),
+            'empty' => 'Pick one or more hosts in the field above.',
+            'section_metrics' => 'Show metrics',
+            'section_badges_json' => 'Custom badge list (optional)',
+            'label_badges_json_hint' => 'Leave empty to use global badges. Paste JSON in the same format as the global list to override badges for this host only.',
+            'section_display' => 'Display',
+            'section_proc' => 'CPU, memory, and load',
+            'section_swap' => 'Swap',
+            'section_if' => 'Interfaces',
+            'section_disk' => 'Disk utilization',
+            'section_part' => 'Partitions',
+            'section_adv' => 'Extra overrides (JSON)',
+            'label_alias' => 'Alias',
+            'label_badges' => 'Badges',
+            'bp_summary' => 'Next to the name (summary)',
+            'bp_detail' => 'Details only',
+            'label_cpu' => 'Item: CPU',
+            'label_ram' => 'Item: memory',
+            'label_load' => 'Item: load',
+            'label_load_high' => 'Load ceiling',
+            'label_swap' => 'Item: swap',
+            'label_swap_inv' => 'Invert swap',
+            'label_iface' => 'Interface template',
+            'label_iface_ex' => 'Interface filter',
+            'label_iface_high' => 'Interface ceiling',
+            'label_iface_unit' => 'Interface unit',
+            'label_disk' => 'Disk template',
+            'label_disk_ex' => 'Disk filter',
+            'label_part' => 'Partition template',
+            'label_part_ex' => 'Partition filter',
+            'label_extras' => 'Extra JSON fields (merged with overrides)',
+            'placeholder_extras' => 'Example: {"metrics_show":["0","1"]}',
         ],
     ], JSON_THROW_ON_ERROR) . ');')
     ->show();
@@ -199,9 +193,7 @@ function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?stri
     $field_view = $view->getView();
 
     if ($hint === '') {
-        $hint = _m(
-            'Prefer an exact item name. A partial name is used only when it matches exactly one item; otherwise "No data" is shown.'
-        );
+        $hint = 'Prefer an exact item name. A partial name is used only when it matches exactly one item; otherwise "No data" is shown.';
     }
     $label->addItem(makeHelpIcon($hint));
 
@@ -216,7 +208,7 @@ function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?stri
                     ->addClass('item-match-controls')
                     ->addItem($view->getView())
                     ->addItem(
-                        (new CButton(null, _m('Test')))
+                        (new CButton(null, 'Test'))
                             ->addClass('js-item-match-test')
                     )
             )
@@ -263,7 +255,7 @@ function getPatternView(CWidgetFormView $form, $field, string $hint = '', ?array
                     ->addClass('item-match-controls')
                     ->addItem($view->getView())
                     ->addItem(
-                        (new CButton(null, (string) ($assistant['button_text'] ?? _m('Test'))))
+                        (new CButton(null, (string) ($assistant['button_text'] ?? 'Test')))
                             ->addClass('js-item-match-test')
                     )
             )
@@ -299,9 +291,9 @@ function getCheckBoxView(CWidgetFormView $form, $field, string $hint = ''): arra
 function getLoadCeilingViews(CWidgetFormView $form, $field): array
 {
     $view = $form->registerField(new CWidgetFieldIntegerBoxView($field));
-    $label = new CLabel(_m('Load ceiling'), $field->getName());
+    $label = new CLabel('Load ceiling', $field->getName());
     $label->addItem(makeHelpIcon(
-        _m('Maximum load for scaling the bar and sparkline. The actual load is still shown on screen.')
+        'Maximum load for scaling the bar and sparkline. The actual load is still shown on screen.'
     ));
 
     return [
@@ -316,9 +308,9 @@ function getInterfaceCeilingViews(CWidgetFormView $form, array $fields): array
         new CWidgetFieldRadioButtonListView($fields['interfaces_unit'])
     );
     $interface_ceiling = $form->registerField(new CWidgetFieldIntegerBoxView($fields['interfaces_high']));
-    $label = new CLabel(_m('Interface ceiling'), 'interfaces_high');
+    $label = new CLabel('Interface ceiling', 'interfaces_high');
     $label->addItem(makeHelpIcon(
-        _m('Expected maximum throughput for scaling interface bars. The selected unit is applied.')
+        'Expected maximum throughput for scaling interface bars. The selected unit is applied.'
     ));
 
     return [
@@ -354,9 +346,9 @@ function getMetricThresholdViews(
     return [
         $label,
         new CFormField(new CHorList([
-            new CSpan(_m('Medium')),
+            new CSpan('Medium'),
             $medium->getView(),
-            new CSpan(_m('High')),
+            new CSpan('High'),
             $high->getView(),
         ])),
     ];
@@ -389,7 +381,7 @@ function getBadgeUptimeItemViews(CWidgetFormView $form, $field): array
     return getItemNameView(
         $form,
         $field,
-        _m('Enter the exact uptime item name, for example "System uptime". A partial name is used only when it matches exactly one item; otherwise the badge will not show uptime.'),
+        'Enter the exact uptime item name, for example "System uptime". A partial name is used only when it matches exactly one item; otherwise the badge will not show uptime.',
         ''
     );
 }
@@ -399,7 +391,7 @@ function getBadgeLivelinessItemViews(CWidgetFormView $form, $field): array
     return getItemNameView(
         $form,
         $field,
-        _m('Enter the exact liveliness item name, for example "Zabbix agent ping". A partial name is used only when it matches exactly one item; otherwise the badge will not render.'),
+        'Enter the exact liveliness item name, for example "Zabbix agent ping". A partial name is used only when it matches exactly one item; otherwise the badge will not render.',
         ''
     );
 }
@@ -413,17 +405,17 @@ function getFreshnessThresholdViews(CWidgetFormView $form, array $fields): array
         new CWidgetFieldIntegerBoxView($fields['freshness_stale'])
     );
 
-    $label = new CLabel(_m('Liveliness thresholds'), 'freshness_warn');
+    $label = new CLabel('Liveliness thresholds', 'freshness_warn');
     $label->addItem(makeHelpIcon(
-        _m('Seconds since the last data for the selected liveliness item. Warning triggers first, then stale.')
+        'Seconds since the last data for the selected liveliness item. Warning triggers first, then stale.'
     ));
 
     return [
         $label,
         new CFormField(new CHorList([
-            new CSpan(_m('Warn')),
+            new CSpan('Warn'),
             $freshness_warn->getView(),
-            new CSpan(_m('Stale')),
+            new CSpan('Stale'),
             $freshness_stale->getView(),
         ])),
     ];
@@ -464,11 +456,11 @@ function getBadgesListView(CWidgetFieldBadgesList $field): array
     );
     $right_lane = createBadgeLane(CWidgetFieldBadgesList::SIDE_RIGHT, $right_rows);
     $left_lane->addItem(createBadgeRowTemplate());
-    $left_label = new CLabel(_m('Left'), 'badges-json');
+    $left_label = new CLabel('Left', 'badges-json');
 
     return [
         [$left_label, new CFormField($left_lane)],
-        [new CLabel(_m('Right')), new CFormField($right_lane)],
+        [new CLabel('Right'), new CFormField($right_lane)],
     ];
 }
 
@@ -496,7 +488,7 @@ function createBadgeLane(string $side, CDiv $rows, ?CTag $hidden_input = null): 
             (new CDiv())
                 ->addClass('badge-add-wrap')
                 ->addItem(
-                    (new CButton($add_name, _m('Add')))
+                    (new CButton($add_name, 'Add'))
                         ->addClass('btn-link')
                         ->addClass('js-badge-add')
                         ->setAttribute('data-side', $side)
@@ -513,15 +505,15 @@ function createBadgeRow(array $badge): CDiv
     $drag_handle = (new CSpan())
         ->addClass('js-badge-drag')
         ->setAttribute('draggable', 'true')
-        ->setAttribute('title', _m('Drag to reorder'));
+        ->setAttribute('title', 'Drag to reorder');
     $drag_handle->addItem(render_icon('grip-vertical'));
-    $type_badge = (new CSpan(_m($type_label)))
+    $type_badge = (new CSpan($type_label))
         ->addClass('badge-row-type');
 
     $show_text = CWidgetFieldBadgesList::badgeTypeUsesTextField($type);
     $show_url = CWidgetFieldBadgesList::badgeTypeUsesUrlField($type);
     $text_input = (new CTextBox('', $badge['text'] ?? ''))
-        ->setAttribute('placeholder', _m('Badge text'))
+        ->setAttribute('placeholder', 'Badge text')
         ->addClass('js-badge-text');
 
     if (!$show_text) {
@@ -529,14 +521,14 @@ function createBadgeRow(array $badge): CDiv
     }
 
     $url_input = (new CTextBox('', $badge['url'] ?? ''))
-        ->setAttribute('placeholder', _m('https://example.com or /path'))
+        ->setAttribute('placeholder', 'https://example.com or /path')
         ->addClass('js-badge-url');
 
     if (!$show_url) {
         $url_input->setAttribute('style', 'display: none');
     }
 
-    $remove_btn = (new CButton('', _m('Remove')))
+    $remove_btn = (new CButton('', 'Remove'))
         ->addClass('btn-link')
         ->addClass('js-badge-remove');
 

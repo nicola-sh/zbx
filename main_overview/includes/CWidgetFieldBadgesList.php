@@ -65,7 +65,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
             $pos = $index + 1;
 
             if (!self::badgeTypeExists($type)) {
-                $errors[] = _ms('Badge %1$s: unsupported type.', $pos);
+                $errors[] = sprintf('Badge %1$s: unsupported type.', $pos);
                 continue;
             }
 
@@ -74,10 +74,10 @@ class CWidgetFieldBadgesList extends CWidgetField {
             }
 
             if (self::badgeTypeUsesTextField($type) && trim($badge['text'] ?? '') === '') {
-                $errors[] = _ms(
+                $errors[] = sprintf(
                     'Badge %1$s: display text cannot be empty for type "%2$s".',
                     $pos,
-                    _m(self::BADGE_TYPE_LABELS[$type])
+                    self::BADGE_TYPE_LABELS[$type]
                 );
             }
 
@@ -85,10 +85,10 @@ class CWidgetFieldBadgesList extends CWidgetField {
                 $safe_url = self::sanitizeLinkUrl($badge['url'] ?? null);
 
                 if (trim($badge['url'] ?? '') === '') {
-                    $errors[] = _ms('Badge %1$s: URL is required for link type.', $pos);
+                    $errors[] = sprintf('Badge %1$s: URL is required for link type.', $pos);
                 }
                 elseif ($safe_url === null) {
-                    $errors[] = _ms(
+                    $errors[] = sprintf(
                         'Badge %1$s: URL must start with http://, https://, or be a relative path (for example zabbix.php?action=...).',
                         $pos
                     );
@@ -98,8 +98,8 @@ class CWidgetFieldBadgesList extends CWidgetField {
 
         foreach ($single_badge_counts as $type => $count) {
             if ($count > 1) {
-                $label = self::BADGE_TYPE_LABELS[$type] ?? _m('this');
-                $errors[] = _ms('Badge "%1$s" can be added only once.', _m($label));
+                $label = self::BADGE_TYPE_LABELS[$type] ?? 'this';
+                $errors[] = sprintf('Badge "%1$s" can be added only once.', $label);
             }
         }
 
@@ -128,7 +128,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
         foreach (self::BADGE_TYPE_LABELS as $value => $label) {
             $options[] = [
                 'value' => (string) $value,
-                'label' => _m($label),
+                'label' => $label,
             ];
         }
 
