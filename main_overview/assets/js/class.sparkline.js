@@ -915,8 +915,11 @@ class MainOverviewSparkline {
       return null;
     }
 
+    const hostid = spec.hostid != null ? String(spec.hostid).trim() : '';
+
     return {
       item_ref: this._normalizeRef(spec.item_ref),
+      hostid: hostid !== '' ? hostid : null,
       display_kind: spec.display_kind || 'percent',
       axis: {
         min: spec.axis?.min ?? 0,
@@ -936,6 +939,7 @@ class MainOverviewSparkline {
     return {
       itemid: itemRef.itemid ?? null,
       name: itemRef.name ?? null,
+      value_type: itemRef.value_type ?? null,
     };
   }
 

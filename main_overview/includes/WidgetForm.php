@@ -386,15 +386,45 @@ class WidgetForm extends CWidgetForm
     protected function normalizeValues(array $values): array
     {
         foreach (self::THRESHOLD_METRIC_FIELDS as $metric) {
-            $high_field = 'th_m' . $metric . '_1';
-            $medium_field = 'th_m' . $metric . '_2';
+            $high_field = 'th_' . $metric . '_1';
+            $medium_field = 'th_' . $metric . '_2';
+            $legacy_high_fields = ['th_m' . $metric . '_1', 'th_m' . $metric . '_m1'];
+            $legacy_medium_fields = ['th_m' . $metric . '_2', 'th_m' . $metric . '_m2'];
 
-            if (!array_key_exists($high_field, $values) && array_key_exists('th_num_1', $values)) {
-                $values[$high_field] = $values['th_num_1'];
+            if (!array_key_exists($high_field, $values)) {
+                foreach ($legacy_high_fields as $legacy_field) {
+                    if (array_key_exists($legacy_field, $values)) {
+                        $values[$high_field] = $values[$legacy_field];
+                        break;
+                    }
+                }
+
+                if (!array_key_exists($high_field, $values)) {
+                    if (array_key_exists('th_num_1', $values)) {
+                        $values[$high_field] = $values['th_num_1'];
+                    }
+                    elseif (array_key_exists('th_num_m1', $values)) {
+                        $values[$high_field] = $values['th_num_m1'];
+                    }
+                }
             }
 
-            if (!array_key_exists($medium_field, $values) && array_key_exists('th_num_2', $values)) {
-                $values[$medium_field] = $values['th_num_2'];
+            if (!array_key_exists($medium_field, $values)) {
+                foreach ($legacy_medium_fields as $legacy_field) {
+                    if (array_key_exists($legacy_field, $values)) {
+                        $values[$medium_field] = $values[$legacy_field];
+                        break;
+                    }
+                }
+
+                if (!array_key_exists($medium_field, $values)) {
+                    if (array_key_exists('th_num_2', $values)) {
+                        $values[$medium_field] = $values['th_num_2'];
+                    }
+                    elseif (array_key_exists('th_num_m2', $values)) {
+                        $values[$medium_field] = $values['th_num_m2'];
+                    }
+                }
             }
         }
 

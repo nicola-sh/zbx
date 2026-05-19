@@ -22,6 +22,8 @@ final class HistoryLoader
     ];
 
     private const MAX_POINTS = 240;
+    private const MAX_HISTORY_FETCH = self::MAX_POINTS * 20;
+    private const MAX_TREND_FETCH = 2048;
     private const TREND_BLEND_SECONDS = 43200;
     private const RECENT_HISTORY_SECONDS = 7200;
     private const HISTORY_GAP_FLOOR = 300;
@@ -116,6 +118,7 @@ final class HistoryLoader
         int $time_till,
         string $sortorder = 'ASC'
     ): array {
+        $fetch_sortorder = $sortorder === 'ASC' ? 'DESC' : $sortorder;
         $records = API::History()->get([
             'output' => ['value', 'clock'],
             'history' => $value_type,
@@ -123,7 +126,8 @@ final class HistoryLoader
             'time_from' => $time_from,
             'time_till' => $time_till,
             'sortfield' => 'clock',
-            'sortorder' => $sortorder,
+            'sortorder' => $fetch_sortorder,
+            'limit' => self::MAX_HISTORY_FETCH,
         ]);
 
         $points = array_map(static function(array $record): array {
@@ -133,7 +137,7 @@ final class HistoryLoader
             ];
         }, $records);
 
-        if ($sortorder === 'DESC') {
+        if ($fetch_sortorder === 'DESC') {
             usort($points, static fn(array $left, array $right): int => $left['t'] <=> $right['t']);
         }
 
@@ -151,15 +155,20 @@ final class HistoryLoader
             'time_from' => $time_from,
             'time_till' => $time_till,
             'sortfield' => 'clock',
-            'sortorder' => 'ASC',
+            'sortorder' => 'DESC',
+            'limit' => self::MAX_TREND_FETCH,
         ]);
 
-        return array_map(static function(array $record): array {
+        $points = array_map(static function(array $record): array {
             return [
                 't' => (int) ($record['clock'] ?? 0),
                 'v' => (float) ($record['value_avg'] ?? 0),
             ];
         }, $records);
+
+        usort($points, static fn(array $left, array $right): int => $left['t'] <=> $right['t']);
+
+        return $points;
     }
 
     /**
@@ -178,8 +187,7 @@ final class HistoryLoader
         for ($i = 0; $i < self::MAX_POINTS; $i++) {
             $downsampled[] = $points[(int) floor($i * $stride)];
         }
-
-        $downsampled[] = $points[count($points) - 1];
+        $downsampled[self::MAX_POINTS - 1] = $points[count($points) - 1];
 
         return $downsampled;
     }

@@ -16,9 +16,29 @@ class CWidgetMainCharts extends CWidget {
     this._layoutSignature = '';
     this._chart = null;
     this._fetchAbort = null;
+    this._fetchGeneration = 0;
     this._resizeObserver = null;
+    this._resizeRaf = null;
     this._config = null;
-    this._pendingRedraw = false;
+  }
+
+  onActivate() {
+    this._scheduleChartResize();
+  }
+
+  onDeactivate() {
+    this._invalidatePendingLoads();
+    this._abortFetch();
+    this._cancelScheduledResize();
+  }
+
+  onClearContents() {
+    this._invalidatePendingLoads();
+    this._abortFetch();
+    this._destroyChart();
+    this._cancelScheduledResize();
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = null;
   }
 
   onResize() {
@@ -26,10 +46,7 @@ class CWidgetMainCharts extends CWidget {
   }
 
   onDestroy() {
-    this._abortFetch();
-    this._destroyChart();
-    this._resizeObserver?.disconnect();
-    this._resizeObserver = null;
+    this.onClearContents();
   }
 
   _getWidgetRoot() {
@@ -42,6 +59,20 @@ class CWidgetMainCharts extends CWidget {
     return this._body?.querySelector('.main-charts-canvas') || null;
   }
 
+  _isHiddenHeaderMode() {
+    if (typeof this.getViewMode !== 'function') {
+      return false;
+    }
+
+    const mode = this.getViewMode();
+
+    if (typeof ZBX_WIDGET_VIEW_MODE_HIDDEN_HEADER !== 'undefined') {
+      return mode === ZBX_WIDGET_VIEW_MODE_HIDDEN_HEADER;
+    }
+
+    return Boolean(mode);
+  }
+
   updateViewModeAttr() {
     try {
       if (!this._body || typeof this.getViewMode !== 'function') {
@@ -51,7 +82,7 @@ class CWidgetMainCharts extends CWidget {
       const root = this._getWidgetRoot();
 
       if (root) {
-        root.classList.toggle('hidden_header', this.getViewMode());
+        root.classList.toggle('hidden_header', this._isHiddenHeaderMode());
       }
     }
     catch (_) {}
@@ -84,6 +115,8 @@ class CWidgetMainCharts extends CWidget {
       this._loadAndRender();
     }
     else {
+      this._invalidatePendingLoads();
+      this._abortFetch();
       this._destroyChart();
     }
   }
@@ -101,33 +134,42 @@ class CWidgetMainCharts extends CWidget {
   }
 
   _scheduleChartResize() {
-    if (this._pendingRedraw) {
+    if (this._resizeRaf !== null) {
       return;
     }
 
-    this._pendingRedraw = true;
-    requestAnimationFrame(() => {
-      this._pendingRedraw = false;
+    this._resizeRaf = requestAnimationFrame(() => {
+      this._resizeRaf = null;
       this._chart?.resize();
     });
   }
 
   async _loadAndRender() {
     const root = this._getWidgetRoot();
+    const generation = ++this._fetchGeneration;
 
     root?.classList.add('is-loading');
 
     try {
       const payload = await this._fetchHistory();
+
+      if (generation !== this._fetchGeneration) {
+        return;
+      }
+
       this._renderChart(payload);
     }
     catch (error) {
-      if (error?.name !== 'AbortError') {
-        this._showError(error?.message || 'Could not load chart data.');
+      if (generation !== this._fetchGeneration || error?.name === 'AbortError') {
+        return;
       }
+
+      this._showError(error?.message || 'Could not load chart data.');
     }
     finally {
-      root?.classList.remove('is-loading');
+      if (generation === this._fetchGeneration) {
+        root?.classList.remove('is-loading');
+      }
     }
   }
 
@@ -147,28 +189,35 @@ class CWidgetMainCharts extends CWidget {
     const curl = new Curl('zabbix.php');
     curl.setArgument('action', CWidgetMainCharts.ACTION_HISTORY);
 
-    const response = await fetch(curl.getUrl(), {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({
-        hostid: String(config.hostid),
-        period: String(config.period || '3h'),
-        series: JSON.stringify(series.map((entry) => ({
-          key: entry.key,
-          label: entry.label,
-          itemid: entry.itemid,
-          item_name: entry.item_name,
-          value_type: entry.value_type,
-        }))),
-      }),
-    });
+    try {
+      const response = await fetch(curl.getUrl(), {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          hostid: String(config.hostid),
+          period: String(config.period || '3h'),
+          series: JSON.stringify(series.map((entry) => ({
+            key: entry.key,
+            label: entry.label,
+            itemid: entry.itemid,
+            item_name: entry.item_name,
+            value_type: entry.value_type,
+          }))),
+        }),
+      });
 
-    return this._parseHistoryResponse(response);
+      return await this._parseHistoryResponse(response);
+    }
+    finally {
+      if (this._fetchAbort === controller) {
+        this._fetchAbort = null;
+      }
+    }
   }
 
   async _parseHistoryResponse(response) {
@@ -202,6 +251,18 @@ class CWidgetMainCharts extends CWidget {
     if (this._fetchAbort) {
       this._fetchAbort.abort();
       this._fetchAbort = null;
+    }
+  }
+
+  _invalidatePendingLoads() {
+    this._fetchGeneration += 1;
+    this._getWidgetRoot()?.classList.remove('is-loading');
+  }
+
+  _cancelScheduledResize() {
+    if (this._resizeRaf !== null) {
+      cancelAnimationFrame(this._resizeRaf);
+      this._resizeRaf = null;
     }
   }
 

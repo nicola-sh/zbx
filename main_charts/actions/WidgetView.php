@@ -140,6 +140,7 @@ class WidgetView extends CControllerDashboardWidgetView
         $parts[] = (string) ($this->fields_values['legend_position'] ?? '');
         $parts[] = (string) ($this->fields_values['chart_stacked'] ?? '');
         $parts[] = (string) ($this->fields_values['chart_fill'] ?? '');
+        $parts[] = (string) ($this->fields_values['show_grid'] ?? '');
 
         return implode('|', $parts);
     }
