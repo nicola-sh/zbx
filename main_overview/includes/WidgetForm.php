@@ -141,33 +141,33 @@ class WidgetForm extends CWidgetForm
     {
         $this
             ->addField(
-                (new CWidgetFieldMultiSelectHost('hostid', 'Hosts'))
+                (new CWidgetFieldMultiSelectHost('hostid', _m('Hosts')))
                     ->setMultiple(true)
             )
             ->addField(
                 new CWidgetFieldMultiSelectOverrideHost()
             )
             ->addField(
-                (new CWidgetFieldTextBox('host_profiles', 'Per-host overrides'))
+                (new CWidgetFieldTextBox('host_profiles', _m('Per-host overrides')))
                     ->setDefault('[]')
             )
             ->addField(
                 (new CWidgetFieldBadgesList('badges'))
             )
             ->addField(
-                (new CWidgetFieldTextBox('badge_uptime_item_name', 'Uptime item'))
+                (new CWidgetFieldTextBox('badge_uptime_item_name', _m('Uptime item')))
                     ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_UPTIME)
             )
             ->addField(
-                (new CWidgetFieldTextBox('badge_liveliness_item_name', 'Liveliness item'))
+                (new CWidgetFieldTextBox('badge_liveliness_item_name', _m('Liveliness item')))
                     ->setDefault(CWidgetFieldBadgesList::DEFAULT_ITEM_LIVELINESS)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('problems_hide_acknowledged', 'Ignore acknowledged problems'))
+                (new CWidgetFieldCheckBox('problems_hide_acknowledged', _m('Ignore acknowledged problems')))
                     ->setDefault(0)
             )
             ->addField(
-                (new CWidgetFieldColor('fill_color', 'Solid'))
+                (new CWidgetFieldColor('fill_color', _m('Solid')))
                     ->setDefault(self::DEFAULT_COLOR_FILL)
             )
             ->addField(
@@ -179,7 +179,7 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_COLOR_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldColor('th_color_3', 'Normal'))
+                (new CWidgetFieldColor('th_color_3', _m('Normal')))
                     ->setDefault(self::DEFAULT_COLOR_THRESHOLD_LOW)
             )
             ->addField(
@@ -191,70 +191,70 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_cpu_1', 'CPU: high', 1, 100))
+                (new CWidgetFieldIntegerBox('th_cpu_1', _m('CPU: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_cpu_2', 'CPU: medium', 1, 100))
+                (new CWidgetFieldIntegerBox('th_cpu_2', _m('CPU: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_ram_1', 'Memory: high', 1, 100))
+                (new CWidgetFieldIntegerBox('th_ram_1', _m('Memory: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_ram_2', 'Memory: medium', 1, 100))
+                (new CWidgetFieldIntegerBox('th_ram_2', _m('Memory: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_load_1', 'Load: high', 1, 100))
+                (new CWidgetFieldIntegerBox('th_load_1', _m('Load: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_load_2', 'Load: medium', 1, 100))
+                (new CWidgetFieldIntegerBox('th_load_2', _m('Load: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_swap_1', 'Swap: high', 1, 100))
+                (new CWidgetFieldIntegerBox('th_swap_1', _m('Swap: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_SWAP_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_swap_2', 'Swap: medium', 1, 100))
+                (new CWidgetFieldIntegerBox('th_swap_2', _m('Swap: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_SWAP_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_iface_1', 'Interfaces: high', 1, 100))
+                (new CWidgetFieldIntegerBox('th_iface_1', _m('Interfaces: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_iface_2', 'Interfaces: medium', 1, 100))
+                (new CWidgetFieldIntegerBox('th_iface_2', _m('Interfaces: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_disk_1', 'Disk: high', 1, 100))
+                (new CWidgetFieldIntegerBox('th_disk_1', _m('Disk: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_disk_2', 'Disk: medium', 1, 100))
+                (new CWidgetFieldIntegerBox('th_disk_2', _m('Disk: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_partition_1', 'Partition: high', 1, 100))
+                (new CWidgetFieldIntegerBox('th_partition_1', _m('Partition: high'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('th_partition_2', 'Partition: medium', 1, 100))
+                (new CWidgetFieldIntegerBox('th_partition_2', _m('Partition: medium'), 1, 100))
                     ->setDefault(self::DEFAULT_THRESHOLD_MEDIUM)
             )
             ->addField(
-                (new CWidgetFieldCheckBoxList('metrics_show', 'Metrics', [
-                    self::METRIC_CPU        => 'CPU',
-                    self::METRIC_RAM        => 'Memory',
-                    self::METRIC_LOAD       => 'Load',
-                    self::METRIC_SWAP       => 'Swap',
-                    self::METRIC_INTERFACES => 'Interfaces',
-                    self::METRIC_DISKS      => 'Disk utilization',
-                    self::METRIC_PARTITIONS => 'Partitions',
+                (new CWidgetFieldCheckBoxList('metrics_show', _m('Metrics'), [
+                    self::METRIC_CPU        => _m('CPU'),
+                    self::METRIC_RAM        => _m('Memory'),
+                    self::METRIC_LOAD       => _m('Load'),
+                    self::METRIC_SWAP       => _m('Swap'),
+                    self::METRIC_INTERFACES => _m('Interfaces'),
+                    self::METRIC_DISKS      => _m('Disk utilization'),
+                    self::METRIC_PARTITIONS => _m('Partitions'),
                 ]))
                     ->setDefault([
                         self::METRIC_CPU,
@@ -267,44 +267,44 @@ class WidgetForm extends CWidgetForm
                     ])
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('load_high', 'Load ceiling', 1, 1000))
+                (new CWidgetFieldIntegerBox('load_high', _m('Load ceiling'), 1, 1000))
                     ->setDefault(self::DEFAULT_LOAD_HIGH)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('interfaces_high', 'Interface ceiling', 1, 10000))
+                (new CWidgetFieldIntegerBox('interfaces_high', _m('Interface ceiling'), 1, 10000))
                     ->setDefault(self::DEFAULT_INTERFACES_HIGH)
             )
             ->addField(
                 (new CWidgetFieldRadioButtonList('interfaces_unit', null, [
-                    self::INTERFACES_UNIT_KBPS => 'Kbps',
-                    self::INTERFACES_UNIT_MBPS => 'Mbps',
-                    self::INTERFACES_UNIT_GBPS => 'Gbps',
+                    self::INTERFACES_UNIT_KBPS => _m('Kbps'),
+                    self::INTERFACES_UNIT_MBPS => _m('Mbps'),
+                    self::INTERFACES_UNIT_GBPS => _m('Gbps'),
                 ]))
                     ->setDefault(self::INTERFACES_UNIT_GBPS)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('color_scheme', 'Color scheme', [
-                    self::COLOR_SCHEME_THRESHOLD => 'By thresholds',
-                    self::COLOR_SCHEME_SOLID     => 'Solid fill',
+                (new CWidgetFieldRadioButtonList('color_scheme', _m('Color scheme'), [
+                    self::COLOR_SCHEME_THRESHOLD => _m('By thresholds'),
+                    self::COLOR_SCHEME_SOLID     => _m('Solid fill'),
                 ]))
                     ->setDefault(self::COLOR_SCHEME_THRESHOLD)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('corners', 'Corners', [
-                    self::CORNERS_ROUNDED => 'Rounded',
-                    self::CORNERS_SQUARE  => 'Square',
+                (new CWidgetFieldRadioButtonList('corners', _m('Corners'), [
+                    self::CORNERS_ROUNDED => _m('Rounded'),
+                    self::CORNERS_SQUARE  => _m('Square'),
                 ]))
                     ->setDefault(self::CORNERS_ROUNDED)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('label_length', 'Labels', [
-                    self::LABELS_FULL  => 'Full',
-                    self::LABELS_SHORT => 'Short',
+                (new CWidgetFieldRadioButtonList('label_length', _m('Labels'), [
+                    self::LABELS_FULL  => _m('Full'),
+                    self::LABELS_SHORT => _m('Short'),
                 ]))
                     ->setDefault(self::LABELS_FULL)
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('bar_height', 'Bar height', [
+                (new CWidgetFieldRadioButtonList('bar_height', _m('Bar height'), [
                     4  => '4px',
                     5  => '5px',
                     6  => '6px',
@@ -316,67 +316,67 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(self::DEFAULT_BAR_HEIGHT)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('open_links_same_window', 'Open links in this tab'))
+                (new CWidgetFieldCheckBox('open_links_same_window', _m('Open links in this tab')))
                     ->setDefault(0)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('problems_pulse', 'Problems badge pulse'))
+                (new CWidgetFieldCheckBox('problems_pulse', _m('Problems badge pulse')))
                     ->setDefault(1)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('freshness_warn', 'Liveliness: warning', 1, 86400))
+                (new CWidgetFieldIntegerBox('freshness_warn', _m('Liveliness: warning'), 1, 86400))
                     ->setDefault(self::DEFAULT_FRESHNESS_WARN)
             )
             ->addField(
-                (new CWidgetFieldIntegerBox('freshness_stale', 'Liveliness: stale', 1, 86400))
+                (new CWidgetFieldIntegerBox('freshness_stale', _m('Liveliness: stale'), 1, 86400))
                     ->setDefault(self::DEFAULT_FRESHNESS_STALE)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('problems_hide_suppressed', 'Ignore suppressed problems'))
+                (new CWidgetFieldCheckBox('problems_hide_suppressed', _m('Ignore suppressed problems')))
                     ->setDefault(0)
             )
             ->addField(
-                (new CWidgetFieldTextBox('interfaces_exclude', 'Interface filter'))
+                (new CWidgetFieldTextBox('interfaces_exclude', _m('Interface filter')))
                     ->setDefault('')
             )
             ->addField(
-                (new CWidgetFieldTextBox('disks_exclude', 'Disk filter'))
+                (new CWidgetFieldTextBox('disks_exclude', _m('Disk filter')))
                     ->setDefault('')
             )
             ->addField(
-                (new CWidgetFieldTextBox('partitions_exclude', 'Partition filter'))
+                (new CWidgetFieldTextBox('partitions_exclude', _m('Partition filter')))
                     ->setDefault('')
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_cpu', 'Item: CPU'))
+                (new CWidgetFieldTextBox('item_name_cpu', _m('Item: CPU')))
                     ->setDefault(self::DEFAULT_ITEM_CPU)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_ram', 'Item: memory'))
+                (new CWidgetFieldTextBox('item_name_ram', _m('Item: memory')))
                     ->setDefault(self::DEFAULT_ITEM_RAM)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_load', 'Item: load'))
+                (new CWidgetFieldTextBox('item_name_load', _m('Item: load')))
                     ->setDefault(self::DEFAULT_ITEM_LOAD)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_swap', 'Item: swap'))
+                (new CWidgetFieldTextBox('item_name_swap', _m('Item: swap')))
                     ->setDefault(self::DEFAULT_ITEM_SWAP)
             )
             ->addField(
-                (new CWidgetFieldCheckBox('item_swap_invert', 'Invert swap'))
+                (new CWidgetFieldCheckBox('item_swap_invert', _m('Invert swap')))
                     ->setDefault(1)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_disk', 'Disk template'))
+                (new CWidgetFieldTextBox('item_name_disk', _m('Disk template')))
                     ->setDefault(self::DEFAULT_ITEM_DISK)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_partition', 'Partition template'))
+                (new CWidgetFieldTextBox('item_name_partition', _m('Partition template')))
                     ->setDefault(self::DEFAULT_ITEM_PARTITION)
             )
             ->addField(
-                (new CWidgetFieldTextBox('item_name_interface', 'Interface template'))
+                (new CWidgetFieldTextBox('item_name_interface', _m('Interface template')))
                     ->setDefault(self::DEFAULT_ITEM_INTERFACE)
             );
 
@@ -424,7 +424,7 @@ class WidgetForm extends CWidgetForm
 
         if (!self::hasConfiguredValue($this->getFieldValue('hostid'))
                 && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))) {
-            $this->addFieldError($errors, 'hostid', 'cannot be empty');
+            $this->addFieldError($errors, 'hostid', _m('cannot be empty'));
         }
 
         $profiles_raw = trim((string) $this->getFieldValue('host_profiles'));
@@ -437,7 +437,7 @@ class WidgetForm extends CWidgetForm
             json_decode($profiles_raw, true, 512, JSON_THROW_ON_ERROR);
         }
         catch (JsonException) {
-            $this->addFieldError($errors, 'host_profiles', 'must be valid JSON');
+            $this->addFieldError($errors, 'host_profiles', _m('must be valid JSON'));
 
             return $errors;
         }
@@ -447,7 +447,7 @@ class WidgetForm extends CWidgetForm
         $ordered = $this->resolveOrderedHostIdsFromForm();
 
         if ($ordered !== [] && count($profiles) !== count($ordered)) {
-            $this->addFieldError($errors, 'host_profiles', 'must contain one entry per selected host');
+            $this->addFieldError($errors, 'host_profiles', _m('must contain one entry per selected host'));
         }
 
         foreach ($profiles as $index => $profile) {
@@ -457,7 +457,7 @@ class WidgetForm extends CWidgetForm
             if ($ordered !== [] && !in_array($profile['hostid'], $ordered, true)) {
                 $this->addFieldErrorToHostProfiles(
                     $errors,
-                    sprintf('Host %1$s: not in the current selection.', $host_label)
+                    _ms('Host %1$s: not in the current selection.', $host_label)
                 );
             }
         }
@@ -531,12 +531,7 @@ class WidgetForm extends CWidgetForm
      */
     private function hasBadgeTypeInMerged(array $merged, int $type): bool
     {
-        $badges_raw = $merged['badges'] ?? '[]';
-        $badges = is_string($badges_raw) ? (json_decode($badges_raw, true) ?: []) : [];
-
-        if (!is_array($badges)) {
-            return false;
-        }
+        $badges = CWidgetFieldBadgesList::decodeStored($merged['badges'] ?? '[]');
 
         foreach ($badges as $badge) {
             if ((int) ($badge['type'] ?? -1) === $type) {
@@ -559,7 +554,7 @@ class WidgetForm extends CWidgetForm
         if (trim((string) ($merged[$field_name] ?? '')) === '') {
             $this->addFieldErrorToHostProfiles(
                 $errors,
-                sprintf('Host row %1$s: field "%2$s" cannot be empty.', $position, $this->getField($field_name)->getErrorLabel())
+                _ms('Host row %1$s: field "%2$s" cannot be empty.', $position, $this->getField($field_name)->getErrorLabel())
             );
         }
     }
@@ -579,7 +574,7 @@ class WidgetForm extends CWidgetForm
         if ($value === '') {
             $this->addFieldErrorToHostProfiles(
                 $errors,
-                sprintf('Host row %1$s: field "%2$s" cannot be empty.', $position, $this->getField($field_name)->getErrorLabel())
+                _ms('Host row %1$s: field "%2$s" cannot be empty.', $position, $this->getField($field_name)->getErrorLabel())
             );
 
             return;
@@ -587,12 +582,12 @@ class WidgetForm extends CWidgetForm
 
         if (substr_count($value, '*') < $required_wildcards) {
             $message = $required_wildcards === 1
-                ? 'must contain at least one "*" character'
-                : sprintf('requires at least %1$s "*" characters', $required_wildcards);
+                ? _m('must contain at least one "*" character')
+                : _ms('requires at least %1$s "*" characters', $required_wildcards);
 
             $this->addFieldErrorToHostProfiles(
                 $errors,
-                sprintf(
+                _ms(
                     'Host row %1$s: invalid parameter "%2$s": %3$s.',
                     $position,
                     $this->getField($field_name)->getErrorLabel(),
@@ -604,7 +599,7 @@ class WidgetForm extends CWidgetForm
 
     private function addFieldErrorToHostProfiles(array &$errors, string $message): void
     {
-        $errors[] = sprintf(
+        $errors[] = _ms(
             'Invalid parameter "%1$s": %2$s.',
             $this->getField('host_profiles')->getErrorLabel(),
             $message
@@ -668,7 +663,7 @@ class WidgetForm extends CWidgetForm
 
     private function addFieldError(array &$errors, string $field_name, string $message): void
     {
-        $errors[] = sprintf(
+        $errors[] = _ms(
             'Invalid parameter "%1$s": %2$s.',
             $this->getField($field_name)->getErrorLabel(),
             $message

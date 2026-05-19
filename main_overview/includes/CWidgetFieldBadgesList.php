@@ -65,7 +65,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
             $pos = $index + 1;
 
             if (!self::badgeTypeExists($type)) {
-                $errors[] = sprintf('Badge %1$s: unsupported type.', $pos);
+                $errors[] = _ms('Badge %1$s: unsupported type.', $pos);
                 continue;
             }
 
@@ -74,10 +74,10 @@ class CWidgetFieldBadgesList extends CWidgetField {
             }
 
             if (self::badgeTypeUsesTextField($type) && trim($badge['text'] ?? '') === '') {
-                $errors[] = sprintf(
+                $errors[] = _ms(
                     'Badge %1$s: display text cannot be empty for type "%2$s".',
                     $pos,
-                    self::BADGE_TYPE_LABELS[$type]
+                    _m(self::BADGE_TYPE_LABELS[$type])
                 );
             }
 
@@ -85,10 +85,10 @@ class CWidgetFieldBadgesList extends CWidgetField {
                 $safe_url = self::sanitizeLinkUrl($badge['url'] ?? null);
 
                 if (trim($badge['url'] ?? '') === '') {
-                    $errors[] = sprintf('Badge %1$s: URL is required for link type.', $pos);
+                    $errors[] = _ms('Badge %1$s: URL is required for link type.', $pos);
                 }
                 elseif ($safe_url === null) {
-                    $errors[] = sprintf(
+                    $errors[] = _ms(
                         'Badge %1$s: URL must start with http://, https://, or be a relative path (for example zabbix.php?action=...).',
                         $pos
                     );
@@ -98,8 +98,8 @@ class CWidgetFieldBadgesList extends CWidgetField {
 
         foreach ($single_badge_counts as $type => $count) {
             if ($count > 1) {
-                $label = self::BADGE_TYPE_LABELS[$type] ?? 'this';
-                $errors[] = sprintf('Badge "%1$s" can be added only once.', $label);
+                $label = self::BADGE_TYPE_LABELS[$type] ?? _m('this');
+                $errors[] = _ms('Badge "%1$s" can be added only once.', _m($label));
             }
         }
 
@@ -128,7 +128,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
         foreach (self::BADGE_TYPE_LABELS as $value => $label) {
             $options[] = [
                 'value' => (string) $value,
-                'label' => $label,
+                'label' => _m($label),
             ];
         }
 
@@ -217,22 +217,39 @@ class CWidgetFieldBadgesList extends CWidgetField {
     }
 
     /**
+     * Decode badges from widget field value (JSON string or array from API).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function decodeStored(mixed $raw): array
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $badges = is_array($decoded) ? $decoded : [];
+        }
+        elseif (is_array($raw)) {
+            $badges = $raw;
+        }
+        else {
+            $badges = [];
+        }
+
+        return array_values(array_map(
+            static fn(array $badge): array => self::normalizeBadge($badge),
+            array_filter($badges, 'is_array')
+        ));
+    }
+
+    /**
      * Decode the stored JSON string into a badges array.
      */
     public function getBadges(): array {
         $val = $this->getValue();
 
-        if (is_string($val)) {
-            $decoded = json_decode($val, true);
+        if (is_string($val) || is_array($val)) {
+            $badges = self::decodeStored($val);
 
-            if (is_array($decoded)) {
-                return array_values(array_map(
-                    static fn(array $badge): array => self::normalizeBadge($badge),
-                    array_filter($decoded, 'is_array')
-                ));
-            }
-
-            return self::DEFAULT_BADGES;
+            return $badges !== [] ? $badges : self::DEFAULT_BADGES;
         }
 
         return self::DEFAULT_BADGES;
