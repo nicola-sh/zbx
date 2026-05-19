@@ -78,13 +78,18 @@ if ($missing !== []) {
     $root->addItem($warnings);
 }
 
+$legend_class = 'top';
+
+if ($legend_position === 1) {
+    $legend_class = 'bottom';
+}
+elseif ($legend_position === 2) {
+    $legend_class = 'hidden';
+}
+
 $chart_wrap = (new CDiv())
     ->addClass('main-charts-stage')
-    ->addClass('legend-' . match ($legend_position) {
-        1 => 'bottom',
-        2 => 'hidden',
-        default => 'top',
-    });
+    ->addClass('legend-' . $legend_class);
 
 $chart_wrap->addItem(
     (new CDiv())

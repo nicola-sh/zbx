@@ -3,26 +3,17 @@
 /*
  * MIT License
  * Copyright (c) 2026 nicola
+ *
+ * Zabbix loads this via CWidgetFormView::includeJsFile() from the module views
+ * directory. The script body lives in assets/js per module file structure docs.
  */
 
-header('Content-Type: application/javascript; charset=UTF-8');
-?>
-(function () {
-  'use strict';
+declare(strict_types=1);
 
-  document.addEventListener('click', (event) => {
-    const button = event.target.closest('.js-charts-reset-series');
+$script = __DIR__ . '/../assets/js/widget.edit.js';
 
-    if (!button) {
-      return;
-    }
+if (!is_readable($script)) {
+    throw new RuntimeException('main_charts: cannot read widget.edit.js');
+}
 
-    const defaults = button.getAttribute('data-default-series') || '[]';
-    const textarea = document.querySelector('textarea[name="chart_series"]');
-
-    if (textarea) {
-      textarea.value = defaults;
-      textarea.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  });
-})();
+readfile($script);
