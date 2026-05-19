@@ -80,15 +80,15 @@
 
 /* Badge specific styles */
 .dashboard-widget-main_overview .freshness-warn {
-  --bg: var(--orange-bg);
+  --bg: var(--ho-freshness-warn-bg, rgba(255, 133, 27, 0.38));
 }
 
 .dashboard-widget-main_overview .freshness-stale {
-  --bg: var(--red-bg);
+  --bg: var(--ho-freshness-stale-bg, rgba(255, 65, 54, 0.38));
 }
 
 .dashboard-widget-main_overview .maintenance-badge {
-  --bg: var(--blue-bg);
+  --bg: var(--ho-maintenance-bg, rgba(69, 138, 220, 0.32));
 }
 
 /* Problem severity base */
@@ -98,28 +98,28 @@
 
 /* Problem severity variants */
 .dashboard-widget-main_overview .problems-info {
-  --bg: var(--blue-bg);
-  --pulse: var(--blue-pulse-bg);
+  --bg: var(--ho-problems-info-bg, rgba(69, 138, 220, 0.34));
+  --pulse: var(--ho-problems-info-pulse, rgba(69, 138, 220, 0.16));
 }
 
 .dashboard-widget-main_overview .problems-warning {
-  --bg: var(--yellow-bg);
-  --pulse: var(--yellow-pulse-bg);
+  --bg: var(--ho-problems-warning-bg, rgba(255, 133, 27, 0.4));
+  --pulse: var(--ho-problems-warning-pulse, rgba(255, 133, 27, 0.18));
 }
 
 .dashboard-widget-main_overview .problems-average {
-  --bg: var(--orange-bg);
-  --pulse: var(--orange-pulse-bg);
+  --bg: var(--ho-problems-average-bg, rgba(255, 133, 27, 0.48));
+  --pulse: var(--ho-problems-average-pulse, rgba(255, 133, 27, 0.2));
 }
 
 .dashboard-widget-main_overview .problems-high {
-  --bg: var(--lightred-bg);
-  --pulse: var(--lightred-pulse-bg);
+  --bg: var(--ho-problems-high-bg, rgba(255, 65, 54, 0.42));
+  --pulse: var(--ho-problems-high-pulse, rgba(255, 65, 54, 0.2));
 }
 
 .dashboard-widget-main_overview .problems-disaster {
-  --bg: var(--red-bg);
-  --pulse: var(--red-pulse-bg);
+  --bg: var(--ho-problems-disaster-bg, rgba(255, 65, 54, 0.52));
+  --pulse: var(--ho-problems-disaster-pulse, rgba(255, 65, 54, 0.24));
 }
 
 /* Problem pulse animation */
