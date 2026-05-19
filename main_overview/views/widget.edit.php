@@ -34,117 +34,39 @@ foreach ($form->registerField($metrics_field_view)->getView() as $metrics_view_p
     $hidden_metrics_wrap->addItem($metrics_view_part);
 }
 
-$global_thresholds_fieldset = (new CWidgetFormFieldsetCollapsibleView('Глобально: цвета и пороги полос'))
+$global_threshold_matrix = (new CDiv())->addClass('ho-threshold-matrix');
+
+foreach ([
+    ['По умолчанию', 'th_num_1', 'th_num_2', 'default'],
+    ['CPU', 'th_cpu_1', 'th_cpu_2', 'cpu'],
+    ['Память', 'th_ram_1', 'th_ram_2', 'ram'],
+    ['Load', 'th_load_1', 'th_load_2', 'load'],
+    ['Swap', 'th_swap_1', 'th_swap_2', 'swap'],
+    ['IF', 'th_iface_1', 'th_iface_2', 'iface'],
+    ['Диск', 'th_disk_1', 'th_disk_2', 'disk'],
+    ['Раздел', 'th_partition_1', 'th_partition_2', 'partition'],
+] as [$label, $high, $medium, $metric]) {
+    $global_threshold_matrix->addItem(
+        createGlobalThresholdGroup($form, $data['fields'], $label, $high, $medium, '', $metric)
+    );
+}
+
+$global_thresholds_fieldset = (new CWidgetFormFieldsetCollapsibleView('Пороги и цвета полос'))
     ->addClass('main-overview-global-thresholds-fieldset')
-    ->addItem(
-        (new CDiv())
-            ->addClass('main-overview-section-lead')
-            ->addItem(
-                'Пороги задают, когда полоса метрики становится зелёной, жёлтой или красной. '
-                . 'Пустые поля в настройках узла — используются эти глобальные значения.'
-            )
-    )
     ->addFieldsGroup(new CWidgetFieldsGroupView('', [
         new CWidgetFieldRadioButtonListView($data['fields']['color_scheme']),
     ]))
     ->addItem(
         (new CDiv())
-            ->addClass('ho-threshold-colors-grid js-threshold-colors-grid')
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Зелёный (норма)', 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Жёлтый (внимание)', 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный (критично)', 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной цвет', 'js-solid-color-row'))
+            ->addClass('ho-threshold-colors-inline js-threshold-colors-grid')
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Зелёный', 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Жёлтый', 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный', 'js-threshold-color-row'))
+            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной', 'js-solid-color-row'))
     )
-    ->addItem(
-        createGlobalThresholdGroup(
-            $form,
-            $data['fields'],
-            'По умолчанию (для всех метрик %)',
-            'th_num_1',
-            'th_num_2',
-            'Используется, если для метрики не заданы отдельные пороги.',
-            'default'
-        )
-    )
-    ->addItem(
-        createGlobalThresholdGroup(
-            $form,
-            $data['fields'],
-            'CPU',
-            'th_cpu_1',
-            'th_cpu_2',
-            '',
-            'cpu'
-        )
-    )
-    ->addItem(
-        createGlobalThresholdGroup(
-            $form,
-            $data['fields'],
-            'Память',
-            'th_ram_1',
-            'th_ram_2',
-            '',
-            'ram'
-        )
-    )
-    ->addItem(
-        createGlobalThresholdGroup(
-            $form,
-            $data['fields'],
-            'Load',
-            'th_load_1',
-            'th_load_2',
-            'Для load полоса масштабируется по load ceiling.',
-            'load'
-        )
-    )
-    ->addItem(
-        createGlobalThresholdGroup(
-            $form,
-            $data['fields'],
-            'Swap',
-            'th_swap_1',
-            'th_swap_2',
-            '',
-            'swap'
-        )
-    )
-    ->addItem(
-        createGlobalThresholdGroup(
-            $form,
-            $data['fields'],
-            'Интерфейсы',
-            'th_iface_1',
-            'th_iface_2',
-            '',
-            'iface'
-        )
-    )
-    ->addItem(
-        createGlobalThresholdGroup(
-            $form,
-            $data['fields'],
-            'Диски',
-            'th_disk_1',
-            'th_disk_2',
-            '',
-            'disk'
-        )
-    )
-    ->addItem(
-        createGlobalThresholdGroup(
-            $form,
-            $data['fields'],
-            'Разделы',
-            'th_partition_1',
-            'th_partition_2',
-            '',
-            'partition'
-        )
-    );
+    ->addItem($global_threshold_matrix);
 
-$global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Глобально: оформление'))
+$global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Оформление'))
     ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
         'Открывать ссылки метрик и бейджей в текущей вкладке.'
     ))
@@ -157,26 +79,9 @@ $global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Глоб�
 $form
     ->addItem(
         (new CDiv())
-            ->addClass('main-overview-settings-intro')
-            ->addItem(
-                (new CDiv())
-                    ->addClass('main-overview-settings-intro-title')
-                    ->addItem('Узлы сети')
-            )
-    )
-    ->addItem(
-        (new CDiv())
             ->addClass('main-overview-add-host-row')
             ->addItem(
-                (new CDiv())
-                    ->addClass('main-overview-per-host-hint')
-                    ->addItem(
-                        'Выберите один или несколько хостов — ниже появятся панели настроек для каждого. '
-                        . 'Если панели не появились, нажмите «Обновить панели».'
-                    )
-            )
-            ->addItem(
-                (new CButton(null, 'Обновить панели'))
+                (new CButton(null, 'Обновить'))
                     ->addClass('js-ho-refresh-host-panels')
             )
     )
@@ -187,7 +92,7 @@ $form
     )
     ->addFieldset($global_thresholds_fieldset)
     ->addFieldset(
-        (new CWidgetFormFieldsetCollapsibleView('Глобально: бейджи'))
+        (new CWidgetFormFieldsetCollapsibleView('Бейджи'))
             ->addItem(getBadgesListView($data['fields']['badges']))
             ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
             ->addItem(getBadgeLivelinessItemViews($form, $data['fields']['badge_liveliness_item_name']))
@@ -267,9 +172,8 @@ $form
             'wildcard_empty_single' => 'Enter an item name for preview.',
         ],
         'threshold_ui' => [
-            'scale_title' => 'Диапазоны цвета полосы',
-            'medium_label' => 'Жёлтый с (%)',
-            'high_label' => 'Красный с (%)',
+            'medium_label' => 'Жёлт. %',
+            'high_label' => 'Красн. %',
             'zone_green' => 'Зелёный',
             'zone_yellow' => 'Жёлтый',
             'zone_red' => 'Красный',
@@ -493,24 +397,15 @@ function createGlobalThresholdGroup(
     string $metric_key = ''
 ): CDiv {
     $wrap = (new CDiv())
-        ->addClass('ho-threshold-group js-threshold-group');
+        ->addClass('ho-threshold-row js-threshold-group');
 
     if ($metric_key !== '') {
         $wrap->setAttribute('data-threshold-metric', $metric_key);
     }
 
-    $wrap->setAttribute('data-threshold-high', $high_field_name);
-    $wrap->setAttribute('data-threshold-medium', $medium_field_name);
-
-    $title_row = (new CDiv())->addClass('ho-threshold-group-title')->addItem($title);
-
-    if ($hint !== '') {
-        $title_row->addItem(
-            (new CSpan())
-                ->addClass('ho-threshold-group-hint')
-                ->addItem($hint)
-        );
-    }
+    $wrap
+        ->setAttribute('data-threshold-high', $high_field_name)
+        ->setAttribute('data-threshold-medium', $medium_field_name);
 
     $fields_row = (new CDiv())->addClass('ho-threshold-group-fields');
 
@@ -519,7 +414,7 @@ function createGlobalThresholdGroup(
     }
 
     $wrap
-        ->addItem($title_row)
+        ->addItem((new CDiv())->addClass('ho-threshold-row-label')->addItem($title))
         ->addItem($fields_row)
         ->addItem(
             (new CDiv())

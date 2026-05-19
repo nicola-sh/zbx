@@ -247,14 +247,15 @@ window.form = new (class {
       block.dataset.thresholdScope = "host";
     }
 
-    const title = document.createElement("div");
+    block.classList.add("ho-threshold-block--compact");
 
-    title.className = "ho-threshold-scale-title";
-    title.textContent = this.th("scale_title", "Bar color ranges");
+    const row = document.createElement("div");
+
+    row.className = "ho-threshold-compact-row";
 
     const inputs = document.createElement("div");
 
-    inputs.className = "ho-threshold-scale-inputs";
+    inputs.className = "ho-threshold-scale-inputs ho-threshold-scale-inputs--inline";
 
     const mkField = (labelText, key, placeholder) => {
       const wrap = document.createElement("label");
@@ -332,7 +333,8 @@ window.form = new (class {
     note.className = "ho-threshold-scale-note";
     note.hidden = true;
 
-    block.append(title, inputs, bar, legend, note);
+    row.append(inputs, bar);
+    block.append(row, legend, note);
     block._scaleRefs = {
       mediumInput: mediumField.input,
       highInput: highField.input,
@@ -1495,12 +1497,12 @@ window.form = new (class {
 
     head.type = "button";
     head.className = "main-overview-phost-head";
-    head.setAttribute("aria-expanded", "true");
+    head.setAttribute("aria-expanded", "false");
 
     const arrow = document.createElement("span");
 
     arrow.className = "main-overview-phost-arrow";
-    arrow.textContent = "\u25BC";
+    arrow.textContent = "\u25B6";
 
     const title = document.createElement("span");
 
@@ -1513,6 +1515,7 @@ window.form = new (class {
 
     body.className = "main-overview-phost-body";
 
+    body.setAttribute("hidden", "hidden");
     head.addEventListener("click", () => {
       const hidden = body.hasAttribute("hidden");
 
@@ -1530,7 +1533,7 @@ window.form = new (class {
 
     body.appendChild(this.buildPerHostSection(L.section_metrics ?? "Metrics", this.buildMetricsShowSection(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_badges_json ?? "Badges (JSON)", this.buildBadgesJsonSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_display, this.buildDisplayBadges(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(L.section_display, this.buildDisplayBadges(hostid, profile), true));
     body.appendChild(this.buildPerHostSection(L.section_proc, this.buildProcessorMemoryLoad(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_swap, this.buildSwapSection(hostid, profile)));
     body.appendChild(this.buildPerHostSection(L.section_if, this.buildInterfacesSection(hostid, profile)));
@@ -1657,7 +1660,7 @@ window.form = new (class {
     title.textContent = this.getHostAccordionTitle(hostid, {alias: aliasInput.value});
   }
 
-  buildPerHostSection(titleText, inner) {
+  buildPerHostSection(titleText, inner, expanded = false) {
     const wrap = document.createElement("div");
 
     wrap.className = "main-overview-phost-section";
@@ -1670,7 +1673,7 @@ window.form = new (class {
     const ar = document.createElement("span");
 
     ar.className = "main-overview-phost-arrow";
-    ar.textContent = "\u25BC";
+    ar.textContent = expanded ? "\u25BC" : "\u25B6";
 
     const t = document.createElement("span");
 
@@ -1680,6 +1683,10 @@ window.form = new (class {
     const b = document.createElement("div");
 
     b.className = "main-overview-phost-section-body";
+
+    if (!expanded) {
+      b.setAttribute("hidden", "hidden");
+    }
 
     h.append(ar, t);
 
