@@ -990,8 +990,8 @@ class WidgetView extends CControllerDashboardWidgetView
 
     private function getThresholdValue(string $threshold_group, int $level): int
     {
-        $group_field = 'th_m' . $threshold_group . '_m' . $level;
-        $fallback_field = 'th_num_m' . $level;
+        $group_field = 'th_' . $threshold_group . '_' . $level;
+        $fallback_field = 'th_num_' . $level;
         $value = $this->fields_values[$group_field] ?? $this->fields_values[$fallback_field] ?? 0;
 
         return is_numeric($value) ? (int) $value : 0;
