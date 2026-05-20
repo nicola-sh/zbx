@@ -85,10 +85,14 @@ if ($missing !== []) {
             $parts[] = '(' . $reason . ')';
         }
 
+        $prefix = ($entry['hostid'] ?? null) === null && $reason !== ''
+            ? _('Configuration')
+            : _('Item not found');
+
         $warnings->addItem(
             (new CDiv())
                 ->addClass('a-charts-warning')
-                ->addItem('Item not found: ' . implode(' ', $parts))
+                ->addItem($prefix . ': ' . implode(' ', $parts))
         );
     }
 

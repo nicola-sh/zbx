@@ -15,6 +15,12 @@ This repository contains two widgets:
 - Backward-compatibility fallbacks are kept for Zabbix 7.x form/runtime APIs where possible.
 - Host items should match your templates (exact names or wildcard templates are configurable).
 
+## Operations
+
+- Smoke test: [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md)
+- Troubleshooting: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- Known gaps and fix tracker: [fix.md](fix.md)
+
 ## Install
 
 1. Copy `AOverview` and `ACharts` into your Zabbix modules directory.

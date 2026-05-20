@@ -10,6 +10,7 @@ namespace Modules\ACharts\Actions;
 use CController;
 use CControllerResponseData;
 use Modules\ACharts\Includes\MetricMatcher;
+use Modules\ACharts\Includes\RequestRateLimiter;
 
 class ItemLookup extends CController
 {
@@ -50,6 +51,16 @@ class ItemLookup extends CController
 
     protected function doAction(): void
     {
+        if (!RequestRateLimiter::check('lookup')) {
+            $this->setResponse(
+                (new CControllerResponseData(['main_block' => json_encode([
+                    'error' => _('Too many requests. Please wait.'),
+                ], JSON_THROW_ON_ERROR)]))->disableView()
+            );
+
+            return;
+        }
+
         $matcher = new MetricMatcher();
         $collection = $matcher->collect([$this->getInput('hostid')], [$this->getInput('search', '')]);
         $preview = $matcher->preview($collection['metrics'], $this->getInput('search', ''), self::CANDIDATE_LIMIT);

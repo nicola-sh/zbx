@@ -48,6 +48,18 @@ class WidgetView extends CControllerDashboardWidgetView
 
         $hostids = $this->normalizeHostIds($this->fields_values['hostid'] ?? []);
 
+        if ($hostids === []) {
+            $this->setResponse(new CControllerResponseData([
+                'name' => $this->getInput('name', $this->widget->getName()),
+                'empty' => true,
+                'message' => _('Select one or more hosts to display the overview.'),
+                'config' => $this->fields_values,
+                'layout_signature' => 'empty',
+            ]));
+
+            return;
+        }
+
         if (count($hostids) > 1) {
             $this->renderMultiHostDashboard($hostids);
 
@@ -90,27 +102,35 @@ class WidgetView extends CControllerDashboardWidgetView
         $values_hosts = [];
         $layout_chunks = [];
 
+        $host_names = $this->fetchHostNamesMap($hostids);
+
         foreach ($profiles as $profile) {
             $hostid = $profile['hostid'];
             $merged = HostProfilesHelper::mergeProfile($saved_fields, $profile);
+            $previous_fields = $this->fields_values;
 
             $this->fields_values = $merged;
             $this->cell_id_prefix = $hostid . ':';
             $this->context_hostid = $hostid;
 
-            $this->badges = $this->decodeBadges();
-            $this->metrics = $this->collectMetrics();
-            $this->host_details = null;
-            $this->problems = null;
+            try {
+                $this->badges = $this->decodeBadges();
+                $this->metrics = $this->collectMetrics();
+                $this->host_details = null;
+                $this->problems = null;
 
-            $badges = $this->buildBadgeModels();
-            $rows = $this->buildOverviewRows();
+                $badges = $this->buildBadgeModels();
+                $rows = $this->buildOverviewRows();
 
-            $light = $this->computeTrafficLightLevel($rows, $this->fetchProblems());
-            $layout_signature = $this->buildLayoutSignature($badges, $rows);
+                $light = $this->computeTrafficLightLevel($rows, $this->fetchProblems());
+                $layout_signature = $this->buildLayoutSignature($badges, $rows);
 
-            $alias = trim((string) ($profile['alias'] ?? ''));
-            $zbx_name = trim($this->fetchHostName($hostid)) ?: $hostid;
+                $alias = trim((string) ($profile['alias'] ?? ''));
+                $zbx_name = trim((string) ($host_names[$hostid] ?? '')) ?: $hostid;
+            }
+            finally {
+                $this->fields_values = $previous_fields;
+            }
             $display_label = $alias !== '' ? $alias : $zbx_name;
             $bp = (int) ($profile['badges_placement'] ?? 0);
             $bp = $bp === WidgetForm::MULTI_HOST_BADGES_DETAIL_ONLY
@@ -161,13 +181,39 @@ class WidgetView extends CControllerDashboardWidgetView
 
     private function fetchHostName(string $hostid): string
     {
+        $map = $this->fetchHostNamesMap([$hostid]);
+
+        return (string) ($map[$hostid] ?? '');
+    }
+
+    /**
+     * @param list<string> $hostids
+     * @return array<string, string>
+     */
+    private function fetchHostNamesMap(array $hostids): array
+    {
+        $hostids = $this->normalizeHostIds($hostids);
+
+        if ($hostids === []) {
+            return [];
+        }
+
         $hosts = API::Host()->get([
-            'output' => ['name'],
-            'hostids' => [$hostid],
-            'limit' => 1,
+            'output' => ['hostid', 'name'],
+            'hostids' => $hostids,
         ]);
 
-        return (string) (($hosts[0]['name'] ?? '') ?: '');
+        $map = [];
+
+        foreach ($hosts as $host) {
+            $hostid = trim((string) ($host['hostid'] ?? ''));
+
+            if ($hostid !== '') {
+                $map[$hostid] = trim((string) ($host['name'] ?? $hostid));
+            }
+        }
+
+        return $map;
     }
 
     /**
@@ -236,8 +282,14 @@ class WidgetView extends CControllerDashboardWidgetView
 
     private function metricCellWorstLevel(array $cell): int
     {
-        if (($cell['state'] ?? '') === 'empty') {
-            return 2;
+        $state = (string) ($cell['state'] ?? '');
+
+        if ($state === 'empty') {
+            return 0;
+        }
+
+        if ($state === 'missing' || $state === 'ambiguous') {
+            return 0;
         }
 
         $pct = $cell['bar']['percent'] ?? null;
@@ -1063,7 +1115,7 @@ class WidgetView extends CControllerDashboardWidgetView
             'recent' => true,
             'sortfield' => 'eventid',
             'sortorder' => 'DESC',
-            'limit' => 1000,
+            'limit' => 200,
         ];
 
         if ((int) ($this->fields_values['problems_hide_suppressed'] ?? 0) === 1) {
@@ -1097,6 +1149,7 @@ class WidgetView extends CControllerDashboardWidgetView
         }
 
         $counts['total'] = count($events);
+        $counts['capped'] = count($events) >= 200;
         $counts['max_severity'] = $max_severity;
         $this->problems = $counts;
 

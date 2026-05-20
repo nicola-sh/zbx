@@ -79,21 +79,16 @@ Acceptance checklist:
 Goal: keep quality regressions out of main branch.
 
 ### Step 4.1 - Basic CI lint pipeline
-- [ ] Add GitHub Actions workflow for PR/push lint checks.
-- [ ] Run PHP syntax checks on all `.php` files.
-- [ ] Run JS syntax checks on all `.js` files.
+- [x] Add GitHub Actions workflow for PR/push lint checks.
+- [x] Run PHP syntax checks on all `.php` files.
+- [x] Run JS syntax checks on all `.js` files.
 
 ### Step 4.2 - Optional static analysis
 - [ ] Add `eslint` config and baseline rules.
 - [ ] Add PHP static checks (`phpstan` or `phpcs`) with practical defaults.
 
 ### Step 4.3 - Manual smoke-test runbook
-- [ ] Add quick test flow for Zabbix 7.4:
-  - [ ] add both widgets to dashboard,
-  - [ ] open editor and save without errors,
-  - [ ] verify threshold transitions in `AOverview`,
-  - [ ] verify mixed-host series in `ACharts`,
-  - [ ] reload dashboard and confirm stable behavior.
+- [x] Add quick test flow for Zabbix 7.4 (`docs/SMOKE_TEST.md`).
 
 ### Step 4.4 - Troubleshooting notes
-- [ ] Add short ops guide (cache clear, log locations, common misconfigurations).
+- [x] Add short ops guide (`docs/TROUBLESHOOTING.md`).

@@ -4,6 +4,21 @@
  */
 
 /* Default View Container */
+.dashboard-widget-aoverview .a-overview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px;
+  color: var(--ho-muted, #768090);
+  font-size: 12px;
+}
+
+.dashboard-widget-aoverview .a-overview-multi-search {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
 .dashboard-widget-aoverview .a-overview-container {
   margin: 0 var(--widget-inline-spacing);
   position: relative;

@@ -1,0 +1,36 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: PHP syntax check
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find ACharts AOverview -name '*.php' -print0)
+
+      - name: MetricMatcher sync check
+        run: bash scripts/check-metric-matcher-sync.sh
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JS syntax check
+        run: |
+          find ACharts AOverview -name '*.js' ! -name '*.min.js' -print0 | xargs -0 -n1 node --check

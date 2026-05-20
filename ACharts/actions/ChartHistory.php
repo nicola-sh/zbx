@@ -12,6 +12,8 @@ use CController;
 use CControllerResponseData;
 use Modules\ACharts\Includes\HistoryLoader;
 use Modules\ACharts\Includes\MetricMatcher;
+use Modules\ACharts\Includes\RequestRateLimiter;
+use Modules\ACharts\Includes\SeriesHostResolver;
 use RuntimeException;
 use Throwable;
 
@@ -32,7 +34,10 @@ class ChartHistory extends CController
     {
         $fields = [
             'hostid' => 'db hosts.hostid',
-            'period' => 'required|in ' . implode(',', array_keys(HistoryLoader::PERIODS)),
+            'hostids' => 'string',
+            'period' => 'string',
+            'time_from' => 'int',
+            'time_till' => 'int',
             'series' => 'required|string',
         ];
 
@@ -47,11 +52,19 @@ class ChartHistory extends CController
 
     protected function doAction(): void
     {
+        if (!RequestRateLimiter::check('history')) {
+            $this->setErrorResponse(['Too many requests. Please wait and try again.']);
+
+            return;
+        }
+
         try {
             $this->setJsonResponse($this->build(
-                trim((string) $this->getInput('hostid', '')),
-                trim((string) $this->getInput('period')),
-                (string) $this->getInput('series')
+                SeriesHostResolver::normalizeHostIds($this->decodeHostIdsInput()),
+                trim((string) $this->getInput('period', '3h')),
+                (string) $this->getInput('series'),
+                $this->getInput('time_from'),
+                $this->getInput('time_till')
             ));
         }
         catch (Throwable $exception) {
@@ -81,19 +94,39 @@ class ChartHistory extends CController
         ]);
     }
 
-    private function build(string $default_hostid, string $period, string $series_json): array
-    {
+    /**
+     * @param list<string> $allowed_hostids
+     */
+    private function build(
+        array $allowed_hostids,
+        string $period,
+        string $series_json,
+        mixed $time_from_input = null,
+        mixed $time_till_input = null
+    ): array {
         $requested = $this->decodeSeriesRequest($series_json);
 
         if ($requested === []) {
             throw new RuntimeException('No series requested');
         }
 
+        $custom_range = $this->resolveCustomTimeRange($time_from_input, $time_till_input);
+
+        if ($custom_range === null && !array_key_exists($period, HistoryLoader::PERIODS)) {
+            throw new RuntimeException('Unsupported period');
+        }
+
+        $host_context = SeriesHostResolver::fetchHostContext($allowed_hostids);
+
+        if ($allowed_hostids === [] || $host_context === []) {
+            throw new RuntimeException('No hosts are available for this widget.');
+        }
+
         $matcher = new MetricMatcher();
         $item_names_by_host = [];
 
         foreach ($requested as $entry) {
-            $hostid = $this->resolveSeriesHostId($entry, $default_hostid);
+            $hostid = SeriesHostResolver::resolveSeriesHostId($entry, $host_context);
 
             if ($hostid === null) {
                 continue;
@@ -125,14 +158,14 @@ class ChartHistory extends CController
 
         foreach ($requested as $entry) {
             $key = (string) ($entry['key'] ?? '');
-            $hostid = $this->resolveSeriesHostId($entry, $default_hostid);
+            $hostid = SeriesHostResolver::resolveSeriesHostId($entry, $host_context);
 
             if ($hostid === null) {
                 $datasets[] = [
                     'key' => $key,
                     'label' => (string) ($entry['label'] ?? $key),
                     'missing' => true,
-                    'missing_reason' => 'No host is defined for this series.',
+                    'missing_reason' => 'Series host is not in the widget host selection.',
                     'points' => [],
                 ];
 
@@ -155,11 +188,18 @@ class ChartHistory extends CController
                 continue;
             }
 
-            $loaded = $loader->loadSeries(
-                (string) $item['itemid'],
-                (int) $item['value_type'],
-                $period
-            );
+            $loaded = $custom_range !== null
+                ? $loader->loadSeriesRange(
+                    (string) $item['itemid'],
+                    (int) $item['value_type'],
+                    $custom_range['from'],
+                    $custom_range['till']
+                )
+                : $loader->loadSeries(
+                    (string) $item['itemid'],
+                    (int) $item['value_type'],
+                    $period
+                );
 
             $time_from = $time_from === null
                 ? $loaded['timeFrom']
@@ -185,12 +225,33 @@ class ChartHistory extends CController
             ];
         }
 
+        $fallback_period = array_key_exists($period, HistoryLoader::PERIODS) ? $period : '3h';
+
         return [
             'period' => $period,
-            'timeFrom' => $time_from ?? (time() - HistoryLoader::PERIODS[$period]),
+            'timeFrom' => $time_from ?? (time() - HistoryLoader::PERIODS[$fallback_period]),
             'timeTill' => $time_till ?? time(),
             'datasets' => $datasets,
         ];
+    }
+
+    /**
+     * @return array{from: int, till: int}|null
+     */
+    private function resolveCustomTimeRange(mixed $time_from_input, mixed $time_till_input): ?array
+    {
+        if (!is_numeric($time_from_input) || !is_numeric($time_till_input)) {
+            return null;
+        }
+
+        $from = (int) $time_from_input;
+        $till = (int) $time_till_input;
+
+        if ($from <= 0 || $till <= 0 || $till <= $from) {
+            return null;
+        }
+
+        return ['from' => $from, 'till' => $till];
     }
 
     /**
@@ -262,17 +323,34 @@ class ChartHistory extends CController
         return $matcher->resolve($metrics, $item_name);
     }
 
-    private function resolveSeriesHostId(array $entry, string $default_hostid): ?string
+    /**
+     * @return list<string>
+     */
+    private function decodeHostIdsInput(): array
     {
-        $hostid = $entry['hostid'] ?? null;
+        $raw = $this->getInput('hostids', []);
 
-        if ($hostid !== null) {
-            return $hostid;
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+
+            if (is_array($decoded)) {
+                $hostids = SeriesHostResolver::normalizeHostIds($decoded);
+
+                if ($hostids !== []) {
+                    return $hostids;
+                }
+            }
         }
 
-        $default_hostid = trim($default_hostid);
+        $hostids = SeriesHostResolver::normalizeHostIds($raw);
 
-        return $default_hostid !== '' ? $default_hostid : null;
+        if ($hostids !== []) {
+            return $hostids;
+        }
+
+        $single = trim((string) $this->getInput('hostid', ''));
+
+        return $single !== '' ? [$single] : [];
     }
 
     private function normalizeOptionalString(mixed $value): ?string
