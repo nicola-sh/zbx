@@ -46,26 +46,8 @@ $threshold_rows = [
 ];
 $global_threshold_table = createGlobalThresholdTable($form, $data['fields'], $threshold_rows);
 
-$global_thresholds_fieldset = (new CWidgetFormFieldsetCollapsibleView('Пороги и цвета полос'))
-    ->addClass('a-overview-global-thresholds-fieldset')
-    ->addFieldsGroup(new CWidgetFieldsGroupView('', [
-        new CWidgetFieldRadioButtonListView($data['fields']['color_scheme']),
-    ]))
-    ->addItem(
-        (new CDiv())
-            ->addClass('ho-thresholds-cascade')
-            ->addItem(
-                (new CDiv())
-                    ->addClass('ho-threshold-colors-inline js-threshold-colors-grid')
-                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Зелёный', 'js-threshold-color-row'))
-                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Жёлтый', 'js-threshold-color-row'))
-                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный', 'js-threshold-color-row'))
-                    ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной', 'js-solid-color-row'))
-            )
-            ->addItem($global_threshold_table)
-    );
-
 $global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Оформление'))
+    ->addClass('a-overview-appearance-fieldset')
     ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
         'Открывать ссылки метрик и бейджей в текущей вкладке.'
     ))
@@ -73,7 +55,37 @@ $global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Офор�
         new CWidgetFieldRadioButtonListView($data['fields']['corners']),
         new CWidgetFieldRadioButtonListView($data['fields']['label_length']),
         new CWidgetFieldRadioButtonListView($data['fields']['bar_height']),
-    ]));
+    ]))
+    ->addItem(
+        (new CDiv())
+            ->addClass('a-overview-appearance-thresholds')
+            ->addItem(
+                (new CDiv())
+                    ->addClass('a-overview-appearance-subtitle')
+                    ->addItem('Пороги и цвета полос')
+            )
+    )
+    ->addFieldsGroup(new CWidgetFieldsGroupView('', [
+        new CWidgetFieldRadioButtonListView($data['fields']['color_scheme']),
+    ]))
+    ->addItem(
+        (new CDiv())
+            ->addClass('a-overview-appearance-thresholds')
+            ->addClass('a-overview-appearance-thresholds-body')
+            ->addItem(
+                (new CDiv())
+                    ->addClass('ho-thresholds-cascade')
+                    ->addItem(
+                        (new CDiv())
+                            ->addClass('ho-threshold-colors-inline js-threshold-colors-grid')
+                            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Зелёный', 'js-threshold-color-row'))
+                            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Жёлтый', 'js-threshold-color-row'))
+                            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный', 'js-threshold-color-row'))
+                            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной', 'js-solid-color-row'))
+                    )
+                    ->addItem($global_threshold_table)
+            )
+    );
 
 $form
     ->addItem(
@@ -89,7 +101,6 @@ $form
             ->addClass('js-host-accordion-mount')
             ->setAttribute('id', 'js-host-accordion-mount')
     )
-    ->addFieldset($global_thresholds_fieldset)
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView('Бейджи'))
             ->addItem(getBadgesListView($data['fields']['badges']))

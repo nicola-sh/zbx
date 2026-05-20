@@ -211,8 +211,9 @@
 .form-grid > .a-overview-add-host-row,
 .form-grid > .js-host-accordion-mount,
 .form-grid > .a-overview-hidden-metrics,
-.form-grid > .a-overview-global-thresholds-fieldset,
-.form-grid > fieldset.a-overview-global-thresholds-fieldset,
+.form-grid > .a-overview-appearance-fieldset,
+.form-grid > fieldset.a-overview-appearance-fieldset,
+.form-grid > .a-overview-appearance-thresholds,
 .form-grid .item-match-assistant--inline {
   grid-column: 1 / -1;
   width: 100%;
@@ -230,6 +231,21 @@
   margin: 0 0 6px;
   font-size: 11px;
   color: var(--font-alt-color, #6a737d);
+}
+
+.a-overview-appearance-thresholds {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.08));
+}
+
+.a-overview-appearance-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--font-color, #1f2328);
+  margin: 0 0 8px;
 }
 
 .ho-thresholds-cascade {

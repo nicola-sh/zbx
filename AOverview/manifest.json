@@ -4,7 +4,7 @@
   "type": "widget",
   "name": "AOverview",
   "namespace": "AOverview",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "author": "nicola",
   "description": "Dashboard widget: CPU, memory, load, swap, interfaces, disks, and partitions, badges, sparklines, and per-host overrides. Intended for typical Zabbix agent templates.",
   "widget": {
