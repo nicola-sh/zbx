@@ -14,11 +14,6 @@
   font-size: 12px;
 }
 
-.dashboard-widget-aoverview .a-overview-multi-search {
-  width: 100%;
-  margin-bottom: 8px;
-}
-
 .dashboard-widget-aoverview .a-overview-container {
   margin: 0 var(--widget-inline-spacing);
   position: relative;

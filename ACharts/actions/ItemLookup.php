@@ -7,6 +7,7 @@
 
 namespace Modules\ACharts\Actions;
 
+use API;
 use CController;
 use CControllerResponseData;
 use Modules\ACharts\Includes\MetricMatcher;
@@ -32,6 +33,7 @@ class ItemLookup extends CController
         $fields = [
             'hostid' => 'required|db hosts.hostid',
             'search' => 'string',
+            'mode' => 'in search,browse',
         ];
 
         $ret = $this->validateInput($fields);
@@ -61,13 +63,71 @@ class ItemLookup extends CController
             return;
         }
 
-        $matcher = new MetricMatcher();
-        $collection = $matcher->collect([$this->getInput('hostid')], [$this->getInput('search', '')]);
-        $preview = $matcher->preview($collection['metrics'], $this->getInput('search', ''), self::CANDIDATE_LIMIT);
-        $preview['mode'] = 'single';
+        $hostid = (string) $this->getInput('hostid');
+        $search = trim((string) $this->getInput('search', ''));
+        $mode = (string) $this->getInput('mode', 'search');
+
+        if ($mode === 'browse') {
+            $preview = $this->browseItems($hostid, $search);
+        }
+        else {
+            $matcher = new MetricMatcher();
+            $collection = $matcher->collect([$hostid], $search !== '' ? [$search] : []);
+            $preview = $matcher->preview($collection['metrics'], $search, self::CANDIDATE_LIMIT);
+            $preview['mode'] = 'search';
+        }
 
         $this->setResponse(
             (new CControllerResponseData(['main_block' => json_encode($preview, JSON_THROW_ON_ERROR)]))->disableView()
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function browseItems(string $hostid, string $search): array
+    {
+        $limit = 50;
+        $params = [
+            'output' => ['itemid', 'name', 'value_type', 'units'],
+            'hostids' => [$hostid],
+            'sortfield' => 'name',
+            'sortorder' => 'ASC',
+            'limit' => $limit,
+            'filter' => [
+                'value_type' => [0, 3],
+            ],
+        ];
+
+        if ($search !== '') {
+            $params['search'] = ['name' => $search];
+            $params['searchByAny'] = true;
+        }
+
+        $items = API::Item()->get($params);
+        $candidates = [];
+
+        foreach ($items as $item) {
+            $name = trim((string) ($item['name'] ?? ''));
+
+            if ($name === '') {
+                continue;
+            }
+
+            $candidates[] = [
+                'itemid' => (string) ($item['itemid'] ?? ''),
+                'name' => $name,
+                'units' => trim((string) ($item['units'] ?? '')),
+            ];
+        }
+
+        return [
+            'status' => $candidates !== [] ? 'ambiguous' : 'none',
+            'match' => null,
+            'candidate_count' => count($candidates),
+            'candidates' => $candidates,
+            'has_more_candidates' => count($candidates) >= $limit,
+            'mode' => 'browse',
+        ];
     }
 }

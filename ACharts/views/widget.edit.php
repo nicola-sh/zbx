@@ -43,7 +43,7 @@ $form
             ->addItem(
                 (new CDiv())
                     ->addClass('a-charts-series-hint')
-                    ->addItem('Add one or more series. For each series, pick a host (when several are selected) and a Zabbix data item — that is the source of chart values.')
+                    ->addItem('Add series and choose a Zabbix data item per line: type a name and Find, open Browse items for a list, or use Quick add presets (CPU, Memory, …).')
             )
             ->addItem(
                 (new CDiv())

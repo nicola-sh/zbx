@@ -9,22 +9,35 @@
   const MAX_SERIES = 8;
   const DEFAULT_COLORS = ['458ADC', '4C9F38', 'FF851B', 'FF4136', '9665FF', '00C0D7', 'B8860B', '7F8C8D'];
 
+  const QUICK_ITEMS = [
+    { label: 'CPU', item_name: 'CPU utilization' },
+    { label: 'Memory', item_name: 'Memory utilization' },
+    { label: 'Load', item_name: 'Load average (5m avg)' },
+    { label: 'Disk', item_name: 'Disk utilization' },
+  ];
+
   const UI = {
     series_heading: 'Chart series',
     add_series: 'Add series',
+    add_from_template: 'Quick add',
     col_label: 'Label',
     col_host: 'Host',
     col_item: 'Data item',
     col_color: 'Color',
     col_actions: '',
-    find_item: 'Find item',
+    find_item: 'Find',
+    pick_item: 'Browse items',
+    pick_item_filter: 'Filter items…',
+    pick_item_empty: 'No numeric items on this host.',
+    pick_item_loading: 'Loading items…',
     remove_series: 'Remove',
     pick_host: 'Select at least one host above.',
-    enter_item: 'Enter an item name to search.',
+    enter_item: 'Enter an item name or use Browse items.',
     checking: 'Checking…',
     exact_fmt: 'Exact match: %s',
     unique_partial_fmt: 'Single match: %s',
     ambiguous_fmt: 'Several matches (%s). Pick one:',
+    browse_fmt: 'Items on host (%s). Click to use:',
     none_no_items: 'No items found on this host.',
     lookup_failed: 'Could not check items.',
     advanced_json: 'Advanced: edit JSON',
@@ -316,6 +329,19 @@
       addBtn.addEventListener('click', () => this.addSeries(hosts));
       toolbar.appendChild(addBtn);
 
+      const quickWrap = document.createElement('div');
+      quickWrap.className = 'charts-series-quick-add';
+      for (const preset of QUICK_ITEMS) {
+        const qBtn = document.createElement('button');
+        qBtn.type = 'button';
+        qBtn.className = 'btn-alt js-charts-quick-item';
+        qBtn.textContent = preset.label;
+        qBtn.disabled = series.length >= this.maxSeries;
+        qBtn.addEventListener('click', () => this.addSeriesFromPreset(hosts, preset));
+        quickWrap.appendChild(qBtn);
+      }
+      toolbar.appendChild(quickWrap);
+
       if (series.length >= this.maxSeries) {
         const hint = document.createElement('span');
         hint.className = 'charts-series-limit-hint';
@@ -392,19 +418,47 @@
         this.syncFromDom();
       });
 
+      const itemActions = document.createElement('div');
+      itemActions.className = 'charts-series-item-actions';
+
       const findBtn = document.createElement('button');
       findBtn.type = 'button';
       findBtn.className = 'btn-alt js-series-find-item';
       findBtn.textContent = UI.find_item;
       findBtn.addEventListener('click', () => this.lookupItem(row));
 
+      const browseBtn = document.createElement('button');
+      browseBtn.type = 'button';
+      browseBtn.className = 'btn-alt js-series-browse-items';
+      browseBtn.textContent = UI.pick_item;
+      browseBtn.addEventListener('click', () => this.toggleItemPicker(row));
+
+      itemActions.append(findBtn, browseBtn);
+
       const preview = document.createElement('div');
       preview.className = 'charts-series-item-preview';
       preview.hidden = true;
 
+      const picker = document.createElement('div');
+      picker.className = 'charts-series-item-picker';
+      picker.hidden = true;
+
+      const pickerFilter = document.createElement('input');
+      pickerFilter.type = 'search';
+      pickerFilter.className = 'text-box-default js-series-picker-filter';
+      pickerFilter.placeholder = UI.pick_item_filter;
+      pickerFilter.addEventListener('input', () => {
+        this.scheduleBrowseItems(row, pickerFilter.value);
+      });
+
+      const pickerList = document.createElement('ul');
+      pickerList.className = 'charts-series-picker-list js-series-picker-list';
+
+      picker.append(pickerFilter, pickerList);
+
       const itemCol = document.createElement('div');
       itemCol.className = 'charts-series-col-item';
-      itemCol.append(itemInput, itemidInput, findBtn, preview);
+      itemCol.append(itemInput, itemidInput, itemActions, preview, picker);
       row.appendChild(itemCol);
 
       const colorHex = entry.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
@@ -482,6 +536,170 @@
       });
 
       this.writeSeries(series);
+    }
+
+    addSeriesFromPreset(hosts, preset) {
+      if (!preset?.item_name) {
+        return;
+      }
+
+      const series = this.readSeries();
+      if (series.length >= this.maxSeries) {
+        return;
+      }
+
+      const index = series.length;
+      series.push({
+        key: `series_${index + 1}`,
+        label: preset.label || `Series ${index + 1}`,
+        item_name: preset.item_name,
+        itemid: '',
+        color: DEFAULT_COLORS[index % DEFAULT_COLORS.length],
+        hostid: hosts.length === 1 ? (hosts[0]?.hostid ?? '') : '',
+        host: '',
+      });
+
+      this.writeSeries(series);
+    }
+
+    toggleItemPicker(row) {
+      const picker = row.querySelector('.charts-series-item-picker');
+      if (!picker) {
+        return;
+      }
+
+      const willOpen = picker.hidden;
+      picker.hidden = !willOpen;
+
+      if (willOpen) {
+        const filter = row.querySelector('.js-series-picker-filter');
+        if (filter) {
+          filter.value = row.querySelector('.js-series-item-name')?.value?.trim() ?? '';
+        }
+        this.browseItems(row, filter?.value?.trim() ?? '');
+      }
+    }
+
+    scheduleBrowseItems(row, search) {
+      if (row._browseTimer) {
+        clearTimeout(row._browseTimer);
+      }
+
+      row._browseTimer = setTimeout(() => {
+        row._browseTimer = null;
+        this.browseItems(row, search);
+      }, 220);
+    }
+
+    async browseItems(row, search = '') {
+      if (!this.lookupAction) {
+        return;
+      }
+
+      const hostid = this.resolveRowHostId(row);
+      const preview = row.querySelector('.charts-series-item-preview');
+      const pickerList = row.querySelector('.js-series-picker-list');
+
+      if (!hostid) {
+        this.showPreview(preview, 'warning', UI.pick_host);
+        return;
+      }
+
+      if (pickerList) {
+        pickerList.replaceChildren();
+        const li = document.createElement('li');
+        li.className = 'charts-series-picker-muted';
+        li.textContent = UI.pick_item_loading;
+        pickerList.appendChild(li);
+      }
+
+      const curl = new Curl('zabbix.php');
+      curl.setArgument('action', this.lookupAction);
+
+      try {
+        const response = await fetch(curl.getUrl(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ hostid, search, mode: 'browse' }),
+        });
+
+        const result = await this.parseLookupResponse(response);
+        if ('error' in result) {
+          const messages = Array.isArray(result.error?.messages)
+            ? result.error.messages.filter(Boolean)
+            : [];
+          throw new Error(messages[0] ?? UI.lookup_failed);
+        }
+
+        this.renderBrowseResult(row, result);
+      }
+      catch (error) {
+        this.showPreview(
+          preview,
+          'error',
+          error instanceof Error ? error.message : UI.lookup_failed
+        );
+
+        if (pickerList) {
+          pickerList.replaceChildren();
+        }
+      }
+    }
+
+    renderBrowseResult(row, result) {
+      const itemInput = row.querySelector('.js-series-item-name');
+      const itemidInput = row.querySelector('.js-series-itemid');
+      const preview = row.querySelector('.charts-series-item-preview');
+      const pickerList = row.querySelector('.js-series-picker-list');
+      const candidates = Array.isArray(result?.candidates) ? result.candidates : [];
+      const count = Number.parseInt(result?.candidate_count ?? 0, 10) || candidates.length;
+
+      if (!pickerList) {
+        return;
+      }
+
+      pickerList.replaceChildren();
+
+      if (candidates.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'charts-series-picker-muted';
+        empty.textContent = UI.pick_item_empty;
+        pickerList.appendChild(empty);
+        this.showPreview(preview, 'warning', UI.pick_item_empty);
+        return;
+      }
+
+      for (const candidate of candidates) {
+        if (!candidate?.name) {
+          continue;
+        }
+
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-link-style';
+        const units = String(candidate.units ?? '').trim();
+        btn.textContent = units !== '' ? `${candidate.name} (${units})` : candidate.name;
+        btn.addEventListener('click', () => {
+          itemInput.value = candidate.name;
+          itemidInput.value = candidate.itemid ?? '';
+          row.querySelector('.charts-series-item-picker')?.setAttribute('hidden', 'hidden');
+          this.showPreview(preview, 'success', UI.exact_fmt.replace('%s', candidate.name));
+          this.syncFromDom();
+        });
+        li.appendChild(btn);
+        pickerList.appendChild(li);
+      }
+
+      this.showPreview(
+        preview,
+        'success',
+        UI.browse_fmt.replace('%s', String(count))
+      );
     }
 
     resolveRowHostId(row) {

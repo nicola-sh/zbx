@@ -1,150 +1,89 @@
-# Анализ недостатков виджетов AOverview и ACharts
+# Трекер AOverview и ACharts
 
-**Статус:** большинство пунктов закрыто в ветке `cursor/fix-all-fix-md-8052` (версии AOverview **0.7.0**, ACharts **0.4.0**). Ниже — исходный список с отметками.
+**Версии:** AOverview **0.7.2**, ACharts **0.4.1**  
+**Ветка:** `cursor/fix-all-fix-md-8052`  
+**Операции:** [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md), [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
 | Статус | Значение |
 |--------|----------|
-| ✅ | Исправлено в коде/доках |
-| 📋 | Частично / ограниченная реализация |
-| ⏭ | Вне scope виджета (нужен Zabbix core или отдельный проект) |
+| ✅ | Сделано |
+| 📋 | Частично / осознанный компромисс |
+| ⏭ | Вне scope (Zabbix core или отдельная задача) |
 
 ---
 
-## Критичные / высокий приоритет
+## Сделано
 
-| # | Статус | Виджет | Недостаток |
-|---|--------|--------|------------|
-| 1 | ✅ | AOverview | Sparkline config: JS читает `dataset.aOverviewConfig` |
-| 2 | ✅ | ACharts | `ChartHistory` ограничивает hostid списком виджета (`SeriesHostResolver`) |
-| 3 | ✅ | AOverview | Пустое состояние «выберите хост» |
-| 4 | ✅ | Оба | CI: `.github/workflows/lint.yml`, PHP/JS syntax |
-| 5 | ✅ | ACharts | Период дашборда: поле `chart_use_dashboard_time` + `time_from`/`time_till` |
-| 6 | 📋 | Оба | Миграция `main_*` — документирована в README; автоконвертация невозможна без API Zabbix |
+### Критичное и стабильность
 
----
+- ✅ Sparkline: JS читает `dataset.aOverviewConfig` (не legacy `mainOverviewConfig`).
+- ✅ Пустое состояние AOverview при отсутствии хостов.
+- ✅ ACharts: `ChartHistory` ограничивает `hostid` через `SeriesHostResolver`.
+- ✅ CI: `.github/workflows/lint.yml` (PHP syntax, JS syntax, sync `MetricMatcher`).
+- ✅ Период дашборда ACharts: `chart_use_dashboard_time` + `time_from` / `time_till`.
+- ✅ Валидация порогов на сервере; `MAX_SERIES` при сохранении ACharts.
+- ✅ Batch имён хостов; rate limit JSON actions (~120/мин); problems limit 200.
 
-## Редактор и UX
+### AOverview 0.7.2 — редактор и UX
 
-| # | Статус | Кратко |
-|---|--------|--------|
-| 7 | 📋 | i18n: ключевые строки через `_()`; полная локализация JS — частично |
-| 8 | 📋 | Сложность редактора снижена (поиск хостов, Тест); полный редизайн — нет |
-| 9 | 📋 | JSON host_profiles остаётся; синхронизация аккордеона улучшена |
-| 10 | ⏭ | Per-host badges visual editor — не реализован |
-| 11 | 📋 | Кнопка «Обновить» остаётся; есть MutationObserver |
-| 12 | 📋 | Подсказки порогов — частично в README |
-| 13 | ✅ | ACharts color picker в редакторе серий |
-| 14 | ✅ | syncFromDom сохраняет hostid (single-host) и host |
-| 15 | ✅ | Валидация MAX_SERIES при save |
-| 16 | 📋 | Extra JSON — ошибка при невалидном JSON в validate |
-| 17 | 📋 | advanced_json в JS не используется |
-| 18 | 📋 | override_hostid — поведение Zabbix template API |
+- ✅ Секция **«Оформление»**: ссылки, форма, подписи, полосы, **пороги и цвета** в одном месте.
+- ✅ Подсказки: иконки **?** (`help_ui`, `makeHelpIcon`, `bindEditorHelpIcons`).
+- ✅ Упрощение редактора: убран поиск/фильтр списка multi-host на дашборде; убраны отдельные JSON-редакторы «Свои бейджи» и «Доп. overrides» (бейджи — визуальный редактор; per-host настройки — аккордеон → `host_profiles` sync).
+- ✅ Компактная таблица порогов; наследование пустых per-host полей из глобальных.
+- ✅ i18n: ключевые строки через `_()`; aria-label светофора multi-host.
 
----
+### ACharts 0.4.1 — редактор и данные
 
-## Модель данных
+- ✅ Color picker в редакторе серий.
+- ✅ Выбор item: **Find**, **Browse items** (`ItemLookup` mode `browse`), **Quick add** (CPU, Memory, Load, Disk).
+- ✅ `parseForValidation` / `ChartSeriesHelper`; `syncFromDom` сохраняет hostid/host.
+- ✅ Dashboard time, `missing_reason` в ответе history, защита от stale async refresh.
 
-| # | Статус | Кратко |
-|---|--------|--------|
-| 19 | ⏭ | Поиск по key/тегам — нет |
-| 20 | 📋 | Lookup в редакторе; кандидаты на дашборде — ограниченно |
-| 21 | ✅ | Per-host badges validate в `WidgetForm` |
-| 22 | ✅ | `parseForValidation` для chart_series |
-| 23 | 📋 | RX/TX отдельными строками — by design |
-| 24 | ✅ | Host resolution с ambiguous host name → null + reason |
-| 25 | 📋 | Batch item API — не объединён |
-| 26 | 📋 | Primary host — документирован в README |
+### Документация и миграция
+
+- ✅ README, TODO, smoke/troubleshooting; legacy keys `main_*` в normalize + README migration note.
+- ✅ `scripts/check-metric-matcher-sync.sh` в CI.
 
 ---
 
-## Надёжность
+## Открытый backlog
 
-| # | Статус | Кратко |
-|---|--------|--------|
-| 27 | ✅ | Server-side threshold ordering |
-| 28 | ✅ | empty/missing/ambiguous → neutral (0) в светофоре |
-| 29 | ✅ | ACharts: динамический prefix warning + JS missing reasons |
-| 30 | 📋 | UNIQUE_PARTIAL — осознанный компромисс |
-| 31 | ✅ | try/finally в multi-host loop |
-| 32 | 📋 | Нечисловые item — без полной поддержки |
-| 33 | ✅ | MAX_SERIES error при save |
-| 34 | ✅ | Invalid badges JSON → ошибка валидации |
-
----
-
-## Производительность
-
-| # | Статус | Кратко |
-|---|--------|--------|
-| 35 | ✅ | Batch `fetchHostNamesMap` |
-| 36 | 📋 | Поиск/фильтр списка; lazy DOM панелей — не полный virtual scroll |
-| 37 | 📋 | PHP sequential history — до 8 серий приемлемо |
-| 38 | 📋 | Downsampling без UI warning |
-| 39 | ✅ | Problems limit 200 + capped flag |
-| 40 | 📋 | Wildcard collect — без лимита |
-| 41 | 📋 | Chart.js bundle — vendored |
+| Тема | Статус | Комментарий |
+|------|--------|-------------|
+| Полная локализация JS | 📋 | PHP `_()`; строки в `widget.edit.js` частично на EN |
+| Native Zabbix item picker | ⏭ | Свой lookup + browse; не виджет Zabbix UI |
+| Визуальный редактор per-host badges (отдельно от глобальных) | ⏭ | Глобальные бейджи визуально; per-host — через `badges_placement` + sync JSON |
+| Lazy / virtual scroll multi-host | 📋 | Список без client-side search; большие списки — без virtual scroll |
+| Общий HistoryLoader PHP | ⏭ | Дублирование между виджетами приемлемо |
+| Вторая ось Y, zoom/export графика | ⏭ | Chart.js базовый набор |
+| Host groups по тегам, map/pie виджеты | ⏭ | Другой scope |
+| Поиск item по key/тегам | ⏭ | Только name / browse list |
+| Batch item API (один запрос на N item) | 📋 | До 8 серий ACharts — ок |
+| eslint / phpstan | 📋 | Phase 4.2 TODO |
+| Focus trap в sparkline overlay | ⏭ | a11y улучшение |
+| Автоконвертация `main_*` → `A*` | ⏭ | Нет API Zabbix для смены type id |
 
 ---
 
-## Безопасность
+## Осознанные компромиссы
 
-| # | Статус | Кратко |
-|---|--------|--------|
-| 42 | 📋 | CSRF disabled (Zabbix widget JSON pattern); session required |
-| 43 | 📋 | USER_TYPE_ZABBIX_USER |
-| 44 | ✅ | hostid scoped (см. #2) |
-| 45 | ✅ | RequestRateLimiter 120/min |
-| 46 | ✅ | Per-host badges через CWidgetFieldBadgesList::validate |
-
----
-
-## i18n / a11y
-
-| # | Статус | Кратко |
-|---|--------|--------|
-| 47–54 | 📋 | Частично: `_()`, aria-label светофора, поиск; focus trap sparkline — нет |
+- **CSRF** отключён на JSON actions (паттерн Zabbix widget); требуется сессия и `USER_TYPE_ZABBIX_USER`.
+- **`host_profiles`** — скрытое JSON, пересобирается из аккордеона при save (ручное редактирование возможно в «Host profiles (sync)»).
+- **Кнопка «Обновить»** в редакторе — пересборка панелей после смены списка хостов; есть авто-sync + MutationObserver.
+- **RX/TX** интерфейсов — отдельные строки (by design).
+- **UNIQUE_PARTIAL** в MetricMatcher — осознанный компромисс для wildcard.
+- **Chart.js** — vendored bundle; обновление — вручную + TROUBLESHOOTING.
 
 ---
 
-## Техдолг
+## Файлы (ключевые изменения ветки)
 
-| # | Статус | Кратко |
-|---|--------|--------|
-| 55 | ✅ | MetricMatcher sync check в CI |
-| 56 | ⏭ | Общий HistoryLoader — не вынесен |
-| 57 | ⏭ | Монолит widget.edit.js |
-| 58 | 📋 | Widget.php stubs — Zabbix convention |
-| 59 | ⏭ | Процедурные layout — refactor отложен |
-| 60 | 📋 | Chart.js update — docs/TROUBLESHOOTING |
-| 61 | ✅ | console.log убран / за ZBX_DEBUG_WIDGETS |
-| 62 | ✅ | docs/ + README ссылки |
+| Область | Пути |
+|---------|------|
+| AOverview runtime | `assets/js/class.widget.js`, `class.sparkline.js` |
+| AOverview editor | `views/widget.edit.php`, `assets/js/widget.edit.js` |
+| ACharts API | `actions/ChartHistory.php`, `ItemLookup.php`, `includes/SeriesHostResolver.php` |
+| ACharts editor | `views/widget.edit.php`, `assets/js/widget.edit.js` |
+| CI / docs | `.github/workflows/lint.yml`, `docs/*`, `scripts/check-metric-matcher-sync.sh` |
 
----
-
-## Сравнение с виджетами Zabbix
-
-| # | Статус | Кратко |
-|---|--------|--------|
-| 63 | ✅ | Dashboard time (см. #5) |
-| 64–66 | ⏭ | Вторая ось Y, native item picker, zoom/export — нет |
-| 67–72 | ⏭ | Host group, map, pie charts — нет |
-| 73 | 📋 | CSS variables only |
-
----
-
-## Миграция
-
-| # | Статус |
-|---|--------|
-| 74–79 | 📋 Документировано; legacy keys поддерживаются в normalize |
-
----
-
-## Файлы изменений (основные)
-
-- `AOverview/assets/js/class.widget.js` — sparkline config, multi-host search
-- `ACharts/includes/SeriesHostResolver.php`, `ChartHistory.php`
-- `ACharts/includes/ChartSeriesHelper.php`, `WidgetForm.php`
-- `.github/workflows/lint.yml`, `docs/SMOKE_TEST.md`, `docs/TROUBLESHOOTING.md`
-
-*Обновлено после прохода fix-all.*
+*Последнее обновление: ревизия документации под 0.7.2 / 0.4.1.*

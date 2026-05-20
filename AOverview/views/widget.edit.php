@@ -22,10 +22,19 @@ $form
     ->addField(
         new CWidgetFieldMultiSelectHostView($data['fields']['hostid'])
     )
+    ->addItem(editorHelpRow(
+        'Хосты для карточек. Один хост — одна панель; несколько — список со светофором и детализацией по клику.'
+    ))
     ->addField($data['templateid'] === null
         ? new CWidgetFieldMultiSelectOverrideHostView($data['fields']['override_hostid'])
         : null
     );
+
+if ($data['templateid'] === null) {
+    $form->addItem(editorHelpRow(
+        'Подмена хоста с дашборда (override): если задана, подставляет другой hostid вместо выбранного в виджете.'
+    ));
+}
 
 $hidden_metrics_wrap = (new CDiv())->addClass('a-overview-hidden-metrics');
 $metrics_field_view = (new CWidgetFieldCheckBoxListView($data['fields']['metrics_show']))->setColumns(3);
@@ -46,34 +55,64 @@ $threshold_rows = [
 ];
 $global_threshold_table = createGlobalThresholdTable($form, $data['fields'], $threshold_rows);
 
-$global_thresholds_fieldset = (new CWidgetFormFieldsetCollapsibleView('Пороги и цвета полос'))
-    ->addClass('a-overview-global-thresholds-fieldset')
-    ->addFieldsGroup(new CWidgetFieldsGroupView('', [
-        new CWidgetFieldRadioButtonListView($data['fields']['color_scheme']),
-    ]))
+$global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Оформление'))
+    ->addClass('a-overview-appearance-fieldset')
+    ->addItem(editorHelpRow(
+        'Внешний вид карточки на дашборде: ссылки, форма, подписи, высота полос и цветовая индикация по порогам.'
+    ))
+    ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
+        'Если включено, клик по ссылке метрики или бейджа открывается в этой же вкладке браузера, а не в новой.'
+    ))
+    ->addItem(getAppearanceFieldWithHelp(
+        $form,
+        $data['fields']['corners'],
+        'Скругление углов карточки: квадратные или слегка скруглённые.'
+    ))
+    ->addItem(getAppearanceFieldWithHelp(
+        $form,
+        $data['fields']['label_length'],
+        'Длина подписи слева от полосы: полная или укороченная (экономит место).'
+    ))
+    ->addItem(getAppearanceFieldWithHelp(
+        $form,
+        $data['fields']['bar_height'],
+        'Толщина цветных полос метрик в пикселях.'
+    ))
     ->addItem(
         (new CDiv())
-            ->addClass('ho-thresholds-cascade')
+            ->addClass('a-overview-appearance-thresholds')
             ->addItem(
                 (new CDiv())
-                    ->addClass('ho-threshold-colors-inline js-threshold-colors-grid')
-                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Зелёный', 'js-threshold-color-row'))
-                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Жёлтый', 'js-threshold-color-row'))
-                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный', 'js-threshold-color-row'))
-                    ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной', 'js-solid-color-row'))
+                    ->addClass('a-overview-appearance-subtitle')
+                    ->addItem('Пороги и цвета полос')
+                    ->addItem(makeHelpIcon(
+                        'Как окрашиваются полосы метрик: по порогам (зелёный / жёлтый / красный) или одним сплошным цветом. Ниже — пороги в процентах заполнения полосы (не «сырой» load или bps).'
+                    ))
             )
-            ->addItem($global_threshold_table)
-    );
-
-$global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Оформление'))
-    ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
-        'Открывать ссылки метрик и бейджей в текущей вкладке.'
+    )
+    ->addItem(getAppearanceFieldWithHelp(
+        $form,
+        $data['fields']['color_scheme'],
+        '«По порогам» — цвет полосы от процента и таблицы порогов. «Сплошной» — все полосы одним выбранным цветом.'
     ))
-    ->addFieldsGroup(new CWidgetFieldsGroupView('', [
-        new CWidgetFieldRadioButtonListView($data['fields']['corners']),
-        new CWidgetFieldRadioButtonListView($data['fields']['label_length']),
-        new CWidgetFieldRadioButtonListView($data['fields']['bar_height']),
-    ]));
+    ->addItem(
+        (new CDiv())
+            ->addClass('a-overview-appearance-thresholds')
+            ->addClass('a-overview-appearance-thresholds-body')
+            ->addItem(
+                (new CDiv())
+                    ->addClass('ho-thresholds-cascade')
+                    ->addItem(
+                        (new CDiv())
+                            ->addClass('ho-threshold-colors-inline js-threshold-colors-grid')
+                            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Зелёный', 'js-threshold-color-row', 'Цвет полосы при значении ниже жёлтого порога.'))
+                            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Жёлтый', 'js-threshold-color-row', 'Цвет между жёлтым и красным порогом.'))
+                            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный', 'js-threshold-color-row', 'Цвет при превышении красного порога.'))
+                            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной', 'js-solid-color-row', 'Цвет всех полос в режиме «сплошной заливки».'))
+                    )
+                    ->addItem($global_threshold_table)
+            )
+    );
 
 $form
     ->addItem(
@@ -83,27 +122,32 @@ $form
                 (new CButton(null, 'Обновить'))
                     ->addClass('js-ho-refresh-host-panels')
             )
+            ->addItem(makeHelpIcon(
+                'Пересобрать панели настроек под каждый выбранный хост после изменения списка хостов (обычно обновляется автоматически).'
+            ))
     )
     ->addItem(
         (new CDiv())
             ->addClass('js-host-accordion-mount')
             ->setAttribute('id', 'js-host-accordion-mount')
     )
-    ->addFieldset($global_thresholds_fieldset)
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView('Бейджи'))
+            ->addItem(editorHelpRow(
+                'Бейджи в шапке карточки: имя, uptime, проблемы, теги и т.д. Слева/справа — перетаскиванием. Для uptime/liveliness укажите точные имена item.'
+            ))
             ->addItem(getBadgesListView($data['fields']['badges']))
             ->addItem(getBadgeUptimeItemViews($form, $data['fields']['badge_uptime_item_name']))
             ->addItem(getBadgeLivelinessItemViews($form, $data['fields']['badge_liveliness_item_name']))
             ->addItem(getFreshnessThresholdViews($form, $data['fields']))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_acknowledged'],
-                'Do not count acknowledged problems in the Problems badge tally.'
+                'Не учитывать подтверждённые (acknowledged) проблемы в счётчике бейджа Problems.'
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_hide_suppressed'],
-                'Do not count suppressed problems in the Problems badge tally.'
+                'Не учитывать подавленные (suppressed) проблемы в счётчике Problems.'
             ))
             ->addItem(getCheckBoxView($form, $data['fields']['problems_pulse'],
-                'Animate the problems badge when there are active incidents.'
+                'Пульсация бейджа Problems при активных инцидентах.'
             ))
     )
     ->addFieldset($global_appearance_fieldset)
@@ -182,18 +226,42 @@ $form
             'inherit_hint' => 'Пусто — глобальные пороги',
             'invalid_order' => 'Красный порог должен быть больше жёлтого.',
         ],
+        'help_ui' => [
+            'section_metrics' => 'Какие строки метрик показывать на карточке этого хоста. Снимите галочку, чтобы скрыть CPU, диски и т.д.',
+            'section_display' => 'Имя в списке multi-host и размещение бейджей: в сводке рядом с именем или только в детальной панели.',
+            'section_proc' => 'Имена item и пороги для CPU, памяти и load. Пороги — в % заполнения полосы; пустые поля наследуют глобальные значения из «Оформление».',
+            'section_swap' => 'Swap: имя item, инверсия (свободное место вместо занятого) и пороги окраски полосы.',
+            'section_if' => 'Сетевые интерфейсы: шаблон имён (*), исключения, потолок для масштаба полосы и единицы (K/M/Gbps).',
+            'section_disk' => 'Загрузка дисков по шаблону имён item; исключения скрывают лишние диски из списка.',
+            'section_part' => 'Заполненность разделов (partition) по шаблону; исключения — подстроки имён item.',
+            'label_alias' => 'Короткое имя в списке хостов вместо Zabbix name (не меняет host в Zabbix).',
+            'label_badges' => 'Где показывать бейджи этого хоста при multi-host: в строке списка или только внутри детализации.',
+            'bp_summary' => 'Бейджи (проблемы, uptime…) рядом с именем в списке хостов.',
+            'bp_detail' => 'Бейджи только при открытии детальной панели хоста.',
+            'label_cpu' => 'Точное имя item CPU (кнопка «Тест» проверяет совпадение на хосте).',
+            'label_ram' => 'Точное имя item памяти.',
+            'label_load' => 'Точное имя item load (обычно load average).',
+            'label_load_high' => 'Верхняя граница load для 100% ширины полосы и sparkline (не порог жёлтый/красный).',
+            'label_swap' => 'Точное имя item swap (часто «Free swap space in %»).',
+            'label_swap_inv' => 'Инвертировать значение swap: рост свободного swap = «лучше» для полосы.',
+            'label_iface' => 'Шаблон имён интерфейсов, например «Interface *: Bits *». Обязательно «*».',
+            'label_iface_ex' => 'Подстроки имён item, которые не показывать (по одной на строку или через запятую).',
+            'label_iface_high' => 'Ожидаемый максимум трафика для масштаба полосы (в выбранных единицах).',
+            'label_iface_unit' => 'Единицы отображения скорости интерфейса на полосе.',
+            'label_disk' => 'Шаблон item загрузки диска, например «*:: Disk utilization*».',
+            'label_disk_ex' => 'Исключить диски, если имя item содержит подстроку.',
+            'label_part' => 'Шаблон item разделов, например «FS [*]: Space: Used, in %».',
+            'label_part_ex' => 'Исключить разделы по подстроке в имени item.',
+        ],
         'per_host_labels' => [
             'empty' => 'Выберите один или несколько хостов в поле выше.',
             'section_metrics' => 'Показывать метрики',
-            'section_badges_json' => 'Свои бейджи (JSON, опционально)',
-            'label_badges_json_hint' => 'Оставьте пустым для глобальных бейджей. JSON в том же формате, что и в глобальном списке.',
             'section_display' => 'Отображение',
             'section_proc' => 'CPU, память и load',
             'section_swap' => 'Swap',
             'section_if' => 'Интерфейсы',
             'section_disk' => 'Загрузка дисков',
             'section_part' => 'Разделы',
-            'section_adv' => 'Доп. overrides (JSON)',
             'label_alias' => 'Псевдоним (alias)',
             'label_badges' => 'Бейджи',
             'bp_summary' => 'Рядом с именем (сводка)',
@@ -212,8 +280,6 @@ $form
             'label_disk_ex' => 'Disk filter',
             'label_part' => 'Partition template',
             'label_part_ex' => 'Partition filter',
-            'label_extras' => 'Extra JSON fields (merged with overrides)',
-            'placeholder_extras' => 'Example: {"metrics_show":["0","1"]}',
         ],
     ], JSON_THROW_ON_ERROR) . ');')
     ->show();
@@ -445,9 +511,24 @@ function createGlobalThresholdTable(CWidgetFormView $form, array $fields, array 
     $table->addItem(
         (new CDiv())
             ->addClass('ho-threshold-table-head')
-            ->addItem((new CSpan('Метрика'))->addClass('ho-threshold-table-cell'))
-            ->addItem((new CSpan('Жёлтый от, %'))->addClass('ho-threshold-table-cell'))
-            ->addItem((new CSpan('Красный от, %'))->addClass('ho-threshold-table-cell'))
+            ->addItem(
+                (new CDiv())
+                    ->addClass('ho-threshold-table-cell ho-threshold-table-metric')
+                    ->addItem(new CSpan('Метрика'))
+                    ->addItem(makeHelpIcon('Строка метрики. Пороги — проценты ширины/заполнения полосы на карточке.'))
+            )
+            ->addItem(
+                (new CDiv())
+                    ->addClass('ho-threshold-table-cell')
+                    ->addItem(new CSpan('Жёлтый от, %'))
+                    ->addItem(makeHelpIcon('С этого % полоса жёлтая (должен быть меньше красного порога).'))
+            )
+            ->addItem(
+                (new CDiv())
+                    ->addClass('ho-threshold-table-cell')
+                    ->addItem(new CSpan('Красный от, %'))
+                    ->addItem(makeHelpIcon('С этого % полоса красная. Красный порог всегда больше жёлтого.'))
+            )
     );
 
     foreach ($rows as [$title, $high_field_name, $medium_field_name, $metric_key]) {
@@ -481,12 +562,17 @@ function getThresholdColorView(
     CWidgetFormView $form,
     $field,
     string $label_text,
-    string $row_class = ''
+    string $row_class = '',
+    string $hint = ''
 ): array
 {
     $view = $form->registerField(new CWidgetFieldColorView($field));
     $label = new CLabel($label_text, $field->getName());
     $form_field = new CFormField($view->getView());
+
+    if ($hint !== '') {
+        $label->addItem(makeHelpIcon($hint));
+    }
 
     if ($row_class !== '') {
         $label->addClass($row_class);
@@ -496,6 +582,37 @@ function getThresholdColorView(
     return [
         $label,
         $form_field,
+    ];
+}
+
+function editorHelpRow(string $hint): CDiv
+{
+    return (new CDiv())
+        ->addClass('a-overview-editor-hint')
+        ->addItem(makeHelpIcon($hint));
+}
+
+/**
+ * @return list<CLabel|CFormField>
+ */
+function getAppearanceFieldWithHelp(CWidgetFormView $form, $field, string $hint): array
+{
+    if ($field instanceof \Zabbix\Widgets\Fields\CWidgetFieldRadioButtonList) {
+        $view = $form->registerField(new CWidgetFieldRadioButtonListView($field));
+    }
+    elseif ($field instanceof \Zabbix\Widgets\Fields\CWidgetFieldCheckBox) {
+        return getCheckBoxView($form, $field, $hint);
+    }
+    else {
+        $view = $form->registerField(new CWidgetFieldTextBoxView($field));
+    }
+
+    $label = new CLabel($field->getLabel(), $field->getName());
+    $label->addItem(makeHelpIcon($hint));
+
+    return [
+        $label,
+        new CFormField($view->getView()),
     ];
 }
 
