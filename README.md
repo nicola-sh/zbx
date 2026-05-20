@@ -1,33 +1,80 @@
 # zbx
 
-Zabbix dashboard widgets. This tree includes **Main Overview** and **Host Charts** — a compact health summary for one or several hosts: metric bars (CPU, memory, load, swap, interfaces, disks, partitions), optional badges, sparklines, and links into Zabbix. It targets typical Linux and Windows agent templates, with sensible defaults and wildcard-friendly item mapping.
+Zabbix dashboard widgets for fast host health visibility and cross-host charting.
 
-**Author:** nicola  
-**Widget version:** see `main_overview/manifest.json` (semantic versioning from **0.5.1**).
+This repository contains two widgets:
+
+- `main_overview` - host health cards with traffic-light metrics, badges, and sparklines.
+- `main_charts` - time-series charts where each series can point to a specific host and item.
+
+**Author:** nicola
 
 ## Requirements
 
-- Zabbix **7.0**, **7.2**, or **7.4** (tested on 7.0.24, 7.2.15, 7.4.8).
-- Host items aligned with common templates (names and wildcards are configurable in the widget).
+- Primary target: Zabbix **7.4**.
+- Backward-compatibility fallbacks are kept for Zabbix 7.x form/runtime APIs where possible.
+- Host items should match your templates (exact names or wildcard templates are configurable).
 
 ## Install
 
-1. Copy the `main_overview` directory into your Zabbix `modules` tree (same layout as other module widgets).
-2. Enable the module under **Administration → General → Modules**, then add the widget on a dashboard.
+1. Copy `main_overview` and `main_charts` into your Zabbix modules directory.
+2. In Zabbix, open **Administration -> General -> Modules** and enable both modules.
+3. Add widgets to a dashboard and configure fields in the widget editor.
 
-## Features (high level)
+## Current widget behavior
 
-- Single-host or **multi-host** mode: list with traffic-light status, optional display aliases, per-host parameters, in-widget drill-down to detail.
-- Threshold bars, optional solid vs threshold colour modes, bar height, label length, rounded/square corners.
-- Badges (hostname, uptime, liveliness, problems, maintenance, tags, custom text/links).
-- Sparkline history overlay; item and host context menus where supported.
-- Configuration helpers: item **Test** / wildcard preview, per-host accordion editor for overrides.
+### 1) main_overview
+
+Purpose: compact host status board for one or many hosts.
+
+Key behavior:
+
+- Displays metric rows (CPU, RAM, Load, Swap, Interfaces, Disks, Partitions).
+- Applies traffic-light thresholds (global + per-host override).
+- Supports threshold color mode and solid color mode.
+- Shows badges (uptime/liveliness/problems/custom).
+- Preserves selected host detail panel on widget refresh.
+- Uses Zabbix 7.4 lifecycle-safe JS hooks (activate/deactivate/clear).
+
+Editor flow (stacked and simple):
+
+1. Hosts
+2. Metrics
+3. Thresholds and colors
+4. Badges
+5. Appearance
+
+### 2) main_charts
+
+Purpose: flexible charting for mixed host/item series.
+
+Key behavior:
+
+- Builds chart series from JSON config.
+- Supports multi-host and multi-item in one widget.
+- Resolves each series with host scope (`hostid`/`host` + `itemid`/`item_name`).
+- Returns clear missing reasons when data cannot be resolved.
+- Limits raw history/trend reads and downsamples points to protect performance.
+- Prevents stale async responses from overwriting fresh chart data.
+
+## TODO and progress
+
+Project TODO list is tracked in [TODO.md](TODO.md).
+
+Quick status:
+
+- [x] Zabbix 7.4 compatibility hardening for both widgets.
+- [x] main_charts multi-host/multi-item series support.
+- [x] main_overview threshold editor simplified into a compact table.
+- [x] Runtime fixes for known 500 errors from form API mismatches.
+- [ ] Add GitHub Actions lint workflow (PHP + JS).
+- [ ] Add smoke test checklist for manual Zabbix validation.
 
 ## Repository layout
 
-- `main_overview/` — Main Overview widget module (metric bars, badges, sparklines).
-- `main_charts/` — Host Charts widget module (Chart.js time-series graphs).
+- `main_overview/` - Main Overview widget module.
+- `main_charts/` - Main Charts widget module.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
