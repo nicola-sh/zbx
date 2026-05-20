@@ -11,9 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
       - name: PHP syntax check
         run: |
-          find ACharts AOverview -name '*.php' -print0 | xargs -0 -n1 php -l
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find ACharts AOverview -name '*.php' -print0)
 
       - name: MetricMatcher sync check
         run: bash scripts/check-metric-matcher-sync.sh

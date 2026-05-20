@@ -60,9 +60,11 @@ class MetricLookup extends CController
     protected function doAction(): void
     {
         if (!RequestRateLimiter::check('lookup')) {
-            $this->setResponse(new CControllerResponseData([
-                'main_block' => json_encode(['error' => _('Too many requests. Please wait.')], JSON_THROW_ON_ERROR),
-            ])->disableView());
+            $this->setResponse(
+                (new CControllerResponseData([
+                    'main_block' => json_encode(['error' => _('Too many requests. Please wait.')], JSON_THROW_ON_ERROR),
+                ]))->disableView()
+            );
 
             return;
         }
