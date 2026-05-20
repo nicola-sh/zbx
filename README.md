@@ -5,7 +5,7 @@ Zabbix dashboard widgets for fast host health visibility and cross-host charting
 This repository contains two widgets:
 
 - **AOverview** (v0.7.2) — host health cards with traffic-light metrics, badges, and sparklines.
-- **ACharts** (v0.4.1) — time-series charts where each series can point to a specific host and item.
+- **ACharts** (v0.4.2) — time-series chart for **one host**: several metrics (items) from that node on a single Chart.js graph.
 
 **Author:** nicola
 
@@ -75,42 +75,30 @@ Purpose: show host health in compact cards with clear status colors, optional ba
 
 ---
 
-### 2) ACharts — mixed host/item chart widget
+### 2) ACharts — host + metric per series
 
-Purpose: build one chart from multiple series, where each series can come from a different host and item.
+Purpose: one chart where **each line is a concrete metric (item) on a concrete host**. Typical case: one host (e.g. `zabbix-server`) and several series (CPU, Memory). Also supported: several hosts, each series with its own host and item.
 
 #### A. Editor setup flow (step-by-step)
 
-1. **Select hosts**
-   - Choose one or multiple hosts as the available scope.
+1. **Select host(s)**
+   - One host: all series use that host automatically (column Host is hidden).
+   - Several hosts: each series row has a **Host** dropdown — pick the node before choosing the item.
 2. **Define chart series**
-   - Per series: label, host (when multi-host), color, and data item.
-   - Pick items via **Find** (type + lookup), **Browse items** (list on host), or **Quick add** presets (CPU, Memory, Load, Disk).
-   - Advanced: edit `chart_series` JSON directly if needed.
-3. **Chart options**
-   - Chart type, period preset, grid, legend, **Use dashboard time range**, etc.
-4. **Validate and save**
-   - Multi-host: each series must identify host (`hostid` or `host`).
-   - Empty or invalid series JSON shows validation errors on save.
-5. **Re-open and verify**
-   - Confirm series and chart settings persist.
+   - Per series: label, color, **data item** (Find / Browse items / Quick add scoped to that row’s host).
+3. **Chart options** — type, period, legend, dashboard time, etc.
+4. **Save** — validation requires item per series; with multiple hosts, host per series is required.
 
-#### B. Runtime behavior flow (step-by-step)
+**Example (one node, two metrics):** Host = `zabbix-server` → series 1 label `CPU`, item `CPU utilization` → series 2 label `Memory`, item `Memory utilization`.
 
-1. Parse widget config and normalize series definitions.
-2. Resolve host context for selected hosts.
-3. Resolve each series item strictly within its host scope (`SeriesHostResolver`).
-4. Fetch history/trends with safe limits.
-5. Downsample points for responsiveness.
-6. Build datasets with host-aware legend labels.
-7. Render chart; ignore stale async responses from older fetch generations.
-8. Return informative `missing_reason` for unresolved series.
+#### B. Runtime
 
-#### C. Behavior guarantees
+Resolve host + item per series (`SeriesHostResolver`), load history per item on that host, render Chart.js. Multi-host legends show `Host name / Label`.
 
-- Host-scoped item resolution (no cross-host item mix-up).
-- Stable refresh without race-condition overwrites.
-- Predictable mixed-host, mixed-item charts.
+#### C. Guarantees
+
+- Item lookup and history always use the series host — no accidental cross-host item.
+- Stable refresh without stale overwrites.
 
 ## TODO and progress
 

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Module versions referenced below: **AOverview 0.7.2**, **ACharts 0.4.1**.
+Module versions referenced below: **AOverview 0.7.2**, **ACharts 0.4.2**.
 
 ## Widget does not appear in dashboard picker
 
@@ -24,7 +24,7 @@ Module versions referenced below: **AOverview 0.7.2**, **ACharts 0.4.1**.
 
 - Period must be a preset code (`1h`, `3h`, …) or dashboard time when **Use dashboard time range** is enabled.
 - After upgrading from legacy `main_charts`, re-add the widget; old widget type ids are not migrated automatically.
-- Multi-host mode: each series needs `hostid` or `host` matching a host selected in the widget.
+- The widget uses **one host** only; each series must be an item on that host (`hostid` in JSON is set automatically on save).
 
 ## Sparkline shows wrong thresholds (multi-host)
 

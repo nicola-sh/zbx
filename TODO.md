@@ -57,9 +57,9 @@ Acceptance checklist:
 
 ---
 
-## Phase 3 - `ACharts` multi-host/multi-item model
+## Phase 3 - `ACharts` single-host multi-series model
 
-Goal: one chart can reliably mix series from different hosts/items.
+Goal: one chart shows several metrics (items) from one selected host.
 
 ### Step 3.1 - Series model extension
 - [x] Extend series schema to support `hostid`/`host` per series.
@@ -68,6 +68,11 @@ Goal: one chart can reliably mix series from different hosts/items.
 ### Step 3.4 - Series editor UX (0.4.1)
 - [x] Item picker: Find, Browse items (`mode=browse`), Quick add presets.
 - [x] Color picker per series; dashboard time toggle in form.
+
+### Step 3.5 - Single host only (0.4.2)
+- [x] Host field: one host per widget (no multi-select).
+- [x] All series `hostid` synced to widget host on save; validation rejects foreign hostid.
+- [x] Runtime/history scoped to first host for legacy multi-host configs.
 
 ### Step 3.2 - Data loading safety
 - [x] Add safe limits for history/trend fetches.

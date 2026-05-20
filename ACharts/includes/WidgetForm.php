@@ -69,7 +69,7 @@ class WidgetForm extends CWidgetForm
     {
         return $this
             ->addField(
-                (new CWidgetFieldMultiSelectHost('hostid', 'Host'))
+                (new CWidgetFieldMultiSelectHost('hostid', 'Hosts'))
                     ->setMultiple(true)
             )
             ->addField(
@@ -159,6 +159,15 @@ class WidgetForm extends CWidgetForm
             $values['chart_period'] = self::normalizePeriodForStorage($values['chart_period']);
         }
 
+        $hostids = self::resolveHostIdsFromValues($values);
+
+        if (count($hostids) === 1 && array_key_exists('chart_series', $values)) {
+            $values['chart_series'] = self::bindSeriesToHost(
+                (string) $values['chart_series'],
+                $hostids[0]
+            );
+        }
+
         return $values;
     }
 
@@ -217,6 +226,8 @@ class WidgetForm extends CWidgetForm
             $this->addFieldError($errors, 'hostid', 'cannot be empty');
         }
 
+        $selected_hostids = $this->resolveSelectedHostIds();
+
         $raw = trim((string) $this->getFieldValue('chart_series'));
 
         if ($raw === '') {
@@ -238,11 +249,11 @@ class WidgetForm extends CWidgetForm
         }
 
         $series = $parsed['series'];
-        $selected_hostids = $this->resolveSelectedHostIds();
 
         foreach ($series as $index => $entry) {
             $item_name = trim((string) ($entry['item_name'] ?? ''));
             $itemid = trim((string) ($entry['itemid'] ?? ''));
+            $series_hostid = trim((string) ($entry['hostid'] ?? ''));
 
             if ($item_name === '' && $itemid === '') {
                 $this->addFieldError(
@@ -250,15 +261,25 @@ class WidgetForm extends CWidgetForm
                     'chart_series',
                     'series '.($index + 1).': item name or itemid is required'
                 );
+
+                continue;
             }
 
             if (count($selected_hostids) > 1
-                    && trim((string) ($entry['hostid'] ?? '')) === ''
+                    && $series_hostid === ''
                     && trim((string) ($entry['host'] ?? '')) === '') {
                 $this->addFieldError(
                     $errors,
                     'chart_series',
-                    'series '.($index + 1).': hostid or host must be set when multiple hosts are selected'
+                    'series '.($index + 1).': select a host for this metric'
+                );
+            }
+
+            if ($series_hostid !== '' && !in_array($series_hostid, $selected_hostids, true)) {
+                $this->addFieldError(
+                    $errors,
+                    'chart_series',
+                    'series '.($index + 1).': host must be one of the hosts selected above'
                 );
             }
         }
@@ -311,10 +332,39 @@ class WidgetForm extends CWidgetForm
     /**
      * @return list<string>
      */
+    /**
+     * @param array<string, mixed> $values
+     * @return list<string>
+     */
+    private static function resolveHostIdsFromValues(array $values): array
+    {
+        $override = self::normalizeHostIds($values['override_hostid'] ?? []);
+
+        if ($override !== []) {
+            return $override;
+        }
+
+        return self::normalizeHostIds($values['hostid'] ?? []);
+    }
+
+    private static function bindSeriesToHost(string $raw, string $hostid): string
+    {
+        $series = ChartSeriesHelper::parse($raw);
+
+        foreach ($series as $index => $entry) {
+            $series[$index]['hostid'] = $hostid;
+            $series[$index]['host'] = '';
+        }
+
+        return ChartSeriesHelper::encode($series);
+    }
+
     private static function normalizeHostIds(mixed $value): array
     {
         if (!is_array($value)) {
-            return [];
+            $hostid = trim((string) $value);
+
+            return $hostid !== '' ? [$hostid] : [];
         }
 
         $hostids = [];

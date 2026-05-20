@@ -1,6 +1,6 @@
 # Трекер AOverview и ACharts
 
-**Версии:** AOverview **0.7.2**, ACharts **0.4.1**  
+**Версии:** AOverview **0.7.2**, ACharts **0.4.2**  
 **Ветка:** `cursor/fix-all-fix-md-8052`  
 **Операции:** [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md), [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
@@ -32,8 +32,9 @@
 - ✅ Компактная таблица порогов; наследование пустых per-host полей из глобальных.
 - ✅ i18n: ключевые строки через `_()`; aria-label светофора multi-host.
 
-### ACharts 0.4.1 — редактор и данные
+### ACharts 0.4.2 — один узел, конкретные метрики
 
+- ✅ **Один хост** на виджет (не multi-host mix); все серии привязаны к этому hostid при сохранении.
 - ✅ Color picker в редакторе серий.
 - ✅ Выбор item: **Find**, **Browse items** (`ItemLookup` mode `browse`), **Quick add** (CPU, Memory, Load, Disk).
 - ✅ `parseForValidation` / `ChartSeriesHelper`; `syncFromDom` сохраняет hostid/host.
@@ -52,6 +53,7 @@
 |------|--------|-------------|
 | Полная локализация JS | 📋 | PHP `_()`; строки в `widget.edit.js` частично на EN |
 | Native Zabbix item picker | ⏭ | Свой lookup + browse; не виджет Zabbix UI |
+| Несколько хостов на одном графике ACharts | ⏭ | Убрано в 0.4.2 — один host, N метрик |
 | Визуальный редактор per-host badges (отдельно от глобальных) | ⏭ | Глобальные бейджи визуально; per-host — через `badges_placement` + sync JSON |
 | Lazy / virtual scroll multi-host | 📋 | Список без client-side search; большие списки — без virtual scroll |
 | Общий HistoryLoader PHP | ⏭ | Дублирование между виджетами приемлемо |

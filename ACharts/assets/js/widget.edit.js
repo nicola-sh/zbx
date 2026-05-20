@@ -31,7 +31,8 @@
     pick_item_empty: 'No numeric items on this host.',
     pick_item_loading: 'Loading items…',
     remove_series: 'Remove',
-    pick_host: 'Select at least one host above.',
+    pick_host: 'Select host(s) above, or pick a host in this row.',
+    host_required: 'Select a host for this series.',
     enter_item: 'Enter an item name or use Browse items.',
     checking: 'Checking…',
     exact_fmt: 'Exact match: %s',
@@ -41,7 +42,6 @@
     none_no_items: 'No items found on this host.',
     lookup_failed: 'Could not check items.',
     advanced_json: 'Advanced: edit JSON',
-    host_auto: '(default host)',
     max_series: 'Maximum %s series.',
   };
 
@@ -355,7 +355,7 @@
     createEmptyHint() {
       const hint = document.createElement('div');
       hint.className = 'charts-series-empty';
-      hint.textContent = 'Add a series and pick a data item for each line on the chart.';
+      hint.textContent = 'Add a series: pick a host (if several above) and one data item (metric) per line.';
       return hint;
     }
 
@@ -379,11 +379,12 @@
       if (multiHost) {
         const hostSelect = document.createElement('select');
         hostSelect.className = 'text-box-default js-series-host';
+        hostSelect.required = true;
 
-        const auto = document.createElement('option');
-        auto.value = '';
-        auto.textContent = UI.host_auto;
-        hostSelect.appendChild(auto);
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '— host —';
+        hostSelect.appendChild(placeholder);
 
         for (const host of hosts) {
           const opt = document.createElement('option');
@@ -395,7 +396,10 @@
           hostSelect.appendChild(opt);
         }
 
-        hostSelect.addEventListener('change', () => this.syncFromDom());
+        hostSelect.addEventListener('change', () => {
+          row.querySelector('.charts-series-item-picker')?.setAttribute('hidden', 'hidden');
+          this.syncFromDom();
+        });
 
         const hostCol = document.createElement('div');
         hostCol.className = 'charts-series-col-host';
@@ -514,8 +518,20 @@
         return;
       }
 
-      const series = this.readSeries();
+      const hosts = this.getSelectedHosts();
+      const series = this.readSeries().map((entry) => {
+        const hostid = entry.hostid && hosts.some((h) => h.hostid === entry.hostid)
+          ? entry.hostid
+          : (hosts.length === 1 ? hosts[0].hostid : '');
+
+        return { ...entry, hostid, host: '' };
+      });
       this.writeSeries(series);
+    }
+
+    getSelectedHostId() {
+      const hosts = this.getSelectedHosts();
+      return hosts.length === 1 ? hosts[0].hostid : '';
     }
 
     addSeries(hosts) {
@@ -531,7 +547,7 @@
         item_name: '',
         itemid: '',
         color: DEFAULT_COLORS[index % DEFAULT_COLORS.length],
-        hostid: hosts.length === 1 ? (hosts[0]?.hostid ?? '') : '',
+        hostid: this.getSelectedHostId(),
         host: '',
       });
 
@@ -555,7 +571,7 @@
         item_name: preset.item_name,
         itemid: '',
         color: DEFAULT_COLORS[index % DEFAULT_COLORS.length],
-        hostid: hosts.length === 1 ? (hosts[0]?.hostid ?? '') : '',
+        hostid: this.getSelectedHostId(),
         host: '',
       });
 
@@ -704,7 +720,7 @@
 
     resolveRowHostId(row) {
       const hosts = this.getSelectedHosts();
-      const select = row.querySelector('.js-series-host');
+      const select = row?.querySelector('.js-series-host');
 
       if (select) {
         const selected = String(select.value ?? '').trim();

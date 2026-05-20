@@ -25,7 +25,7 @@ class WidgetView extends CControllerDashboardWidgetView
             $this->setResponse(new CControllerResponseData([
                 'name' => $this->getInput('name', $this->widget->getName()),
                 'empty' => true,
-                'message' => 'Select one or more hosts to display charts.',
+                'message' => _('Select one or more hosts, then add a metric (item) per series.'),
                 'config' => $this->fields_values,
                 'layout_signature' => 'empty',
             ]));
@@ -39,7 +39,7 @@ class WidgetView extends CControllerDashboardWidgetView
             $this->setResponse(new CControllerResponseData([
                 'name' => $this->getInput('name', $this->widget->getName()),
                 'empty' => true,
-                'message' => 'None of the selected hosts are available.',
+                'message' => _('The selected host is not available.'),
                 'config' => $this->fields_values,
                 'layout_signature' => 'empty',
             ]));
@@ -64,8 +64,8 @@ class WidgetView extends CControllerDashboardWidgetView
         $resolved_series = $this->resolveSeries($series_config, $host_context);
         $primary_hostid = array_key_first($host_context);
         $host_title = count($host_context) === 1
-            ? (string) ($host_context[$primary_hostid]['name'] ?? '')
-            : sprintf('%d hosts', count($host_context));
+            ? (string) ($host_context[$primary_hostid]['name'] ?? $primary_hostid)
+            : sprintf(_('%d hosts'), count($host_context));
 
         $this->setResponse(new CControllerResponseData([
             'name' => $this->getInput('name', $this->widget->getName()),
@@ -133,14 +133,14 @@ class WidgetView extends CControllerDashboardWidgetView
 
         foreach ($series_config as $entry) {
             $hostid = SeriesHostResolver::resolveSeriesHostId($entry, $host_context);
-            $host_name = $hostid !== null ? (string) ($host_context[$hostid]['name'] ?? $hostid) : null;
+            $series_host_name = $hostid !== null ? (string) ($host_context[$hostid]['name'] ?? $hostid) : null;
             $metrics = $hostid !== null
                 ? (array) (($collection_by_host[$hostid]['metrics'] ?? []))
                 : [];
             $metric = $hostid !== null
                 ? $this->resolveSeriesMetric($entry, $metrics, $matcher, $hostid)
                 : null;
-            $legend_label = $this->buildLegendLabel((string) $entry['label'], $host_name, $multi_host);
+            $legend_label = $this->buildLegendLabel((string) $entry['label'], $series_host_name, $multi_host);
             $item_name = trim((string) ($entry['item_name'] ?? ''));
 
             if ($metric !== null && $item_name === '') {
@@ -155,7 +155,7 @@ class WidgetView extends CControllerDashboardWidgetView
                 'item_name' => $item_name,
                 'itemid' => trim((string) ($entry['itemid'] ?? '')),
                 'hostid' => $hostid,
-                'host_name' => $host_name,
+                'host_name' => $series_host_name,
                 'host' => $entry['host'] ?? '',
                 'status' => $metric !== null ? 'ok' : 'missing',
                 'missing_reason' => $this->resolveMissingReason($entry, $hostid, $metric, $host_context),
@@ -305,7 +305,7 @@ class WidgetView extends CControllerDashboardWidgetView
             if (count($host_context) > 1
                     && trim((string) ($entry['hostid'] ?? '')) === ''
                     && trim((string) ($entry['host'] ?? '')) === '') {
-                return 'Set "hostid" or "host" for this series when multiple hosts are selected.';
+                return 'Select a host for this series when multiple hosts are configured.';
             }
 
             if (trim((string) ($entry['hostid'] ?? '')) !== '' || trim((string) ($entry['host'] ?? '')) !== '') {
@@ -324,7 +324,9 @@ class WidgetView extends CControllerDashboardWidgetView
     private function normalizeHostIds(mixed $value): array
     {
         if (!is_array($value)) {
-            return [];
+            $hostid = trim((string) $value);
+
+            return $hostid !== '' ? [$hostid] : [];
         }
 
         $hostids = [];
