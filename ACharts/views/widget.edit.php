@@ -43,7 +43,7 @@ $form
             ->addItem(
                 (new CDiv())
                     ->addClass('a-charts-series-hint')
-                    ->addItem('Add series and choose a Zabbix data item per line: type a name and Find, open Browse items for a list, or use Quick add presets (CPU, Memory, …).')
+                    ->addItem('Select one host above. Each series is a metric (item) from that host only — Find, Browse items, or Quick add (CPU, Memory, …).')
             )
             ->addItem(
                 (new CDiv())

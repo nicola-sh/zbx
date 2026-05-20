@@ -4,9 +4,9 @@
   "type": "widget",
   "name": "ACharts",
   "namespace": "ACharts",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": "nicola",
-  "description": "Dashboard widget: time-series charts for host metrics using Chart.js. Configure one or more series (item names), period, and chart style.",
+  "description": "Dashboard widget: time-series charts for metrics from one selected host using Chart.js. Configure series (item names), period, and chart style.",
   "widget": {
     "size": {
       "width": 48,

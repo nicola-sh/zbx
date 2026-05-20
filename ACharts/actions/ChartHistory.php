@@ -337,7 +337,7 @@ class ChartHistory extends CController
                 $hostids = SeriesHostResolver::normalizeHostIds($decoded);
 
                 if ($hostids !== []) {
-                    return $hostids;
+                    return $this->takeSingleHostId($hostids);
                 }
             }
         }
@@ -345,12 +345,21 @@ class ChartHistory extends CController
         $hostids = SeriesHostResolver::normalizeHostIds($raw);
 
         if ($hostids !== []) {
-            return $hostids;
+            return $this->takeSingleHostId($hostids);
         }
 
         $single = trim((string) $this->getInput('hostid', ''));
 
         return $single !== '' ? [$single] : [];
+    }
+
+    /**
+     * @param list<string> $hostids
+     * @return list<string>
+     */
+    private function takeSingleHostId(array $hostids): array
+    {
+        return $hostids === [] ? [] : [$hostids[0]];
     }
 
     private function normalizeOptionalString(mixed $value): ?string

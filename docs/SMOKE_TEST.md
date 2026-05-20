@@ -1,6 +1,6 @@
 # Smoke test runbook (Zabbix 7.4)
 
-Target module versions: **AOverview 0.7.2**, **ACharts 0.4.1**.
+Target module versions: **AOverview 0.7.2**, **ACharts 0.4.2**.
 
 ## Prerequisites
 
@@ -28,13 +28,13 @@ Target module versions: **AOverview 0.7.2**, **ACharts 0.4.1**.
 
 ## ACharts
 
-1. Add widget **ACharts**, select one or more hosts.
-2. Add two series (different items), save; confirm chart loads.
+1. Add widget **ACharts**, select **one** host, save.
+2. Add two series (e.g. CPU and Memory on that host), save; confirm chart loads.
 3. Use **Browse items** on a series; pick an item from the list; save.
 4. Use **Quick add** (e.g. CPU) on another series; confirm item name is filled.
 5. Change period preset; reload dashboard.
 6. Enable **Use dashboard time range**; align dashboard time selector; refresh widget; confirm range follows dashboard.
-7. Multi-host: assign each series to a different host; save; confirm mixed series in one chart.
+7. Try selecting two hosts in the editor; confirm validation error or only one host kept on save.
 8. Clear all series / invalid JSON; confirm validation error on save.
 
 ## Regression checks
