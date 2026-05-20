@@ -229,45 +229,62 @@
   margin: 0;
 }
 
-.ho-threshold-matrix {
+.ho-threshold-table {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   margin-top: 6px;
   border: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.08));
   border-radius: 4px;
   overflow: hidden;
 }
 
-.ho-threshold-row {
+.ho-threshold-table-head,
+.ho-threshold-table-row {
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr);
-  gap: 6px 8px;
+  grid-template-columns: minmax(130px, 1.25fr) minmax(90px, 1fr) minmax(90px, 1fr);
   align-items: center;
-  padding: 4px 8px;
+  column-gap: 8px;
+}
+
+.ho-threshold-table-head {
+  background: var(--color-form-field-focus-background, rgba(0, 0, 0, 0.03));
+  border-bottom: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.08));
+}
+
+.ho-threshold-table-row {
+  padding: 0;
+}
+
+.ho-threshold-table-row:nth-child(odd) {
   background: var(--color-form-field-focus-background, rgba(0, 0, 0, 0.015));
 }
 
-.ho-threshold-row:nth-child(even) {
+.ho-threshold-table-row:nth-child(even) {
   background: transparent;
 }
 
-.ho-threshold-row-label {
+.ho-threshold-table-cell {
+  min-width: 0;
+  padding: 6px 8px;
   font-size: 11px;
+}
+
+.ho-threshold-table-head .ho-threshold-table-cell {
   font-weight: 600;
   color: var(--font-alt-color, #555);
 }
 
-.ho-threshold-group-fields {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.ho-threshold-table-metric {
+  font-weight: 600;
+  color: var(--font-color, #2d3135);
+}
+
+.ho-threshold-table-cell .input,
+.ho-threshold-table-cell input[type="text"],
+.ho-threshold-table-cell input[type="number"] {
+  width: 100%;
+  min-width: 72px;
+  max-width: 110px;
 }
 
 .ho-threshold-block--compact {

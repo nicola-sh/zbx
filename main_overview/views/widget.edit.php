@@ -34,9 +34,7 @@ foreach ($form->registerField($metrics_field_view)->getView() as $metrics_view_p
     $hidden_metrics_wrap->addItem($metrics_view_part);
 }
 
-$global_threshold_matrix = (new CDiv())->addClass('ho-threshold-matrix');
-
-foreach ([
+$threshold_rows = [
     ['По умолчанию', 'th_num_1', 'th_num_2', 'default'],
     ['CPU', 'th_cpu_1', 'th_cpu_2', 'cpu'],
     ['Память', 'th_ram_1', 'th_ram_2', 'ram'],
@@ -45,11 +43,8 @@ foreach ([
     ['IF', 'th_iface_1', 'th_iface_2', 'iface'],
     ['Диск', 'th_disk_1', 'th_disk_2', 'disk'],
     ['Раздел', 'th_partition_1', 'th_partition_2', 'partition'],
-] as [$label, $high, $medium, $metric]) {
-    $global_threshold_matrix->addItem(
-        createGlobalThresholdGroup($form, $data['fields'], $label, $high, $medium, '', $metric)
-    );
-}
+];
+$global_threshold_table = createGlobalThresholdTable($form, $data['fields'], $threshold_rows);
 
 $global_thresholds_fieldset = (new CWidgetFormFieldsetCollapsibleView('Пороги и цвета полос'))
     ->addClass('main-overview-global-thresholds-fieldset')
@@ -64,7 +59,7 @@ $global_thresholds_fieldset = (new CWidgetFormFieldsetCollapsibleView('Поро�
             ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный', 'js-threshold-color-row'))
             ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной', 'js-solid-color-row'))
     )
-    ->addItem($global_threshold_matrix);
+    ->addItem($global_threshold_table);
 
 $global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Оформление'))
     ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
@@ -424,73 +419,44 @@ function getInterfaceCeilingViews(CWidgetFormView $form, array $fields): array
     ];
 }
 
-function getMetricThresholdViews(
-    CWidgetFormView $form,
-    array $fields,
-    string $label_text,
-    string $high_field_name,
-    string $medium_field_name,
-    string $hint = ''
-): array {
-    $high = $form->registerField(
-        new CWidgetFieldIntegerBoxView($fields[$high_field_name])
-    );
-    $medium = $form->registerField(
-        new CWidgetFieldIntegerBoxView($fields[$medium_field_name])
+function createGlobalThresholdTable(CWidgetFormView $form, array $fields, array $rows): CDiv
+{
+    $table = (new CDiv())
+        ->addClass('ho-threshold-table js-threshold-table');
+
+    $table->addItem(
+        (new CDiv())
+            ->addClass('ho-threshold-table-head')
+            ->addItem((new CSpan('Метрика'))->addClass('ho-threshold-table-cell'))
+            ->addItem((new CSpan('Жёлтый от, %'))->addClass('ho-threshold-table-cell'))
+            ->addItem((new CSpan('Красный от, %'))->addClass('ho-threshold-table-cell'))
     );
 
-    $label = new CLabel($label_text, $medium_field_name);
+    foreach ($rows as [$title, $high_field_name, $medium_field_name, $metric_key]) {
+        $row = (new CDiv())
+            ->addClass('ho-threshold-table-row')
+            ->setAttribute('data-threshold-metric', $metric_key);
 
-    if ($hint !== '') {
-        $label->addItem(makeHelpIcon($hint));
+        $row
+            ->addItem((new CDiv($title))->addClass('ho-threshold-table-cell ho-threshold-table-metric'))
+            ->addItem(
+                (new CDiv(createThresholdNumberField($form, $fields, $medium_field_name)))
+                    ->addClass('ho-threshold-table-cell')
+            )
+            ->addItem(
+                (new CDiv(createThresholdNumberField($form, $fields, $high_field_name)))
+                    ->addClass('ho-threshold-table-cell')
+            );
+
+        $table->addItem($row);
     }
 
-    return [
-        $label,
-        new CFormField(new CHorList([
-            new CSpan('Жёлтый с'),
-            $medium->getView(),
-            new CSpan('Красный с'),
-            $high->getView(),
-        ])),
-    ];
+    return $table;
 }
 
-function createGlobalThresholdGroup(
-    CWidgetFormView $form,
-    array $fields,
-    string $title,
-    string $high_field_name,
-    string $medium_field_name,
-    string $hint = '',
-    string $metric_key = ''
-): CDiv {
-    $wrap = (new CDiv())
-        ->addClass('ho-threshold-row js-threshold-group');
-
-    if ($metric_key !== '') {
-        $wrap->setAttribute('data-threshold-metric', $metric_key);
-    }
-
-    $wrap
-        ->setAttribute('data-threshold-high', $high_field_name)
-        ->setAttribute('data-threshold-medium', $medium_field_name);
-
-    $fields_row = (new CDiv())->addClass('ho-threshold-group-fields');
-
-    foreach (getMetricThresholdViews($form, $fields, '', $high_field_name, $medium_field_name) as $part) {
-        $fields_row->addItem($part);
-    }
-
-    $wrap
-        ->addItem((new CDiv())->addClass('ho-threshold-row-label')->addItem($title))
-        ->addItem($fields_row)
-        ->addItem(
-            (new CDiv())
-                ->addClass('ho-threshold-scale-mount js-threshold-scale-mount')
-        );
-
-    return $wrap;
+function createThresholdNumberField(CWidgetFormView $form, array $fields, string $field_name)
+{
+    return $form->registerField(new CWidgetFieldIntegerBoxView($fields[$field_name]))->getView();
 }
 
 function getThresholdColorView(

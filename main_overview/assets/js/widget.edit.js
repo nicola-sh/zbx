@@ -104,6 +104,7 @@ window.form = new (class {
     const thresholdRows = [...document.querySelectorAll(".js-threshold-color-row")];
     const solidRows = [...document.querySelectorAll(".js-solid-color-row")];
     const thresholdBlocks = [...document.querySelectorAll(".js-threshold-group, .js-threshold-block")];
+    const thresholdTables = [...document.querySelectorAll(".js-threshold-table")];
     const colorsGrid = document.querySelector(".js-threshold-colors-grid");
     const radios = container.querySelectorAll('input[type="radio"]');
 
@@ -120,6 +121,7 @@ window.form = new (class {
       toggleRows(solidRows, showSolid);
       toggleRows(thresholdRows, !showSolid);
       toggleRows(thresholdBlocks, !showSolid);
+      toggleRows(thresholdTables, !showSolid);
 
       if (colorsGrid) {
         colorsGrid.classList.toggle("is-solid-mode", showSolid);
