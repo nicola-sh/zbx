@@ -28,7 +28,7 @@ Acceptance checklist:
 
 ---
 
-## Phase 2 - `main_overview` logic and UX cleanup
+## Phase 2 - `AOverview` logic and UX cleanup
 
 Goal: thresholds and host cards should be predictable, simple, and easy to configure.
 
@@ -51,7 +51,7 @@ Acceptance checklist:
 
 ---
 
-## Phase 3 - `main_charts` multi-host/multi-item model
+## Phase 3 - `ACharts` multi-host/multi-item model
 
 Goal: one chart can reliably mix series from different hosts/items.
 
@@ -91,8 +91,8 @@ Goal: keep quality regressions out of main branch.
 - [ ] Add quick test flow for Zabbix 7.4:
   - [ ] add both widgets to dashboard,
   - [ ] open editor and save without errors,
-  - [ ] verify threshold transitions in `main_overview`,
-  - [ ] verify mixed-host series in `main_charts`,
+  - [ ] verify threshold transitions in `AOverview`,
+  - [ ] verify mixed-host series in `ACharts`,
   - [ ] reload dashboard and confirm stable behavior.
 
 ### Step 4.4 - Troubleshooting notes

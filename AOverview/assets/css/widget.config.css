@@ -1,0 +1,84 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 nicola
+ */
+
+/* Runtime Config */
+.dashboard-widget-aoverview {
+  /* Theme colors (overridden per widget from settings: th_color_*, fill_color) */
+  --ho-color-green: #4c9f38;
+  --ho-color-yellow: #ff851b;
+  --ho-color-red: #ff4136;
+  --ho-color-solid: #458adc;
+  --ho-bar-track: rgba(128, 128, 128, 0.16);
+  --widget-inline-spacing: 10px;
+  --label-width-default: 90px;
+  --metric-row-gap: 25px;
+  --metric-row-padding-y: 5px;
+  --metric-multi-gap: 10px;
+  --metric-multi-min-width: 220px;
+  --metric-value-gap: 0.2em;
+  --metric-bar-offset-y: -2px;
+  --metric-fill-transition-duration: 250ms;
+  --toolbar-margin-top: var(--metric-row-padding-y);
+  --toolbar-margin-bottom: var(--widget-inline-spacing);
+  --badge-height: 28px;
+  --badge-padding-x: 10px;
+  --badge-radius: 6px;
+  --badge-icon-size: 13px;
+  --badge-icon-gap: 6px;
+  --bar-radius: 6px;
+  --canvas-radius: 4px;
+  --dot-size: 5px;
+  --dot-gap: 15px;
+  --text-col-width: 40px;
+  --cell-label-width: 60px;
+  --trend-arrow-size: 14px;
+  --muted-opacity: 0.55;
+  --badge-bg: rgba(0, 0, 0, 0.14);
+  --badge-hover-bg: rgba(0, 0, 0, 0.22);
+  --bar-bg: var(--ho-bar-track);
+  --sparkline-border-color: rgba(128, 128, 128, 0.28);
+  --sparkline-border-width: 1px;
+  --sparkline-label-color: rgba(128, 128, 128, 0.65);
+  --sparkline-active-color: var(--ho-color-solid);
+  --sparkline-active-fg: #fff;
+  --sparkline-font-size: 12px;
+  --sparkline-overlay-padding-inline: var(--widget-inline-spacing);
+  --sparkline-overlay-padding-bottom: var(--widget-inline-spacing);
+  --sparkline-label-padding-y: 6px;
+  --sparkline-overlay-bg: Canvas;
+  --hidden-header-padding-top: var(--metric-row-padding-y);
+  --problems-pulse-duration: 1.5s;
+  position: relative;
+}
+
+/* Widget Chrome */
+.dashboard-widget-aoverview.sparkline-open {
+  overflow: hidden;
+}
+
+.dashboard-widget-aoverview.is-loading.sparkline-open {
+  pointer-events: auto !important;
+}
+
+.dashboard-widget-aoverview.is-loading.sparkline-open::before,
+.dashboard-widget-aoverview.is-loading.sparkline-open::after {
+  content: none !important;
+  display: none !important;
+}
+
+.dashboard-widget-aoverview.hidden_header .a-overview-container,
+.dashboard-widget-aoverview.hidden_header .sparkline-overlay {
+  padding-top: var(--hidden-header-padding-top);
+}
+
+.dashboard-widget-aoverview.square-corners {
+  --bar-radius: 0;
+  --badge-radius: 0;
+  --canvas-radius: 0;
+}
+
+.dashboard-widget-aoverview.square-corners .sparkline-overlay {
+  border-radius: 0;
+}

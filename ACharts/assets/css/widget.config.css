@@ -1,0 +1,13 @@
+/*
+ * MIT License
+ * Copyright (c) 2026 nicola
+ */
+
+.dashboard-widget-acharts {
+  --charts-inline-spacing: 12px;
+  --charts-text: var(--ui-color-text-main, #1f2c33);
+  --charts-muted: var(--ui-color-text-secondary, #768d99);
+  --charts-border: var(--ui-border-color-default, #dfe4e7);
+  --charts-surface: var(--ui-bg-color-page, #ffffff);
+  --charts-grid: rgba(118, 141, 153, 0.25);
+}
