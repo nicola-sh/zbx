@@ -77,7 +77,7 @@ class CWidgetFieldBadgesList extends CWidgetField {
                 $errors[] = _ms(
                     'Badge %1$s: display text cannot be empty for type "%2$s".',
                     $pos,
-                    _m(self::BADGE_TYPE_LABELS[$type])
+                    self::translateText(self::BADGE_TYPE_LABELS[$type])
                 );
             }
 
@@ -98,8 +98,8 @@ class CWidgetFieldBadgesList extends CWidgetField {
 
         foreach ($single_badge_counts as $type => $count) {
             if ($count > 1) {
-                $label = self::BADGE_TYPE_LABELS[$type] ?? _m('this');
-                $errors[] = _ms('Badge "%1$s" can be added only once.', _m($label));
+                $label = self::BADGE_TYPE_LABELS[$type] ?? self::translateText('this');
+                $errors[] = _ms('Badge "%1$s" can be added only once.', self::translateText($label));
             }
         }
 
@@ -128,11 +128,16 @@ class CWidgetFieldBadgesList extends CWidgetField {
         foreach (self::BADGE_TYPE_LABELS as $value => $label) {
             $options[] = [
                 'value' => (string) $value,
-                'label' => _m($label),
+                'label' => self::translateText($label),
             ];
         }
 
         return $options;
+    }
+
+    private static function translateText(string $text): string
+    {
+        return \function_exists('_m') ? \_m($text) : $text;
     }
 
     public static function getMultipleBadgeTypes(): array {

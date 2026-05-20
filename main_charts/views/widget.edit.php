@@ -45,7 +45,9 @@ $form
                     ->addItem(makeHelpIcon(
                         'JSON array of series. Each entry needs label, item_name (exact Zabbix item name), and optional key and color as RRGGBB hex.'
                     )),
-                (new CDiv())->addItem($form->registerField(new CWidgetFieldTextBoxView($data['fields']['chart_series']))),
+                (new CDiv())->addItem(
+                    $form->registerField(new CWidgetFieldTextBoxView($data['fields']['chart_series']))->getView()
+                ),
             ])
             ->addItem(
                 (new CDiv())
@@ -66,6 +68,7 @@ $form->show();
 function getCheckBoxView(CWidgetFormView $form, $field, string $hint = ''): array
 {
     $label = (new CLabel($field->getLabel(), $field->getName()));
+    $view = $form->registerField(new CWidgetFieldCheckBoxView($field));
 
     if ($hint !== '') {
         $label->addItem(makeHelpIcon($hint));
@@ -73,6 +76,6 @@ function getCheckBoxView(CWidgetFormView $form, $field, string $hint = ''): arra
 
     return [
         $label,
-        (new CDiv())->addItem($form->registerField(new CWidgetFieldCheckBoxView($field))),
+        new CFormField($view->getView()),
     ];
 }
