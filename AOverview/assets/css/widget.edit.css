@@ -246,6 +246,55 @@
   font-weight: 600;
   color: var(--font-color, #1f2328);
   margin: 0 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.a-overview-editor-hint {
+  grid-column: 1 / -1;
+  margin: 2px 0 6px;
+}
+
+.a-overview-phost-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.a-overview-field-help {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--font-alt-color, #768d99);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--font-alt-color, #768d99);
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 700;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.a-overview-field-help:hover {
+  color: var(--font-color, #1f2328);
+  border-color: var(--font-color, #1f2328);
+}
+
+.a-overview-phost-section-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ho-threshold-table-head .ho-threshold-table-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .ho-thresholds-cascade {

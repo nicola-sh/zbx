@@ -26,6 +26,9 @@ window.form = new (class {
     this.lookupUi = options?.lookup_ui && typeof options.lookup_ui === "object"
       ? options.lookup_ui
       : {};
+    this.helpUi = options?.help_ui && typeof options.help_ui === "object"
+      ? options.help_ui
+      : {};
     this.metricCheckboxRows = Array.isArray(options?.metric_checkbox_rows)
       ? options.metric_checkbox_rows
       : [];
@@ -50,8 +53,22 @@ window.form = new (class {
     this.initPerHostAccordionEditor();
     this.initMetricLookupAssistants();
     this.initGlobalThresholdScales();
-    window.requestAnimationFrame(() => this.initMetricLookupAssistants());
+    window.requestAnimationFrame(() => {
+      this.initMetricLookupAssistants();
+      this.bindEditorHelpIcons();
+    });
 
+  }
+
+  bindEditorHelpIcons() {
+    if (typeof jQuery === "undefined" || typeof jQuery.fn.hintBox !== "function") {
+      return;
+    }
+
+    for (const btn of document.querySelectorAll(".a-overview-field-help:not([data-hintbox-bound])")) {
+      btn.dataset.hintboxBound = "1";
+      jQuery(btn).hintBox();
+    }
   }
 
   th(key, fallback = "") {
@@ -74,6 +91,28 @@ window.form = new (class {
     }
 
     return s;
+  }
+
+  hu(key, fallback = "") {
+    const v = this.helpUi?.[key];
+
+    return typeof v === "string" && v !== "" ? v : fallback;
+  }
+
+  makeFieldHelp(hint) {
+    if (!hint) {
+      return null;
+    }
+
+    const help = document.createElement("button");
+
+    help.type = "button";
+    help.className = "a-overview-field-help";
+    help.setAttribute("aria-label", "Подсказка");
+    help.setAttribute("title", hint);
+    help.textContent = "?";
+
+    return help;
   }
 
   initColorPickers(colorPickerClass) {
@@ -1392,41 +1431,6 @@ window.form = new (class {
     return wrap;
   }
 
-  buildBadgesJsonSection(hostid, profile) {
-    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
-    const frag = document.createDocumentFragment();
-    const hint = document.createElement("div");
-
-    hint.className = "a-overview-per-host-hint";
-    hint.textContent = this.perHostLabels.label_badges_json_hint ?? "";
-    frag.appendChild(hint);
-
-    const ta = document.createElement("textarea");
-
-    ta.className = "a-overview-phost-textarea";
-    ta.rows = 4;
-    ta.dataset.overrideKey = "badges";
-
-    if (typeof ov.badges === "string") {
-      ta.value = ov.badges;
-    }
-    else if (ov.badges !== undefined) {
-      try {
-        ta.value = JSON.stringify(ov.badges, null, 2);
-      }
-      catch (_e) {
-        ta.value = "";
-      }
-    }
-    else {
-      ta.value = "";
-    }
-
-    frag.appendChild(ta);
-
-    return frag;
-  }
-
   syncGlobalHiddenMetricsFromFirstHost() {
     const hidden = document.querySelector(".a-overview-hidden-metrics");
     const first = document.querySelector(".js-per-host-block .js-hp-metrics-show");
@@ -1576,15 +1580,48 @@ window.form = new (class {
       }
     });
 
-    body.appendChild(this.buildPerHostSection(L.section_metrics ?? "Metrics", this.buildMetricsShowSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_badges_json ?? "Badges (JSON)", this.buildBadgesJsonSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_display, this.buildDisplayBadges(hostid, profile), true));
-    body.appendChild(this.buildPerHostSection(L.section_proc, this.buildProcessorMemoryLoad(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_swap, this.buildSwapSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_if, this.buildInterfacesSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_disk, this.buildDiskSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_part, this.buildPartitionsSection(hostid, profile)));
-    body.appendChild(this.buildPerHostSection(L.section_adv, this.buildAdvancedExtras(hostid, profile)));
+    body.appendChild(this.buildPerHostSection(
+      L.section_metrics ?? "Metrics",
+      this.buildMetricsShowSection(hostid, profile),
+      false,
+      "section_metrics"
+    ));
+    body.appendChild(this.buildPerHostSection(
+      L.section_display ?? "Display",
+      this.buildDisplayBadges(hostid, profile),
+      true,
+      "section_display"
+    ));
+    body.appendChild(this.buildPerHostSection(
+      L.section_proc ?? "CPU, memory, load",
+      this.buildProcessorMemoryLoad(hostid, profile),
+      false,
+      "section_proc"
+    ));
+    body.appendChild(this.buildPerHostSection(
+      L.section_swap ?? "Swap",
+      this.buildSwapSection(hostid, profile),
+      false,
+      "section_swap"
+    ));
+    body.appendChild(this.buildPerHostSection(
+      L.section_if ?? "Interfaces",
+      this.buildInterfacesSection(hostid, profile),
+      false,
+      "section_if"
+    ));
+    body.appendChild(this.buildPerHostSection(
+      L.section_disk ?? "Disks",
+      this.buildDiskSection(hostid, profile),
+      false,
+      "section_disk"
+    ));
+    body.appendChild(this.buildPerHostSection(
+      L.section_part ?? "Partitions",
+      this.buildPartitionsSection(hostid, profile),
+      false,
+      "section_part"
+    ));
 
     root.append(head, body);
 
@@ -1705,7 +1742,7 @@ window.form = new (class {
     title.textContent = this.getHostAccordionTitle(hostid, {alias: aliasInput.value});
   }
 
-  buildPerHostSection(titleText, inner, expanded = false) {
+  buildPerHostSection(titleText, inner, expanded = false, hintKey = "") {
     const wrap = document.createElement("div");
 
     wrap.className = "a-overview-phost-section";
@@ -1724,6 +1761,12 @@ window.form = new (class {
 
     t.className = "a-overview-phost-section-title";
     t.textContent = titleText;
+
+    const hint = this.hu(hintKey);
+
+    if (hint) {
+      h.appendChild(this.makeFieldHelp(hint));
+    }
 
     const b = document.createElement("div");
 
@@ -1768,13 +1811,14 @@ window.form = new (class {
 
     frag.appendChild(this.makeLabeledRow(
       this.perHostLabels.label_alias ?? "",
-      aliasInput
+      aliasInput,
+      "label_alias"
     ));
 
     const bpWrap = document.createElement("div");
 
     bpWrap.className = "a-overview-phost-row";
-    bpWrap.appendChild(this.makeInlineLabel(this.perHostLabels.label_badges ?? ""));
+    bpWrap.appendChild(this.makeInlineLabel(this.perHostLabels.label_badges ?? "", "label_badges"));
 
     const bp0 = document.createElement("label");
     const bp1 = document.createElement("label");
@@ -1805,7 +1849,8 @@ window.form = new (class {
       this.perHostLabels.label_cpu ?? "",
       "item_name_cpu",
       "0",
-      ov.item_name_cpu ?? ""
+      ov.item_name_cpu ?? "",
+      "label_cpu"
     ));
     frag.appendChild(this.makeThresholdScaleBlock(ov, "th_cpu_1", "th_cpu_2", "cpu"));
 
@@ -1813,7 +1858,8 @@ window.form = new (class {
       this.perHostLabels.label_ram ?? "",
       "item_name_ram",
       "1",
-      ov.item_name_ram ?? ""
+      ov.item_name_ram ?? "",
+      "label_ram"
     ));
     frag.appendChild(this.makeThresholdScaleBlock(ov, "th_ram_1", "th_ram_2", "ram"));
 
@@ -1821,9 +1867,15 @@ window.form = new (class {
       this.perHostLabels.label_load ?? "",
       "item_name_load",
       "2",
-      ov.item_name_load ?? ""
+      ov.item_name_load ?? "",
+      "label_load"
     ));
-    frag.appendChild(this.makeNumberRow(this.perHostLabels.label_load_high ?? "", "load_high", ov.load_high ?? ""));
+    frag.appendChild(this.makeNumberRow(
+      this.perHostLabels.label_load_high ?? "",
+      "load_high",
+      ov.load_high ?? "",
+      "label_load_high"
+    ));
     frag.appendChild(this.makeThresholdScaleBlock(ov, "th_load_1", "th_load_2", "load"));
 
     return frag;
@@ -1837,7 +1889,8 @@ window.form = new (class {
       this.perHostLabels.label_swap ?? "",
       "item_name_swap",
       "3",
-      ov.item_name_swap ?? ""
+      ov.item_name_swap ?? "",
+      "label_swap"
     ));
 
     const inv = document.createElement("div");
@@ -1848,7 +1901,7 @@ window.form = new (class {
     cb.type = "checkbox";
     cb.dataset.overrideKey = "item_swap_invert";
     cb.checked = String(ov.item_swap_invert ?? "1") === "1" || ov.item_swap_invert === 1 || ov.item_swap_invert === true;
-    inv.appendChild(this.makeInlineLabel(this.perHostLabels.label_swap_inv ?? ""));
+    inv.appendChild(this.makeInlineLabel(this.perHostLabels.label_swap_inv ?? "", "label_swap_inv"));
     inv.appendChild(cb);
     frag.appendChild(inv);
 
@@ -1866,26 +1919,29 @@ window.form = new (class {
       "item_name_interface",
       "interface",
       "4",
-      ov.item_name_interface ?? ""
+      ov.item_name_interface ?? "",
+      "label_iface"
     ));
 
     frag.appendChild(this.makeTextRow(
       this.perHostLabels.label_iface_ex ?? "",
       "interfaces_exclude",
-      ov.interfaces_exclude ?? ""
+      ov.interfaces_exclude ?? "",
+      "label_iface_ex"
     ));
 
     frag.appendChild(this.makeNumberRow(
       this.perHostLabels.label_iface_high ?? "",
       "interfaces_high",
-      ov.interfaces_high ?? ""
+      ov.interfaces_high ?? "",
+      "label_iface_high"
     ));
 
     const unit = String(ov.interfaces_unit ?? "");
     const wrap = document.createElement("div");
 
     wrap.className = "a-overview-phost-row";
-    wrap.appendChild(this.makeInlineLabel(this.perHostLabels.label_iface_unit ?? ""));
+    wrap.appendChild(this.makeInlineLabel(this.perHostLabels.label_iface_unit ?? "", "label_iface_unit"));
 
     for (const [val, lab] of [["0", "Kbps"], ["1", "Mbps"], ["2", "Gbps"]]) {
       const labEl = document.createElement("label");
@@ -1914,9 +1970,15 @@ window.form = new (class {
       "item_name_disk",
       "disk",
       "5",
-      ov.item_name_disk ?? ""
+      ov.item_name_disk ?? "",
+      "label_disk"
     ));
-    frag.appendChild(this.makeTextRow(this.perHostLabels.label_disk_ex ?? "", "disks_exclude", ov.disks_exclude ?? ""));
+    frag.appendChild(this.makeTextRow(
+      this.perHostLabels.label_disk_ex ?? "",
+      "disks_exclude",
+      ov.disks_exclude ?? "",
+      "label_disk_ex"
+    ));
     frag.appendChild(this.makeThresholdScaleBlock(ov, "th_disk_1", "th_disk_2", "disk"));
 
     return frag;
@@ -1931,85 +1993,48 @@ window.form = new (class {
       "item_name_partition",
       "partition",
       "6",
-      ov.item_name_partition ?? ""
+      ov.item_name_partition ?? "",
+      "label_part"
     ));
-    frag.appendChild(this.makeTextRow(this.perHostLabels.label_part_ex ?? "", "partitions_exclude", ov.partitions_exclude ?? ""));
+    frag.appendChild(this.makeTextRow(
+      this.perHostLabels.label_part_ex ?? "",
+      "partitions_exclude",
+      ov.partitions_exclude ?? "",
+      "label_part_ex"
+    ));
     frag.appendChild(this.makeThresholdScaleBlock(ov, "th_partition_1", "th_partition_2", "partition"));
 
     return frag;
   }
 
-  buildAdvancedExtras(hostid, profile) {
-    const frag = document.createDocumentFragment();
-    const ov = profile.overrides && typeof profile.overrides === "object" ? profile.overrides : {};
-    const reserved = new Set([
-      "metrics_show",
-      "badges",
-      "item_name_cpu",
-      "item_name_ram",
-      "item_name_load",
-      "item_name_swap",
-      "item_name_disk",
-      "item_name_partition",
-      "item_name_interface",
-      "item_swap_invert",
-      "load_high",
-      "interfaces_high",
-      "interfaces_unit",
-      "th_cpu_1",
-      "th_cpu_2",
-      "th_ram_1",
-      "th_ram_2",
-      "th_load_1",
-      "th_load_2",
-      "th_swap_1",
-      "th_swap_2",
-      "th_disk_1",
-      "th_disk_2",
-      "th_partition_1",
-      "th_partition_2",
-      "interfaces_exclude",
-      "disks_exclude",
-      "partitions_exclude",
-    ]);
-    const extra = {};
-
-    for (const [k, v] of Object.entries(ov)) {
-      if (!reserved.has(k)) {
-        extra[k] = v;
-      }
-    }
-
-    const ta = document.createElement("textarea");
-
-    ta.className = "a-overview-phost-textarea";
-    ta.rows = 5;
-    ta.dataset.hostMeta = "extras";
-    ta.placeholder = this.perHostLabels.placeholder_extras ?? "";
-    ta.value = Object.keys(extra).length ? JSON.stringify(extra, null, 2) : "";
-
-    frag.appendChild(this.makeLabeledRow(this.perHostLabels.label_extras ?? "", ta));
-
-    return frag;
-  }
-
-  makeLabeledRow(labelText, control) {
+  makeLabeledRow(labelText, control, hintKey = "") {
     const row = document.createElement("div");
 
     row.className = "a-overview-phost-row";
-    row.appendChild(this.makeInlineLabel(labelText));
+    row.appendChild(this.makeInlineLabel(labelText, hintKey));
     row.appendChild(control);
 
     return row;
   }
 
-  makeInlineLabel(text) {
+  makeInlineLabel(text, hintKey = "") {
+    const wrap = document.createElement("span");
+
+    wrap.className = "a-overview-phost-label-wrap";
+
     const span = document.createElement("span");
 
     span.className = "a-overview-phost-label";
     span.textContent = text;
+    wrap.appendChild(span);
 
-    return span;
+    const hint = this.hu(hintKey);
+
+    if (hint) {
+      wrap.appendChild(this.makeFieldHelp(hint));
+    }
+
+    return wrap;
   }
 
   makeTextInput({value, dataHostMeta}) {
@@ -2026,7 +2051,7 @@ window.form = new (class {
     return input;
   }
 
-  makeTextRow(label, key, value) {
+  makeTextRow(label, key, value, hintKey = "") {
     const input = document.createElement("input");
 
     input.type = "text";
@@ -2034,10 +2059,10 @@ window.form = new (class {
     input.dataset.overrideKey = key;
     input.value = value ?? "";
 
-    return this.makeLabeledRow(label, input);
+    return this.makeLabeledRow(label, input, hintKey);
   }
 
-  makeNumberRow(label, key, value) {
+  makeNumberRow(label, key, value, hintKey = "") {
     const input = document.createElement("input");
 
     input.type = "number";
@@ -2045,7 +2070,7 @@ window.form = new (class {
     input.dataset.overrideKey = key;
     input.value = value === undefined || value === null ? "" : String(value);
 
-    return this.makeLabeledRow(label, input);
+    return this.makeLabeledRow(label, input, hintKey);
   }
 
   makeThresholdScaleBlock(ov, highKey, mediumKey, metricKey = "") {
@@ -2084,17 +2109,18 @@ window.form = new (class {
     return wrap;
   }
 
-  makeItemAssistantRow(label, fieldName, metricValue, value) {
+  makeItemAssistantRow(label, fieldName, metricValue, value, hintKey = "") {
     return this.makeMetricAssistantRow({
       label,
       fieldName,
       metricValue,
       value,
       mode: "single",
+      hintKey,
     });
   }
 
-  makePatternAssistantRow(label, fieldName, metricType, metricToggleValue, value) {
+  makePatternAssistantRow(label, fieldName, metricType, metricToggleValue, value, hintKey = "") {
     const excludeByType = {
       partition: "partitions_exclude",
       disk: "disks_exclude",
@@ -2109,6 +2135,7 @@ window.form = new (class {
       mode: "wildcard",
       metricType,
       excludeFieldName: excludeByType[metricType] ?? "",
+      hintKey,
     });
   }
 
@@ -2120,11 +2147,12 @@ window.form = new (class {
     mode = "single",
     metricType = "",
     excludeFieldName = "",
+    hintKey = "",
   }) {
     const row = document.createElement("div");
 
     row.className = "a-overview-phost-row a-overview-phost-row--item";
-    row.appendChild(this.makeInlineLabel(label));
+    row.appendChild(this.makeInlineLabel(label, hintKey));
 
     const assistant = document.createElement("div");
 
@@ -2238,21 +2266,6 @@ window.form = new (class {
 
     if (iu) {
       overrides.interfaces_unit = iu.value;
-    }
-
-    const extras = block.querySelector('[data-host-meta="extras"]')?.value?.trim();
-
-    if (extras) {
-      try {
-        const parsed = JSON.parse(extras);
-
-        if (parsed && typeof parsed === "object") {
-          Object.assign(overrides, parsed);
-        }
-      }
-      catch (_e) {
-        // ignore invalid JSON in extras
-      }
     }
 
     return {

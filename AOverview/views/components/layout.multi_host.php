@@ -32,12 +32,6 @@ function render_multi_host_root(array $data): CDiv
         ->addClass('a-overview-multi-list-view')
         ->setAttribute('data-multi-view', 'list');
 
-    $search = (new CTag('input', false))
-        ->addClass('text-box-default a-overview-multi-search')
-        ->setAttribute('type', 'search')
-        ->setAttribute('placeholder', _('Filter hosts…'))
-        ->setAttribute('aria-label', _('Filter hosts'));
-
     $list = (new CDiv())->addClass('a-overview-multi-list');
 
     $detail_view = (new CDiv())
@@ -141,7 +135,6 @@ function render_multi_host_root(array $data): CDiv
     $detail_view->addItem($back);
     $detail_view->addItem($detail_inner);
 
-    $list_view->addItem($search);
     $list_view->addItem($list);
 
     return $root
