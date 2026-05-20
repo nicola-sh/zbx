@@ -24,12 +24,16 @@ final class ChartSeriesHelper
                 'label' => 'CPU',
                 'item_name' => 'CPU utilization',
                 'color' => '458ADC',
+                'hostid' => '',
+                'host' => '',
             ],
             [
                 'key' => 'ram',
                 'label' => 'Memory',
                 'item_name' => 'Memory utilization',
                 'color' => '4C9F38',
+                'hostid' => '',
+                'host' => '',
             ],
         ];
     }
@@ -101,12 +105,16 @@ final class ChartSeriesHelper
             }
 
             $color = self::normalizeColor((string) ($entry['color'] ?? ''));
+            $hostid = self::normalizeOptionalString($entry['hostid'] ?? null);
+            $host = self::normalizeOptionalString($entry['host'] ?? null);
 
             $normalized[] = [
                 'key' => $key,
                 'label' => $label,
                 'item_name' => $item_name,
                 'color' => $color,
+                'hostid' => $hostid ?? '',
+                'host' => $host ?? '',
             ];
 
             $index++;
@@ -128,5 +136,16 @@ final class ChartSeriesHelper
         }
 
         return '458ADC';
+    }
+
+    private static function normalizeOptionalString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }

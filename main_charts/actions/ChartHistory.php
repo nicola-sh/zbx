@@ -31,7 +31,7 @@ class ChartHistory extends CController
     protected function checkInput(): bool
     {
         $fields = [
-            'hostid' => 'required|db hosts.hostid',
+            'hostid' => 'db hosts.hostid',
             'period' => 'required|in ' . implode(',', array_keys(HistoryLoader::PERIODS)),
             'series' => 'required|string',
         ];
@@ -49,7 +49,7 @@ class ChartHistory extends CController
     {
         try {
             $this->setJsonResponse($this->build(
-                trim((string) $this->getInput('hostid')),
+                trim((string) $this->getInput('hostid', '')),
                 trim((string) $this->getInput('period')),
                 (string) $this->getInput('series')
             ));
@@ -81,12 +81,8 @@ class ChartHistory extends CController
         ]);
     }
 
-    private function build(string $hostid, string $period, string $series_json): array
+    private function build(string $default_hostid, string $period, string $series_json): array
     {
-        if ($hostid === '') {
-            throw new RuntimeException('No host');
-        }
-
         $requested = $this->decodeSeriesRequest($series_json);
 
         if ($requested === []) {
@@ -94,11 +90,34 @@ class ChartHistory extends CController
         }
 
         $matcher = new MetricMatcher();
-        $item_names = array_values(array_unique(array_filter(array_map(
-            static fn(array $entry): string => trim((string) ($entry['item_name'] ?? '')),
-            $requested
-        ))));
-        $collection = $matcher->collect([$hostid], $item_names);
+        $item_names_by_host = [];
+
+        foreach ($requested as $entry) {
+            $hostid = $this->resolveSeriesHostId($entry, $default_hostid);
+
+            if ($hostid === null) {
+                continue;
+            }
+
+            if (($entry['itemid'] ?? null) !== null) {
+                continue;
+            }
+
+            $item_name = trim((string) ($entry['item_name'] ?? ''));
+
+            if ($item_name === '') {
+                continue;
+            }
+
+            $item_names_by_host[$hostid][] = $item_name;
+        }
+
+        $collection_by_host = [];
+
+        foreach ($item_names_by_host as $hostid => $item_names) {
+            $collection_by_host[$hostid] = $matcher->collect([$hostid], array_values(array_unique($item_names)));
+        }
+
         $loader = new HistoryLoader();
         $datasets = [];
         $time_from = null;
@@ -106,13 +125,30 @@ class ChartHistory extends CController
 
         foreach ($requested as $entry) {
             $key = (string) ($entry['key'] ?? '');
-            $item = $this->resolveSeriesItem($entry, $collection['metrics'], $matcher, $hostid);
+            $hostid = $this->resolveSeriesHostId($entry, $default_hostid);
+
+            if ($hostid === null) {
+                $datasets[] = [
+                    'key' => $key,
+                    'label' => (string) ($entry['label'] ?? $key),
+                    'missing' => true,
+                    'missing_reason' => 'No host is defined for this series.',
+                    'points' => [],
+                ];
+
+                continue;
+            }
+
+            $metrics = (array) (($collection_by_host[$hostid]['metrics'] ?? []));
+            $item = $this->resolveSeriesItem($entry, $metrics, $matcher, $hostid);
 
             if ($item === null) {
                 $datasets[] = [
                     'key' => $key,
                     'label' => (string) ($entry['label'] ?? $key),
                     'missing' => true,
+                    'missing_reason' => 'Item was not found on the selected host.',
+                    'hostid' => $hostid,
                     'points' => [],
                 ];
 
@@ -136,6 +172,7 @@ class ChartHistory extends CController
                 'key' => $key,
                 'label' => (string) ($entry['label'] ?? $item['name'] ?? $key),
                 'missing' => false,
+                'hostid' => $hostid,
                 'item_ref' => [
                     'itemid' => (string) $item['itemid'],
                     'name' => (string) ($item['name'] ?? ''),
@@ -183,6 +220,8 @@ class ChartHistory extends CController
                 'label' => trim((string) ($entry['label'] ?? $key)),
                 'itemid' => $this->normalizeOptionalString($entry['itemid'] ?? null),
                 'item_name' => $this->normalizeOptionalString($entry['item_name'] ?? null),
+                'hostid' => $this->normalizeOptionalString($entry['hostid'] ?? null),
+                'host_name' => $this->normalizeOptionalString($entry['host_name'] ?? null),
                 'value_type' => $this->normalizeOptionalInt($entry['value_type'] ?? null),
             ];
         }
@@ -218,6 +257,19 @@ class ChartHistory extends CController
         }
 
         return $matcher->resolve($metrics, $item_name);
+    }
+
+    private function resolveSeriesHostId(array $entry, string $default_hostid): ?string
+    {
+        $hostid = $entry['hostid'] ?? null;
+
+        if ($hostid !== null) {
+            return $hostid;
+        }
+
+        $default_hostid = trim($default_hostid);
+
+        return $default_hostid !== '' ? $default_hostid : null;
     }
 
     private function normalizeOptionalString(mixed $value): ?string

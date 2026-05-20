@@ -111,7 +111,9 @@ class CWidgetMainCharts extends CWidget {
 
     this.updateViewModeAttr();
 
-    if (!response.empty && this._config?.hostid) {
+    const hasSeries = Array.isArray(this._config?.series) && this._config.series.length > 0;
+
+    if (!response.empty && hasSeries) {
       this._loadAndRender();
     }
     else {
@@ -179,7 +181,7 @@ class CWidgetMainCharts extends CWidget {
     const config = this._config || {};
     const series = Array.isArray(config.series) ? config.series : [];
 
-    if (!config.hostid || series.length === 0) {
+    if (series.length === 0) {
       return { datasets: [] };
     }
 
@@ -188,6 +190,23 @@ class CWidgetMainCharts extends CWidget {
 
     const curl = new Curl('zabbix.php');
     curl.setArgument('action', CWidgetMainCharts.ACTION_HISTORY);
+
+    const payload = {
+      period: String(config.period || '3h'),
+      series: JSON.stringify(series.map((entry) => ({
+        key: entry.key,
+        label: entry.label,
+        hostid: entry.hostid,
+        host_name: entry.host_name,
+        itemid: entry.itemid,
+        item_name: entry.item_name,
+        value_type: entry.value_type,
+      }))),
+    };
+
+    if (config.hostid) {
+      payload.hostid = String(config.hostid);
+    }
 
     try {
       const response = await fetch(curl.getUrl(), {
@@ -198,17 +217,7 @@ class CWidgetMainCharts extends CWidget {
           Accept: 'application/json',
         },
         credentials: 'same-origin',
-        body: JSON.stringify({
-          hostid: String(config.hostid),
-          period: String(config.period || '3h'),
-          series: JSON.stringify(series.map((entry) => ({
-            key: entry.key,
-            label: entry.label,
-            itemid: entry.itemid,
-            item_name: entry.item_name,
-            value_type: entry.value_type,
-          }))),
-        }),
+        body: JSON.stringify(payload),
       });
 
       return await this._parseHistoryResponse(response);

@@ -55,6 +55,7 @@ class WidgetForm extends CWidgetForm
         return $this
             ->addField(
                 (new CWidgetFieldMultiSelectHost('hostid', 'Host'))
+                    ->setMultiple(true)
             )
             ->addField(
                 new CWidgetFieldMultiSelectOverrideHost()
@@ -167,6 +168,7 @@ class WidgetForm extends CWidgetForm
         }
 
         $series = ChartSeriesHelper::parse($raw);
+        $selected_hostids = $this->resolveSelectedHostIds();
 
         foreach ($series as $index => $entry) {
             if (trim($entry['item_name']) === '') {
@@ -176,9 +178,33 @@ class WidgetForm extends CWidgetForm
                     'series '.($index + 1).': item name cannot be empty'
                 );
             }
+
+            if (count($selected_hostids) > 1
+                    && trim((string) ($entry['hostid'] ?? '')) === ''
+                    && trim((string) ($entry['host'] ?? '')) === '') {
+                $this->addFieldError(
+                    $errors,
+                    'chart_series',
+                    'series '.($index + 1).': hostid or host must be set when multiple hosts are selected'
+                );
+            }
         }
 
         return $errors;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function resolveSelectedHostIds(): array
+    {
+        $override = self::normalizeHostIds($this->getFieldValue('override_hostid'));
+
+        if ($override !== []) {
+            return $override;
+        }
+
+        return self::normalizeHostIds($this->getFieldValue('hostid'));
     }
 
     private function addFieldError(array &$errors, string $field_name, string $message): void
@@ -207,5 +233,31 @@ class WidgetForm extends CWidgetForm
         }
 
         return trim((string) $value) !== '';
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function normalizeHostIds(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $hostids = [];
+
+        foreach ($value as $hostid) {
+            if (!is_scalar($hostid)) {
+                continue;
+            }
+
+            $hostid = trim((string) $hostid);
+
+            if ($hostid !== '') {
+                $hostids[] = $hostid;
+            }
+        }
+
+        return array_values(array_unique($hostids));
     }
 }

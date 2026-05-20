@@ -43,7 +43,8 @@ $form
             ->addItem([
                 (new CLabel($data['fields']['chart_series']->getLabel(), $data['fields']['chart_series']->getName()))
                     ->addItem(makeHelpIcon(
-                        'JSON array of series. Each entry needs label, item_name (exact Zabbix item name), and optional key and color as RRGGBB hex.'
+                        'JSON array of series. Each entry supports: label, item_name, optional key/color, and optional host binding via hostid or host. '
+                        . 'When several hosts are selected, set hostid/host per series to target the correct node.'
                     )),
                 (new CDiv())->addItem(
                     $form->registerField(new CWidgetFieldTextBoxView($data['fields']['chart_series']))->getView()
@@ -52,7 +53,7 @@ $form
             ->addItem(
                 (new CDiv())
                     ->addClass('main-charts-series-hint')
-                    ->addItem('Default preset includes CPU and Memory utilization for typical Linux/Windows agent templates.')
+                    ->addItem('Example multi-host series: {"key":"cpu_a","label":"CPU A","host":"host-a","item_name":"CPU utilization","color":"458ADC"}')
             )
             ->addItem(
                 (new CButton(null, 'Reset series to defaults'))

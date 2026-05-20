@@ -68,12 +68,27 @@ if ($missing !== []) {
     $warnings = (new CDiv())->addClass('main-charts-warnings');
 
     foreach ($missing as $entry) {
+        $host_label = trim((string) ($entry['host_name'] ?? ''));
+        $item_label = (string) ($entry['item_name'] ?? $entry['label'] ?? '');
+        $reason = trim((string) ($entry['missing_reason'] ?? ''));
+        $parts = [];
+
+        if ($host_label !== '') {
+            $parts[] = '[' . $host_label . ']';
+        }
+
+        if ($item_label !== '') {
+            $parts[] = $item_label;
+        }
+
+        if ($reason !== '') {
+            $parts[] = '(' . $reason . ')';
+        }
+
         $warnings->addItem(
             (new CDiv())
                 ->addClass('main-charts-warning')
-                ->addItem(
-                    'Item not found: '.($entry['item_name'] ?? $entry['label'] ?? '')
-                )
+                ->addItem('Item not found: ' . implode(' ', $parts))
         );
     }
 
