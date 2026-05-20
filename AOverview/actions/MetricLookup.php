@@ -10,6 +10,7 @@ namespace Modules\AOverview\Actions;
 use CController;
 use CControllerResponseData;
 use Modules\AOverview\Includes\MetricMatcher;
+use Modules\AOverview\Includes\RequestRateLimiter;
 use Modules\AOverview\Includes\WildcardMetricResolver;
 use Modules\AOverview\Includes\WidgetForm;
 
@@ -58,6 +59,14 @@ class MetricLookup extends CController
 
     protected function doAction(): void
     {
+        if (!RequestRateLimiter::check('lookup')) {
+            $this->setResponse(new CControllerResponseData([
+                'main_block' => json_encode(['error' => _('Too many requests. Please wait.')], JSON_THROW_ON_ERROR),
+            ])->disableView());
+
+            return;
+        }
+
         if ($this->getInput('mode', 'single') === 'wildcard') {
             $this->setResponse(
                 (new CControllerResponseData(['main_block' => json_encode(

@@ -309,6 +309,12 @@ class CWidgetAOverview extends CWidget {
     root.addEventListener('click', this._onMultiNavClick);
     root.addEventListener('keydown', this._onMultiNavKey);
 
+    const search = root.querySelector('.a-overview-multi-search');
+    if (search && !search.dataset.aOverviewSearchBound) {
+      search.dataset.aOverviewSearchBound = '1';
+      search.addEventListener('input', () => this._filterMultiHostList(search.value));
+    }
+
     const back = root.querySelector('[data-a-overview-back]');
 
     if (back) {
@@ -382,6 +388,21 @@ class CWidgetAOverview extends CWidget {
   _handleMultiBackClick(event) {
     event.preventDefault();
     this._showMultiListView();
+  }
+
+  _filterMultiHostList(query) {
+    const root = this._body?.querySelector('[data-a-overview-multi="1"]');
+    if (!root) {
+      return;
+    }
+
+    const needle = String(query ?? '').trim().toLowerCase();
+
+    for (const summary of root.querySelectorAll('[data-a-overview-nav]')) {
+      const label = summary.getAttribute('data-a-overview-search-label') || '';
+      const match = needle === '' || label.includes(needle);
+      summary.hidden = !match;
+    }
   }
 
   _openMultiDetail(hostid) {
@@ -920,7 +941,7 @@ class CWidgetAOverview extends CWidget {
     const base = this._runtimeFields || this._fields || {};
     const ctx = this._sparklineOverviewContext;
 
-    const configJson = ctx?.dataset?.mainOverviewConfig ?? ctx?.dataset?.hostOverviewConfig;
+    const configJson = ctx?.dataset?.aOverviewConfig;
 
     if (configJson) {
       try {

@@ -28,7 +28,7 @@ class MetricMatcher
         }
 
         $items = API::Item()->get([
-            'output' => ['itemid', 'name', 'lastvalue', 'lastclock', 'value_type'],
+            'output' => ['itemid', 'name', 'lastvalue', 'lastclock', 'value_type', 'units'],
             'hostids' => $hostids,
             'search' => ['name' => $name_filters],
             'searchByAny' => true,
@@ -47,10 +47,10 @@ class MetricMatcher
                 'name' => $name,
                 'lastclock' => $clock,
                 'value_type' => (int) ($item['value_type'] ?? 0),
+                'units' => trim((string) ($item['units'] ?? '')),
                 'value' => $numeric_value,
                 'raw' => $value,
             ];
-
         }
 
         return [
@@ -140,6 +140,10 @@ class MetricMatcher
         ];
     }
 
+    /**
+     * @param list<string> $name_filters
+     * @return list<string>
+     */
     private function normalizeNameFilters(array $name_filters): array
     {
         return array_values(array_unique(array_filter(
@@ -148,9 +152,13 @@ class MetricMatcher
         )));
     }
 
+    /**
+     * @param list<array> $metrics
+     * @return list<array>
+     */
     private function sortMetricsByName(array $metrics): array
     {
-        usort($metrics, static function(array $left, array $right): int {
+        usort($metrics, static function (array $left, array $right): int {
             return strnatcasecmp($left['name'] ?? '', $right['name'] ?? '');
         });
 
@@ -166,6 +174,7 @@ class MetricMatcher
         return [
             'itemid' => (string) ($metric['itemid'] ?? ''),
             'name' => (string) ($metric['name'] ?? ''),
+            'units' => (string) ($metric['units'] ?? ''),
         ];
     }
 }

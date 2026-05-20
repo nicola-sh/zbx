@@ -15,6 +15,18 @@ use function Modules\AOverview\Includes\render_sparkline_overlay;
 
 $view = new CWidgetView($data);
 
+if (!empty($data['empty'])) {
+    $view
+        ->addItem(
+            (new CDiv())
+                ->addClass('a-overview-empty')
+                ->addItem(new CSpan($data['message'] ?? _('No data')))
+        )
+        ->show();
+
+    return;
+}
+
 $config = $data['config'] ?? [];
 $multi_host = !empty($data['multi_host']);
 

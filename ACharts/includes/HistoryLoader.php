@@ -44,6 +44,19 @@ final class HistoryLoader
         $time_till = time();
         $time_from = $time_till - $seconds;
 
+        return $this->loadSeriesRange($itemid, $value_type, $time_from, $time_till);
+    }
+
+    /**
+     * @return array{points: list<array{t: int, v: float}>, gapThresholdFloor: int, timeFrom: int, timeTill: int}
+     */
+    public function loadSeriesRange(string $itemid, int $value_type, int $time_from, int $time_till): array
+    {
+        if ($time_till <= $time_from) {
+            throw new \InvalidArgumentException('Invalid time range');
+        }
+
+        $seconds = max(1, $time_till - $time_from);
         $series = $this->fetchRawSeries($itemid, $value_type, $time_from, $time_till, $seconds);
 
         return [

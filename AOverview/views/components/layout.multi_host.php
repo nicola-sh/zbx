@@ -32,6 +32,12 @@ function render_multi_host_root(array $data): CDiv
         ->addClass('a-overview-multi-list-view')
         ->setAttribute('data-multi-view', 'list');
 
+    $search = (new CTag('input', false))
+        ->addClass('text-box-default a-overview-multi-search')
+        ->setAttribute('type', 'search')
+        ->setAttribute('placeholder', _('Filter hosts…'))
+        ->setAttribute('aria-label', _('Filter hosts'));
+
     $list = (new CDiv())->addClass('a-overview-multi-list');
 
     $detail_view = (new CDiv())
@@ -66,9 +72,10 @@ function render_multi_host_root(array $data): CDiv
         $summary = (new CDiv())
             ->addClass('a-overview-multi-summary')
             ->setAttribute('data-a-overview-nav', $hostid)
+            ->setAttribute('data-a-overview-search-label', mb_strtolower($label))
             ->setAttribute('role', 'button')
             ->setAttribute('tabindex', '0')
-            ->setAttribute('aria-label', sprintf('Open details: %1$s', $label));
+            ->setAttribute('aria-label', sprintf(_('Open details: %1$s'), $label));
 
         $left = (new CDiv())->addClass('a-overview-multi-summary-main');
 
@@ -87,12 +94,19 @@ function render_multi_host_root(array $data): CDiv
 
         $summary->addItem($left);
 
+        $light_labels = [
+            'red' => _('Critical'),
+            'yellow' => _('Warning'),
+            'green' => _('OK'),
+        ];
+        $light_label = $light_labels[$light] ?? $light;
+
         $summary->addItem(
             (new CSpan())
                 ->addClass('a-overview-light')
                 ->addClass('a-overview-light--' . $light)
-                ->setAttribute('title', $light)
-                ->setAttribute('aria-label', $light)
+                ->setAttribute('title', $light_label)
+                ->setAttribute('aria-label', $light_label)
         );
 
         $list->addItem($summary);
@@ -127,6 +141,7 @@ function render_multi_host_root(array $data): CDiv
     $detail_view->addItem($back);
     $detail_view->addItem($detail_inner);
 
+    $list_view->addItem($search);
     $list_view->addItem($list);
 
     return $root

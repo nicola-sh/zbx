@@ -12,6 +12,7 @@ use CControllerDashboardWidgetView;
 use CControllerResponseData;
 use Modules\ACharts\Includes\ChartSeriesHelper;
 use Modules\ACharts\Includes\MetricMatcher;
+use Modules\ACharts\Includes\SeriesHostResolver;
 use Modules\ACharts\Includes\WidgetForm;
 
 class WidgetView extends CControllerDashboardWidgetView
@@ -32,7 +33,7 @@ class WidgetView extends CControllerDashboardWidgetView
             return;
         }
 
-        $host_context = $this->fetchHostContext($hostids);
+        $host_context = SeriesHostResolver::fetchHostContext($hostids);
 
         if ($host_context === []) {
             $this->setResponse(new CControllerResponseData([
@@ -47,6 +48,19 @@ class WidgetView extends CControllerDashboardWidgetView
         }
 
         $series_config = ChartSeriesHelper::parse($this->fields_values['chart_series'] ?? '');
+
+        if (!ChartSeriesHelper::hasConfiguredSeries($this->fields_values['chart_series'] ?? '')) {
+            $this->setResponse(new CControllerResponseData([
+                'name' => $this->getInput('name', $this->widget->getName()),
+                'empty' => true,
+                'message' => _('Configure at least one chart series in the widget settings.'),
+                'config' => $this->fields_values,
+                'layout_signature' => 'empty-series',
+            ]));
+
+            return;
+        }
+
         $resolved_series = $this->resolveSeries($series_config, $host_context);
         $primary_hostid = array_key_first($host_context);
         $host_title = count($host_context) === 1
@@ -79,44 +93,6 @@ class WidgetView extends CControllerDashboardWidgetView
     }
 
     /**
-     * @param list<string> $hostids
-     * @return array<string, array{hostid: string, name: string, host: string}>
-     */
-    private function fetchHostContext(array $hostids): array
-    {
-        $hosts = API::Host()->get([
-            'output' => ['hostid', 'name', 'host'],
-            'hostids' => $hostids,
-        ]);
-
-        $indexed = [];
-
-        foreach ($hosts as $host) {
-            $hostid = trim((string) ($host['hostid'] ?? ''));
-
-            if ($hostid === '') {
-                continue;
-            }
-
-            $indexed[$hostid] = [
-                'hostid' => $hostid,
-                'name' => trim((string) ($host['name'] ?? $hostid)),
-                'host' => trim((string) ($host['host'] ?? '')),
-            ];
-        }
-
-        $ordered = [];
-
-        foreach ($hostids as $hostid) {
-            if (isset($indexed[$hostid])) {
-                $ordered[$hostid] = $indexed[$hostid];
-            }
-        }
-
-        return $ordered;
-    }
-
-    /**
      * @param list<array{key: string, label: string, item_name: string, color: string, hostid: string, host: string}> $series_config
      * @param array<string, array{hostid: string, name: string, host: string}> $host_context
      * @return list<array<string, mixed>>
@@ -127,7 +103,7 @@ class WidgetView extends CControllerDashboardWidgetView
         $series_by_host = [];
 
         foreach ($series_config as $entry) {
-            $resolved_hostid = $this->resolveSeriesHostId($entry, $host_context);
+            $resolved_hostid = SeriesHostResolver::resolveSeriesHostId($entry, $host_context);
 
             if ($resolved_hostid === null) {
                 continue;
@@ -156,7 +132,7 @@ class WidgetView extends CControllerDashboardWidgetView
         $resolved = [];
 
         foreach ($series_config as $entry) {
-            $hostid = $this->resolveSeriesHostId($entry, $host_context);
+            $hostid = SeriesHostResolver::resolveSeriesHostId($entry, $host_context);
             $host_name = $hostid !== null ? (string) ($host_context[$hostid]['name'] ?? $hostid) : null;
             $metrics = $hostid !== null
                 ? (array) (($collection_by_host[$hostid]['metrics'] ?? []))
@@ -248,7 +224,9 @@ class WidgetView extends CControllerDashboardWidgetView
     {
         return [
             'hostid' => $primary_hostid,
+            'hostids' => array_keys($host_context),
             'hosts' => array_values($host_context),
+            'use_dashboard_time' => (int) ($this->fields_values['chart_use_dashboard_time'] ?? 0),
             'period' => WidgetForm::normalizePeriodForStorage(
                 $this->fields_values['chart_period'] ?? WidgetForm::DEFAULT_PERIOD
             ),
@@ -299,55 +277,9 @@ class WidgetView extends CControllerDashboardWidgetView
         $parts[] = (string) ($this->fields_values['chart_stacked'] ?? '');
         $parts[] = (string) ($this->fields_values['chart_fill'] ?? '');
         $parts[] = (string) ($this->fields_values['show_grid'] ?? '');
+        $parts[] = (string) ($this->fields_values['chart_use_dashboard_time'] ?? '');
 
         return implode('|', $parts);
-    }
-
-    /**
-     * @param array{hostid?: string, host?: string} $entry
-     * @param array<string, array{hostid: string, name: string, host: string}> $host_context
-     */
-    private function resolveSeriesHostId(array $entry, array $host_context): ?string
-    {
-        if ($host_context === []) {
-            return null;
-        }
-
-        $requested_hostid = trim((string) ($entry['hostid'] ?? ''));
-
-        if ($requested_hostid !== '') {
-            return array_key_exists($requested_hostid, $host_context) ? $requested_hostid : null;
-        }
-
-        $requested_host = trim((string) ($entry['host'] ?? ''));
-
-        if ($requested_host !== '') {
-            $needle = strtolower($requested_host);
-            $matched = null;
-
-            foreach ($host_context as $hostid => $host) {
-                $candidates = [
-                    strtolower((string) ($host['name'] ?? '')),
-                    strtolower((string) ($host['host'] ?? '')),
-                ];
-
-                if (in_array($needle, $candidates, true)) {
-                    if ($matched !== null && $matched !== $hostid) {
-                        return null;
-                    }
-
-                    $matched = $hostid;
-                }
-            }
-
-            return $matched;
-        }
-
-        if (count($host_context) === 1) {
-            return array_key_first($host_context);
-        }
-
-        return null;
     }
 
     private function buildLegendLabel(string $label, ?string $host_name, bool $multi_host): string

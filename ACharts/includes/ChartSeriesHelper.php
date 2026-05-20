@@ -48,10 +48,66 @@ final class ChartSeriesHelper
     /**
      * @return array
      */
+    public static function hasConfiguredSeries($raw): bool
+    {
+        if (is_array($raw)) {
+            return self::countValidEntries($raw) > 0;
+        }
+
+        $json = trim((string) $raw);
+
+        if ($json === '' || $json === '[]') {
+            return false;
+        }
+
+        try {
+            $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        }
+        catch (JsonException) {
+            return false;
+        }
+
+        return is_array($decoded) && self::countValidEntries($decoded) > 0;
+    }
+
+    /**
+     * Strict parse for form validation (does not fall back to defaults).
+     *
+     * @return array{series: array, truncated: bool, error: ?string}
+     */
+    public static function parseForValidation(string $raw): array
+    {
+        $json = trim($raw);
+
+        if ($json === '') {
+            return ['series' => [], 'truncated' => false, 'error' => 'at least one series is required'];
+        }
+
+        try {
+            $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        }
+        catch (JsonException $exception) {
+            return ['series' => [], 'truncated' => false, 'error' => 'must be valid JSON'];
+        }
+
+        if (!is_array($decoded)) {
+            return ['series' => [], 'truncated' => false, 'error' => 'must be a JSON array'];
+        }
+
+        $valid_count = self::countValidEntries($decoded);
+        $normalized = self::normalizeList($decoded, false);
+
+        return [
+            'series' => $normalized,
+            'truncated' => $valid_count > self::MAX_SERIES,
+            'error' => $valid_count === 0 ? 'at least one series is required' : null,
+        ];
+    }
+
     public static function parse($raw): array
     {
         if (is_array($raw)) {
-            return self::normalizeList($raw);
+            return self::normalizeList($raw, true);
         }
 
         $json = trim((string) $raw);
@@ -71,14 +127,34 @@ final class ChartSeriesHelper
             return self::defaults();
         }
 
-        return self::normalizeList($decoded);
+        return self::normalizeList($decoded, true);
+    }
+
+    private static function countValidEntries(array $entries): int
+    {
+        $count = 0;
+
+        foreach ($entries as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+
+            $item_name = trim((string) ($entry['item_name'] ?? ''));
+            $itemid = self::normalizeOptionalString($entry['itemid'] ?? null);
+
+            if ($item_name !== '' || $itemid !== null) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     /**
      * @param array $entries
      * @return array
      */
-    private static function normalizeList(array $entries): array
+    private static function normalizeList(array $entries, bool $use_defaults): array
     {
         $normalized = [];
         $index = 0;
@@ -128,7 +204,11 @@ final class ChartSeriesHelper
             }
         }
 
-        return $normalized !== [] ? $normalized : self::defaults();
+        if ($normalized !== []) {
+            return $normalized;
+        }
+
+        return $use_defaults ? self::defaults() : [];
     }
 
     private static function normalizeColor(string $color): string

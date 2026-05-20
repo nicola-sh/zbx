@@ -704,7 +704,7 @@ window.form = new (class {
         return;
       }
 
-      console.log("Could not check item matches", error);
+      // Lookup failed; preview already shows a user-visible message.
       this.renderMetricLookupNotice(
         preview,
         "error",
@@ -739,11 +739,13 @@ window.form = new (class {
     catch (error) {
       const contentType = response.headers.get("content-type") ?? "";
 
-      console.log("Unexpected metric lookup response", {
-        status: response.status,
-        contentType,
-        body: raw.slice(0, 200),
-      });
+      if (typeof window !== 'undefined' && window.ZBX_DEBUG_WIDGETS) {
+        console.warn('Unexpected metric lookup response', {
+          status: response.status,
+          contentType,
+          body: raw.slice(0, 200),
+        });
+      }
 
       if (contentType.includes("text/html") || this.looksLikeHtmlDocument(raw)) {
         throw new Error(this.lu("lookup_html_error", ""));

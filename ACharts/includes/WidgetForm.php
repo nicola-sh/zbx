@@ -112,6 +112,10 @@ class WidgetForm extends CWidgetForm
                     ->setDefault(1)
             )
             ->addField(
+                (new CWidgetFieldCheckBox('chart_use_dashboard_time', 'Use dashboard time range'))
+                    ->setDefault(0)
+            )
+            ->addField(
                 (new CWidgetFieldTextBox('chart_series', 'Series (JSON)'))
                     ->setDefault(ChartSeriesHelper::encode(ChartSeriesHelper::defaults()))
             );
@@ -219,14 +223,21 @@ class WidgetForm extends CWidgetForm
             return $errors;
         }
 
-        try {
-            json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
-        }
-        catch (JsonException) {
-            $this->addFieldError($errors, 'chart_series', 'must be valid JSON');
+        $parsed = ChartSeriesHelper::parseForValidation($raw);
+
+        if ($parsed['error'] !== null) {
+            $this->addFieldError($errors, 'chart_series', (string) $parsed['error']);
         }
 
-        $series = ChartSeriesHelper::parse($raw);
+        if ($parsed['truncated']) {
+            $this->addFieldError(
+                $errors,
+                'chart_series',
+                'supports at most ' . ChartSeriesHelper::MAX_SERIES . ' series; extra entries were ignored'
+            );
+        }
+
+        $series = $parsed['series'];
         $selected_hostids = $this->resolveSelectedHostIds();
 
         foreach ($series as $index => $entry) {

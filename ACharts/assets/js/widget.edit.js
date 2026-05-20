@@ -214,9 +214,16 @@
       return normalized;
     }
 
-    normalizeColor(value) {
+    normalizeColor(value, fallback) {
       const color = String(value ?? '').replace('#', '').trim();
-      return /^[0-9A-Fa-f]{6}$/.test(color) ? color.toUpperCase() : DEFAULT_COLORS[0];
+
+      if (/^[0-9A-Fa-f]{6}$/.test(color)) {
+        return color.toUpperCase();
+      }
+
+      const fb = String(fallback ?? '').replace('#', '').trim();
+
+      return /^[0-9A-Fa-f]{6}$/.test(fb) ? fb.toUpperCase() : DEFAULT_COLORS[0];
     }
 
     writeSeries(series) {
@@ -228,13 +235,21 @@
     syncFromDom() {
       const rows = this.mount.querySelectorAll('.charts-series-row');
       const series = [];
+      const hosts = this.getSelectedHosts();
+      const defaultHostid = hosts.length === 1 ? hosts[0].hostid : '';
 
       rows.forEach((row, index) => {
+        const existing = this.readSeries()[index] || {};
         const label = row.querySelector('.js-series-label')?.value?.trim() ?? '';
-        const hostid = row.querySelector('.js-series-host')?.value?.trim() ?? '';
+        let hostid = row.querySelector('.js-series-host')?.value?.trim() ?? '';
         const item_name = row.querySelector('.js-series-item-name')?.value?.trim() ?? '';
         const itemid = row.querySelector('.js-series-itemid')?.value?.trim() ?? '';
-        const color = this.normalizeColor(row.querySelector('.js-series-color')?.value ?? '');
+        const colorRaw = row.querySelector('.js-series-color')?.value ?? '';
+        const color = this.normalizeColor(colorRaw, existing.color);
+
+        if (hostid === '' && defaultHostid !== '') {
+          hostid = defaultHostid;
+        }
 
         if (item_name === '' && itemid === '') {
           return;
@@ -247,7 +262,7 @@
           itemid,
           color,
           hostid,
-          host: '',
+          host: String(existing.host || '').trim(),
         });
       });
 
@@ -392,16 +407,34 @@
       itemCol.append(itemInput, itemidInput, findBtn, preview);
       row.appendChild(itemCol);
 
+      const colorHex = entry.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
       const colorInput = document.createElement('input');
       colorInput.type = 'text';
       colorInput.className = 'text-box-default js-series-color';
-      colorInput.value = entry.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+      colorInput.value = colorHex;
       colorInput.maxLength = 6;
-      colorInput.addEventListener('input', () => this.syncFromDom());
+      colorInput.addEventListener('change', () => this.syncFromDom());
+
+      const colorPicker = document.createElement('input');
+      colorPicker.type = 'color';
+      colorPicker.className = 'charts-series-color-picker js-series-color-picker';
+      colorPicker.value = `#${colorHex}`;
+      colorPicker.title = 'Pick series color';
+      colorPicker.addEventListener('input', () => {
+        colorInput.value = colorPicker.value.replace('#', '').toUpperCase();
+        this.syncFromDom();
+      });
+      colorInput.addEventListener('input', () => {
+        const normalized = this.normalizeColor(colorInput.value, colorHex);
+
+        if (/^[0-9A-Fa-f]{6}$/.test(normalized)) {
+          colorPicker.value = `#${normalized}`;
+        }
+      });
 
       const colorCol = document.createElement('div');
       colorCol.className = 'charts-series-col-color';
-      colorCol.appendChild(colorInput);
+      colorCol.append(colorPicker, colorInput);
       row.appendChild(colorCol);
 
       const removeBtn = document.createElement('button');

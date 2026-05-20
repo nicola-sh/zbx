@@ -493,11 +493,14 @@ class WidgetForm extends CWidgetForm
         }
 
         $base = $this->snapshotFieldValues();
+        $this->validateThresholdOrdering($errors, $base, 0);
 
         foreach ($profiles as $index => $profile) {
             $pos = $index + 1;
             $merged = HostProfilesHelper::mergeProfile($base, $profile);
             $this->validateProfileConfiguration($errors, $merged, $pos);
+            $this->validateThresholdOrdering($errors, $merged, $pos);
+            $this->validateProfileBadges($errors, $merged, $pos);
         }
 
         return $errors;
@@ -539,6 +542,94 @@ class WidgetForm extends CWidgetForm
 
         if ($this->hasBadgeTypeInMerged($merged, CWidgetFieldBadgesList::BADGE_LIVELINESS)) {
             $this->validateRequiredTextFieldMerged($errors, $merged, 'badge_liveliness_item_name', $position);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $merged
+     */
+    private function validateThresholdOrdering(array &$errors, array $merged, int $position): void
+    {
+        foreach (self::THRESHOLD_METRIC_FIELDS as $metric) {
+            $high = (int) ($merged['th_' . $metric . '_1'] ?? 0);
+            $medium = (int) ($merged['th_' . $metric . '_2'] ?? 0);
+
+            if ($high <= $medium) {
+                $this->addThresholdOrderError($errors, $position, $metric);
+            }
+        }
+
+        $num_high = (int) ($merged['th_num_1'] ?? 0);
+        $num_medium = (int) ($merged['th_num_2'] ?? 0);
+
+        if ($num_high <= $num_medium) {
+            $this->addThresholdOrderError($errors, $position, 'numeric');
+        }
+
+        $stale = (int) ($merged['freshness_stale'] ?? 0);
+        $warn = (int) ($merged['freshness_warn'] ?? 0);
+
+        if ($stale < $warn) {
+            if ($position > 0) {
+                $this->addFieldErrorToHostProfiles(
+                    $errors,
+                    sprintf('Host row %1$d: stale freshness must be greater than or equal to warning.', $position)
+                );
+            }
+            else {
+                $this->addFieldError($errors, 'freshness_stale', 'must be greater than or equal to warning threshold');
+            }
+        }
+    }
+
+    private function addThresholdOrderError(array &$errors, int $position, string $metric): void
+    {
+        $message = sprintf('red threshold must be greater than yellow for %1$s', $metric);
+
+        if ($position > 0) {
+            $this->addFieldErrorToHostProfiles(
+                $errors,
+                sprintf('Host row %1$d: %2$s.', $position, $message)
+            );
+
+            return;
+        }
+
+        $this->addFieldError($errors, 'th_' . $metric . '_1', $message);
+    }
+
+    /**
+     * @param array<string, mixed> $merged
+     */
+    private function validateProfileBadges(array &$errors, array $merged, int $position): void
+    {
+        $badges_raw = $merged['badges'] ?? '[]';
+
+        if (!is_string($badges_raw) || trim($badges_raw) === '') {
+            return;
+        }
+
+        try {
+            json_decode($badges_raw, true, 512, JSON_THROW_ON_ERROR);
+        }
+        catch (JsonException) {
+            $this->addFieldErrorToHostProfiles(
+                $errors,
+                sprintf('Host row %1$d: badges must be valid JSON.', $position)
+            );
+
+            return;
+        }
+
+        $field = new CWidgetFieldBadgesList('badges', 'Badges');
+        $field->setValue($badges_raw);
+        $field_errors = $field->validate();
+
+        foreach ($field_errors as $field_error) {
+            $this->addFieldErrorToHostProfiles(
+                $errors,
+                sprintf('Host row %1$d: %2$s', $position, $field_error)
+            );
         }
     }
 

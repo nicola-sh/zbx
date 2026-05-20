@@ -66,6 +66,22 @@ button.js-charts-reset-series {
   width: 100%;
 }
 
+.charts-series-col-color {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.charts-series-color-picker {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #d2d2d2;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .charts-series-col-color .js-series-color {
   width: 100%;
   font-family: monospace;

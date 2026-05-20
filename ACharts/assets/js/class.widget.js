@@ -45,6 +45,18 @@ class CWidgetACharts extends CWidget {
     this._scheduleChartResize();
   }
 
+  onRefresh() {
+    if (!this.rendered || !this._config) {
+      return;
+    }
+
+    const hasSeries = Array.isArray(this._config.series) && this._config.series.length > 0;
+
+    if (hasSeries) {
+      this._loadAndRender();
+    }
+  }
+
   onDestroy() {
     this.onClearContents();
   }
@@ -191,8 +203,10 @@ class CWidgetACharts extends CWidget {
     const curl = new Curl('zabbix.php');
     curl.setArgument('action', CWidgetACharts.ACTION_HISTORY);
 
+    const range = this._resolveTimeRange(config);
+
     const payload = {
-      period: String(config.period || '3h'),
+      period: range.period,
       series: JSON.stringify(series.map((entry) => ({
         key: entry.key,
         label: entry.label,
@@ -205,8 +219,16 @@ class CWidgetACharts extends CWidget {
       }))),
     };
 
-    if (config.hostid) {
+    if (Array.isArray(config.hostids) && config.hostids.length > 0) {
+      payload.hostids = JSON.stringify(config.hostids);
+    }
+    else if (config.hostid) {
       payload.hostid = String(config.hostid);
+    }
+
+    if (range.time_from != null && range.time_till != null) {
+      payload.time_from = range.time_from;
+      payload.time_till = range.time_till;
     }
 
     try {
@@ -257,6 +279,59 @@ class CWidgetACharts extends CWidget {
     return parsed;
   }
 
+  _resolveTimeRange(config) {
+    const useDashboard = String(config.use_dashboard_time) === '1';
+
+    if (useDashboard) {
+      const range = this._readDashboardTimeRange();
+
+      if (range) {
+        return {
+          period: 'dashboard',
+          time_from: range.from,
+          time_till: range.till,
+        };
+      }
+    }
+
+    return {
+      period: String(config.period || '3h'),
+      time_from: null,
+      time_till: null,
+    };
+  }
+
+  _readDashboardTimeRange() {
+    const candidates = [
+      () => this._dashboard?.getSharedTimePeriod?.(),
+      () => this._dashboard?.sharedTimePeriod,
+      () => window.dashboard?.getSharedTimePeriod?.(),
+      () => window.dashboard?.sharedTimePeriod,
+    ];
+
+    for (const read of candidates) {
+      try {
+        const period = read();
+
+        if (!period) {
+          continue;
+        }
+
+        const from = Number(period.from ?? period.time_from ?? period.ts_from);
+        const till = Number(period.to ?? period.time_till ?? period.ts_to);
+
+        if (Number.isFinite(from) && Number.isFinite(till) && till > from) {
+          return { from: Math.floor(from), till: Math.floor(till) };
+        }
+      }
+      catch (_) {
+        // try next source
+      }
+    }
+
+    return null;
+  }
+
   _abortFetch() {
     if (this._fetchAbort) {
       this._fetchAbort.abort();
@@ -287,12 +362,22 @@ class CWidgetACharts extends CWidget {
     const theme = this._readTheme();
     const datasets = this._buildChartDatasets(payload, config, theme);
 
+    const missingNotes = (payload.datasets || [])
+      .filter((dataset) => dataset.missing)
+      .map((dataset) => dataset.missing_reason || dataset.label || dataset.key)
+      .filter(Boolean);
+
     if (datasets.length === 0) {
       this._destroyChart();
-      this._showError('No data for the selected series.');
+      const detail = missingNotes.length > 0 ? missingNotes.join('; ') : '';
+      this._showError(detail !== ''
+        ? `No chart data: ${detail}`
+        : 'No data for the selected series.');
 
       return;
     }
+
+    this._clearError();
 
     const chartType = this._resolveChartType(config.chart_type);
     const legendPosition = this._resolveLegendPosition(config.legend_position);
@@ -520,6 +605,10 @@ class CWidgetACharts extends CWidget {
     }
 
     banner.textContent = message;
+  }
+
+  _clearError() {
+    this._body?.querySelector('.a-charts-error')?.remove();
   }
 
   _destroyChart() {

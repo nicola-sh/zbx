@@ -11,6 +11,7 @@ use API;
 use CController;
 use CControllerResponseData;
 use Modules\AOverview\Includes\MetricMatcher;
+use Modules\AOverview\Includes\RequestRateLimiter;
 use RuntimeException;
 use Throwable;
 
@@ -72,6 +73,12 @@ class SparklineHistory extends CController
 
     protected function doAction(): void
     {
+        if (!RequestRateLimiter::check('sparkline')) {
+            $this->setErrorResponse([_('Too many requests. Please wait.')]);
+
+            return;
+        }
+
         try {
             $this->setJsonResponse($this->build([
                 'hostid' => $this->getInput('hostid'),
