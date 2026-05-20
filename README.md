@@ -78,10 +78,10 @@ Purpose: build one chart from multiple series, where each series can come from a
 
 1. **Select hosts**
    - Choose one or multiple hosts as the available scope.
-2. **Define `chart_series`**
-   - For each series, set source using one of:
-     - `hostid` or `host`,
-     - `itemid` or `item_name`.
+2. **Define chart series** (visual editor or JSON)
+   - In the widget editor, use **Data series**: label, host (for multi-host), **Find item** to pick a Zabbix data item, and color.
+   - Each series needs a data item (`item_name` and/or `itemid`). Advanced users can edit `chart_series` JSON directly.
+   - Per-series host binding: `hostid` or `host` when multiple hosts are selected.
 3. **Set chart options**
    - Chart type, period, grid, legend placement, etc.
 4. **Validate series**

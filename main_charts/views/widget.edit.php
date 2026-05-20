@@ -40,20 +40,38 @@ $form
     )
     ->addFieldset(
         (new CWidgetFormFieldsetCollapsibleView('Data series'))
-            ->addItem([
-                (new CLabel($data['fields']['chart_series']->getLabel(), $data['fields']['chart_series']->getName()))
-                    ->addItem(makeHelpIcon(
-                        'JSON array of series. Each entry supports: label, item_name, optional key/color, and optional host binding via hostid or host. '
-                        . 'When several hosts are selected, set hostid/host per series to target the correct node.'
-                    )),
-                (new CDiv())->addItem(
-                    $form->registerField(new CWidgetFieldTextBoxView($data['fields']['chart_series']))->getView()
-                ),
-            ])
             ->addItem(
                 (new CDiv())
                     ->addClass('main-charts-series-hint')
-                    ->addItem('Example multi-host series: {"key":"cpu_a","label":"CPU A","host":"host-a","item_name":"CPU utilization","color":"458ADC"}')
+                    ->addItem('Add one or more series. For each series, pick a host (when several are selected) and a Zabbix data item — that is the source of chart values.')
+            )
+            ->addItem(
+                (new CDiv())
+                    ->addClass('charts-series-editor')
+                    ->addClass('js-charts-series-editor')
+                    ->setAttribute('data-lookup-action', 'widget.main_charts.lookup')
+                    ->setAttribute('data-max-series', (string) ChartSeriesHelper::MAX_SERIES)
+                    ->setAttribute(
+                        'data-default-series',
+                        ChartSeriesHelper::encode(ChartSeriesHelper::defaults())
+                    )
+            )
+            ->addItem(
+                (new CDiv())
+                    ->addClass('charts-series-json-wrap')
+                    ->addClass('js-charts-series-json-wrap')
+                    ->addItem(
+                        (new CTag('details', true))
+                            ->addItem(
+                                (new CTag('summary', true))
+                                    ->addItem('Advanced: edit JSON')
+                            )
+                            ->addItem(
+                                (new CDiv())->addItem(
+                                    $form->registerField(new CWidgetFieldTextBoxView($data['fields']['chart_series']))->getView()
+                                )
+                            )
+                    )
             )
             ->addItem(
                 (new CButton(null, 'Reset series to defaults'))

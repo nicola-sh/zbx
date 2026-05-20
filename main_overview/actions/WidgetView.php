@@ -141,6 +141,8 @@ class WidgetView extends CControllerDashboardWidgetView
             $layout_chunks[] = $layout_signature;
         }
 
+        $hosts_payload = $this->sortHostsByTrafficLight($hosts_payload);
+
         $this->fields_values = $saved_fields;
         $this->cell_id_prefix = '';
         $this->context_hostid = null;
@@ -166,6 +168,35 @@ class WidgetView extends CControllerDashboardWidgetView
         ]);
 
         return (string) (($hosts[0]['name'] ?? '') ?: '');
+    }
+
+    /**
+     * @param list<array<string, mixed>> $hosts_payload
+     * @return list<array<string, mixed>>
+     */
+    private function sortHostsByTrafficLight(array $hosts_payload): array
+    {
+        $priority = [
+            'red' => 0,
+            'yellow' => 1,
+            'green' => 2,
+        ];
+
+        usort($hosts_payload, static function (array $left, array $right) use ($priority): int {
+            $left_rank = $priority[(string) ($left['light'] ?? 'green')] ?? 3;
+            $right_rank = $priority[(string) ($right['light'] ?? 'green')] ?? 3;
+
+            if ($left_rank !== $right_rank) {
+                return $left_rank <=> $right_rank;
+            }
+
+            return strnatcasecmp(
+                (string) ($left['display_label'] ?? $left['name'] ?? ''),
+                (string) ($right['display_label'] ?? $right['name'] ?? '')
+            );
+        });
+
+        return $hosts_payload;
     }
 
     /**
@@ -296,6 +327,7 @@ class WidgetView extends CControllerDashboardWidgetView
 
                 $values[$cell_id] = [
                     'state' => (string) ($cell['state'] ?? 'ok'),
+                    'state_reason' => (string) ($cell['state_reason'] ?? ''),
                     'display' => [
                         'kind' => (string) ($cell['display']['kind'] ?? 'percent'),
                         'value' => $cell['display']['value'] ?? null,
@@ -490,52 +522,80 @@ class WidgetView extends CControllerDashboardWidgetView
             === WidgetForm::LABELS_SHORT;
 
         if (in_array(WidgetForm::METRIC_CPU, $enabled, true)) {
+            $item_name = (string) ($this->fields_values['item_name_cpu'] ?? '');
+            $match = $this->resolveMetricMatch($item_name);
+
             $rows[] = $this->buildSingleMetricRow(
                 'cpu',
                 $labels_short ? 'CPU' : 'Processor',
-                $this->findMetric((string) ($this->fields_values['item_name_cpu'] ?? '')),
-                $this->computePercent((string) ($this->fields_values['item_name_cpu'] ?? '')),
+                $match['resolved'],
+                $this->valueFromMetric($match['resolved']),
                 'percent',
-                'cpu'
+                'cpu',
+                [],
+                $match['status'],
+                $item_name
             );
         }
 
         if (in_array(WidgetForm::METRIC_RAM, $enabled, true)) {
+            $item_name = (string) ($this->fields_values['item_name_ram'] ?? '');
+            $match = $this->resolveMetricMatch($item_name);
+
             $rows[] = $this->buildSingleMetricRow(
                 'ram',
                 $labels_short ? 'RAM' : 'Memory',
-                $this->findMetric((string) ($this->fields_values['item_name_ram'] ?? '')),
-                $this->computePercent((string) ($this->fields_values['item_name_ram'] ?? '')),
+                $match['resolved'],
+                $this->normalizePercentValue($this->valueFromMetric($match['resolved'])),
                 'percent',
-                'ram'
+                'ram',
+                [],
+                $match['status'],
+                $item_name
             );
         }
 
         if (in_array(WidgetForm::METRIC_LOAD, $enabled, true)) {
+            $item_name = (string) ($this->fields_values['item_name_load'] ?? '');
+            $match = $this->resolveMetricMatch($item_name);
+            $value = $this->valueFromMetric($match['resolved']);
+
             $rows[] = $this->buildSingleMetricRow(
                 'load',
                 'Load',
-                $this->findMetric((string) ($this->fields_values['item_name_load'] ?? '')),
-                $this->computeLoad(),
+                $match['resolved'],
+                $value !== null ? (float) $value : null,
                 'load',
                 'load',
                 [
                     'axis_max' => $this->getLoadCeiling(),
-                ]
+                ],
+                $match['status'],
+                $item_name
             );
         }
 
         if (in_array(WidgetForm::METRIC_SWAP, $enabled, true)) {
+            $item_name = (string) ($this->fields_values['item_name_swap'] ?? '');
+            $match = $this->resolveMetricMatch($item_name);
+            $raw = $this->valueFromMetric($match['resolved']);
+            $invert = (int) ($this->fields_values['item_swap_invert'] ?? 1) === 1;
+            $value = $raw !== null
+                ? $this->normalizePercentValue($invert ? 100 - $raw : $raw)
+                : null;
+
             $rows[] = $this->buildSingleMetricRow(
                 'swap',
                 'Swap',
-                $this->findMetric((string) ($this->fields_values['item_name_swap'] ?? '')),
-                $this->computeSwap(),
+                $match['resolved'],
+                $value,
                 'percent',
                 'swap',
                 [
-                    'invert_percent' => (int) ($this->fields_values['item_swap_invert'] ?? 1) === 1,
-                ]
+                    'invert_percent' => $invert,
+                ],
+                $match['status'],
+                $item_name
             );
         }
 
@@ -579,7 +639,9 @@ class WidgetView extends CControllerDashboardWidgetView
         float|int|null $value,
         string $display_kind,
         string $threshold_group,
-        array $options = []
+        array $options = [],
+        string $match_status = MetricMatcher::STATUS_EXACT,
+        string $item_search = ''
     ): array {
         $item_ref = $this->toItemRef($metric);
         $cell = $this->buildCellModel([
@@ -596,6 +658,8 @@ class WidgetView extends CControllerDashboardWidgetView
             'axis_min' => 0,
             'axis_max' => $options['axis_max'] ?? ($display_kind === 'percent' ? 100 : null),
             'invert_percent' => (bool) ($options['invert_percent'] ?? false),
+            'match_status' => $match_status,
+            'item_search' => $item_search,
         ]);
 
         return [
@@ -692,7 +756,14 @@ class WidgetView extends CControllerDashboardWidgetView
         $display_kind = (string) ($options['display_kind'] ?? 'percent');
         $prefix = $options['prefix'] ?? null;
         $item_ref = $options['item_ref'] ?? null;
-        $state = $value === null ? 'empty' : 'ok';
+        $match_status = (string) ($options['match_status'] ?? MetricMatcher::STATUS_EXACT);
+        $item_search = trim((string) ($options['item_search'] ?? ''));
+        [$state, $state_reason, $empty_text] = $this->resolveCellPresentation(
+            $value,
+            $match_status,
+            $item_search,
+            $prefix
+        );
         $bar_percent = $options['bar_percent'] ?? null;
         $threshold_group = (string) ($options['threshold_group'] ?? '');
 
@@ -700,6 +771,8 @@ class WidgetView extends CControllerDashboardWidgetView
             'cell_id' => (string) ($options['cell_id'] ?? ''),
             'cell_label' => (string) ($options['cell_label'] ?? ''),
             'item_ref' => is_array($item_ref) ? $item_ref : null,
+            'state' => $state,
+            'state_reason' => $state_reason,
             'display' => [
                 'kind' => $display_kind,
                 'value' => $value === null ? null : (float) $value,
@@ -708,16 +781,15 @@ class WidgetView extends CControllerDashboardWidgetView
                     ? format_empty_value()
                     : format_display_value($display_kind, (float) $value),
                 'text' => $value === null
-                    ? format_empty_text($prefix)
+                    ? $empty_text
                     : format_display_text($display_kind, (float) $value, $prefix),
-                'empty_text' => format_empty_text($prefix),
+                'empty_text' => $empty_text,
             ],
             'bar' => [
                 'percent' => $bar_percent,
                 'threshold_group' => $threshold_group,
                 'color' => $this->resolveBarColor($bar_percent, $threshold_group),
             ],
-            'state' => $state,
             'links' => [
                 'latest_data' => $this->buildLatestDataLink($item_ref),
             ],
@@ -833,6 +905,80 @@ class WidgetView extends CControllerDashboardWidgetView
     private function findMetric(string $search): ?array
     {
         return $this->getMetricMatcher()->resolve($this->metrics, trim($search));
+    }
+
+    /**
+     * @return array{status: string, resolved: ?array, matches: list<array>}
+     */
+    private function resolveMetricMatch(string $search): array
+    {
+        return $this->getMetricMatcher()->matchMetrics($this->metrics, trim($search));
+    }
+
+    private function valueFromMetric(?array $metric): ?float
+    {
+        if ($metric === null || $metric['value'] === null) {
+            return null;
+        }
+
+        return (float) $metric['value'];
+    }
+
+    private function normalizePercentValue(?float $value): ?int
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return $this->clampPercent($value);
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function resolveCellPresentation(
+        mixed $value,
+        string $match_status,
+        string $item_search,
+        ?string $prefix
+    ): array {
+        if ($value !== null) {
+            return ['ok', '', format_empty_text($prefix)];
+        }
+
+        if ($match_status === MetricMatcher::STATUS_AMBIGUOUS) {
+            $label = $item_search !== '' ? $item_search : 'item';
+
+            return [
+                'ambiguous',
+                sprintf('Several items match "%s". Use the exact item name.', $label),
+                'Ambiguous item',
+            ];
+        }
+
+        if ($match_status === MetricMatcher::STATUS_NONE) {
+            $label = $item_search !== '' ? $item_search : 'item';
+
+            return [
+                'missing',
+                sprintf('Item "%s" was not found on this host.', $label),
+                'Item not found',
+            ];
+        }
+
+        if ($match_status === MetricMatcher::STATUS_EMPTY || $item_search === '') {
+            return [
+                'missing',
+                'Item name is not configured.',
+                'No item configured',
+            ];
+        }
+
+        return [
+            'empty',
+            'No recent data for this item.',
+            format_empty_text($prefix),
+        ];
     }
 
     private function computePercent(string $item_name): ?int

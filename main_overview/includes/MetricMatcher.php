@@ -63,6 +63,14 @@ class MetricMatcher
         return $this->match($metrics, trim($search))['resolved'];
     }
 
+    /**
+     * @return array{status: string, resolved: ?array, matches: list<array>}
+     */
+    public function matchMetrics(array $metrics, string $search): array
+    {
+        return $this->match($metrics, trim($search));
+    }
+
     public function preview(array $metrics, string $search, int $candidate_limit = 5): array
     {
         $search = trim($search);

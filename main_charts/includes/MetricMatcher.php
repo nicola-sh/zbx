@@ -28,7 +28,7 @@ class MetricMatcher
         }
 
         $items = API::Item()->get([
-            'output' => ['itemid', 'name', 'lastvalue', 'lastclock', 'value_type'],
+            'output' => ['itemid', 'name', 'lastvalue', 'lastclock', 'value_type', 'units'],
             'hostids' => $hostids,
             'search' => ['name' => $name_filters],
             'searchByAny' => true,
@@ -47,6 +47,7 @@ class MetricMatcher
                 'name' => $name,
                 'lastclock' => $clock,
                 'value_type' => (int) ($item['value_type'] ?? 0),
+                'units' => trim((string) ($item['units'] ?? '')),
                 'value' => $numeric_value,
                 'raw' => $value,
             ];
@@ -60,6 +61,42 @@ class MetricMatcher
     public function resolve(array $metrics, string $search): ?array
     {
         return $this->match($metrics, trim($search))['resolved'];
+    }
+
+    /**
+     * @return array{status: string, resolved: ?array, matches: list<array>}
+     */
+    public function matchMetrics(array $metrics, string $search): array
+    {
+        return $this->match($metrics, trim($search));
+    }
+
+    public function preview(array $metrics, string $search, int $candidate_limit = 5): array
+    {
+        $search = trim($search);
+
+        if ($search === '') {
+            return [
+                'status' => self::STATUS_EMPTY,
+                'match' => null,
+                'candidate_count' => 0,
+                'candidates' => [],
+                'has_more_candidates' => false,
+            ];
+        }
+
+        $match = $this->match($metrics, $search);
+        $candidates = $this->sortMetricsByName($match['matches']);
+        $candidate_limit = max(1, $candidate_limit);
+        $limited_candidates = array_slice($candidates, 0, $candidate_limit);
+
+        return [
+            'status' => $match['status'],
+            'match' => $this->toPreviewMetric($match['resolved']),
+            'candidate_count' => count($candidates),
+            'candidates' => array_map([$this, 'toPreviewMetric'], $limited_candidates),
+            'has_more_candidates' => count($candidates) > count($limited_candidates),
+        ];
     }
 
     private function match(array $metrics, string $search): array
@@ -113,5 +150,31 @@ class MetricMatcher
             array_map(static fn($value): string => trim((string) $value), $name_filters),
             static fn(string $value): bool => $value !== ''
         )));
+    }
+
+    /**
+     * @param list<array> $metrics
+     * @return list<array>
+     */
+    private function sortMetricsByName(array $metrics): array
+    {
+        usort($metrics, static function (array $left, array $right): int {
+            return strnatcasecmp($left['name'] ?? '', $right['name'] ?? '');
+        });
+
+        return $metrics;
+    }
+
+    private function toPreviewMetric(?array $metric): ?array
+    {
+        if ($metric === null) {
+            return null;
+        }
+
+        return [
+            'itemid' => (string) ($metric['itemid'] ?? ''),
+            'name' => (string) ($metric['name'] ?? ''),
+            'units' => (string) ($metric['units'] ?? ''),
+        ];
     }
 }

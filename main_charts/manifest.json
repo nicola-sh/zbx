@@ -4,7 +4,7 @@
   "type": "widget",
   "name": "Zabbix: host charts",
   "namespace": "MainCharts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "nicola",
   "description": "Dashboard widget: time-series charts for host metrics using Chart.js. Configure one or more series (item names), period, and chart style.",
   "widget": {
@@ -15,6 +15,10 @@
     "js_class": "CWidgetMainCharts"
   },
   "actions": {
+    "widget.main_charts.lookup": {
+      "class": "ItemLookup",
+      "layout": "layout.json"
+    },
     "widget.main_charts.history": {
       "class": "ChartHistory",
       "layout": "layout.json"

@@ -171,11 +171,14 @@ class WidgetForm extends CWidgetForm
         $selected_hostids = $this->resolveSelectedHostIds();
 
         foreach ($series as $index => $entry) {
-            if (trim($entry['item_name']) === '') {
+            $item_name = trim((string) ($entry['item_name'] ?? ''));
+            $itemid = trim((string) ($entry['itemid'] ?? ''));
+
+            if ($item_name === '' && $itemid === '') {
                 $this->addFieldError(
                     $errors,
                     'chart_series',
-                    'series '.($index + 1).': item name cannot be empty'
+                    'series '.($index + 1).': item name or itemid is required'
                 );
             }
 

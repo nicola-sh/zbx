@@ -201,6 +201,7 @@ class CWidgetMainCharts extends CWidget {
         itemid: entry.itemid,
         item_name: entry.item_name,
         value_type: entry.value_type,
+        units: entry.units,
       }))),
     };
 
@@ -326,8 +327,12 @@ class CWidgetMainCharts extends CWidget {
               label: (context) => {
                 const label = context.dataset.label || '';
                 const value = context.parsed.y;
+                const units = String(context.dataset.units || '').trim();
+                const formatted = this._formatValue(value);
 
-                return `${label}: ${this._formatValue(value)}`;
+                return units !== ''
+                  ? `${label}: ${formatted} ${units}`
+                  : `${label}: ${formatted}`;
               },
             },
           },
@@ -389,6 +394,8 @@ class CWidgetMainCharts extends CWidget {
 
       datasets.push({
         label: dataset.label || meta.label || dataset.key,
+        key: dataset.key,
+        units: dataset.units || meta.units || '',
         data: dataset.points.map((point) => ({
           x: (point.t || 0) * 1000,
           y: point.v,
