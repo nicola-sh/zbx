@@ -53,13 +53,17 @@ $global_thresholds_fieldset = (new CWidgetFormFieldsetCollapsibleView('Поро�
     ]))
     ->addItem(
         (new CDiv())
-            ->addClass('ho-threshold-colors-inline js-threshold-colors-grid')
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Зелёный', 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Жёлтый', 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный', 'js-threshold-color-row'))
-            ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной', 'js-solid-color-row'))
-    )
-    ->addItem($global_threshold_table);
+            ->addClass('ho-thresholds-cascade')
+            ->addItem(
+                (new CDiv())
+                    ->addClass('ho-threshold-colors-inline js-threshold-colors-grid')
+                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_3'], 'Зелёный', 'js-threshold-color-row'))
+                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_2'], 'Жёлтый', 'js-threshold-color-row'))
+                    ->addItem(getThresholdColorView($form, $data['fields']['th_color_1'], 'Красный', 'js-threshold-color-row'))
+                    ->addItem(getThresholdColorView($form, $data['fields']['fill_color'], 'Сплошной', 'js-solid-color-row'))
+            )
+            ->addItem($global_threshold_table)
+    );
 
 $global_appearance_fieldset = (new CWidgetFormFieldsetCollapsibleView('Оформление'))
     ->addItem(getCheckBoxView($form, $data['fields']['open_links_same_window'],
@@ -133,7 +137,7 @@ $form
             ['value' => (string) WidgetForm::METRIC_PARTITIONS, 'label' => 'Partitions'],
         ],
         'lookup_ui' => [
-            'test' => 'Test',
+            'test' => 'Тест',
             'stale_wildcard' => 'Template or exclusions changed. Click "Test" to refresh the preview.',
             'stale_single' => 'Input changed. Click "Test" to refresh the preview.',
             'pick_host' => 'Select a host first.',
@@ -283,8 +287,13 @@ function getUrlFieldBadgeTypesSafe(): array
     return array_values($types);
 }
 
-function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?string $metric_value = null): array
-{
+function getItemNameView(
+    CWidgetFormView $form,
+    $field,
+    string $hint = '',
+    ?string $metric_value = null,
+    bool $with_lookup = true
+): array {
     $view = $form->registerField(new CWidgetFieldTextBoxView($field));
     $label = new CLabel($field->getLabel(), $field->getName());
     $field_view = $view->getView();
@@ -294,18 +303,25 @@ function getItemNameView(CWidgetFormView $form, $field, string $hint = '', ?stri
     }
     $label->addItem(makeHelpIcon($hint));
 
-    if ($metric_value !== null) {
-        $field_view = (new CDiv())
+    if ($with_lookup) {
+        $assistant = (new CDiv())
             ->addClass('item-match-assistant')
+            ->addClass('item-match-assistant--inline')
             ->addClass('js-item-match-assistant')
-            ->setAttribute('data-field-name', $field->getName())
-            ->setAttribute('data-metric-value', $metric_value)
+            ->setAttribute('data-field-name', $field->getName());
+
+        if ($metric_value !== null && $metric_value !== '') {
+            $assistant->setAttribute('data-metric-value', $metric_value);
+        }
+
+        $field_view = $assistant
             ->addItem(
                 (new CDiv())
                     ->addClass('item-match-controls')
                     ->addItem($view->getView())
                     ->addItem(
-                        (new CButton(null, 'Test'))
+                        (new CButton(null, 'Тест'))
+                            ->addClass('btn-alt')
                             ->addClass('js-item-match-test')
                     )
             )
@@ -336,6 +352,7 @@ function getPatternView(CWidgetFormView $form, $field, string $hint = '', ?array
     if ($assistant !== null) {
         $field_view = (new CDiv())
             ->addClass('item-match-assistant')
+            ->addClass('item-match-assistant--inline')
             ->addClass('js-item-match-assistant')
             ->setAttribute('data-field-name', $field->getName())
             ->setAttribute('data-metric-value', (string) ($assistant['metric_value'] ?? ''))
@@ -352,7 +369,8 @@ function getPatternView(CWidgetFormView $form, $field, string $hint = '', ?array
                     ->addClass('item-match-controls')
                     ->addItem($view->getView())
                     ->addItem(
-                        (new CButton(null, (string) ($assistant['button_text'] ?? 'Test')))
+                        (new CButton(null, (string) ($assistant['button_text'] ?? 'Тест')))
+                            ->addClass('btn-alt')
                             ->addClass('js-item-match-test')
                     )
             )

@@ -660,6 +660,8 @@
     });
   }
 
+  window.scheduleAChartsSeriesEditorBoot = scheduleBoot;
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', scheduleBoot);
   }

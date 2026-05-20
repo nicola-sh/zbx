@@ -50,6 +50,7 @@ window.form = new (class {
     this.initPerHostAccordionEditor();
     this.initMetricLookupAssistants();
     this.initGlobalThresholdScales();
+    window.requestAnimationFrame(() => this.initMetricLookupAssistants());
 
   }
 
@@ -2082,70 +2083,60 @@ window.form = new (class {
   }
 
   makeItemAssistantRow(label, fieldName, metricValue, value) {
-    const row = document.createElement("div");
-
-    row.className = "a-overview-phost-row a-overview-phost-row--stack";
-    row.appendChild(this.makeInlineLabel(label));
-
-    const assistant = document.createElement("div");
-
-    assistant.className = "item-match-assistant js-item-match-assistant";
-    assistant.dataset.fieldName = fieldName;
-    assistant.dataset.metricValue = metricValue;
-
-    const controls = document.createElement("div");
-
-    controls.className = "item-match-controls";
-
-    const input = document.createElement("input");
-
-    input.type = "text";
-    input.className = "a-overview-phost-input";
-    input.dataset.overrideKey = fieldName;
-    input.value = value ?? "";
-
-    const btn = document.createElement("button");
-
-    btn.type = "button";
-    btn.className = "js-item-match-test";
-    btn.textContent = this.lu("test", "Test");
-
-    const preview = document.createElement("div");
-
-    preview.className = "item-match-preview js-item-match-preview";
-    preview.hidden = true;
-
-    controls.append(input, btn);
-    assistant.append(controls, preview);
-    row.appendChild(assistant);
-
-    return row;
+    return this.makeMetricAssistantRow({
+      label,
+      fieldName,
+      metricValue,
+      value,
+      mode: "single",
+    });
   }
 
   makePatternAssistantRow(label, fieldName, metricType, metricToggleValue, value) {
+    const excludeByType = {
+      partition: "partitions_exclude",
+      disk: "disks_exclude",
+      interface: "interfaces_exclude",
+    };
+
+    return this.makeMetricAssistantRow({
+      label,
+      fieldName,
+      metricValue: String(metricToggleValue ?? ""),
+      value,
+      mode: "wildcard",
+      metricType,
+      excludeFieldName: excludeByType[metricType] ?? "",
+    });
+  }
+
+  makeMetricAssistantRow({
+    label,
+    fieldName,
+    metricValue,
+    value,
+    mode = "single",
+    metricType = "",
+    excludeFieldName = "",
+  }) {
     const row = document.createElement("div");
 
-    row.className = "a-overview-phost-row a-overview-phost-row--stack";
+    row.className = "a-overview-phost-row a-overview-phost-row--item";
     row.appendChild(this.makeInlineLabel(label));
 
     const assistant = document.createElement("div");
 
-    assistant.className = "item-match-assistant js-item-match-assistant";
+    assistant.className = "item-match-assistant item-match-assistant--inline js-item-match-assistant";
     assistant.dataset.fieldName = fieldName;
-    assistant.dataset.metricValue = String(metricToggleValue ?? "");
-    assistant.dataset.lookupMode = "wildcard";
-    assistant.dataset.metricType = metricType;
+    assistant.dataset.metricValue = String(metricValue ?? "");
+    assistant.dataset.lookupMode = mode;
 
-    if (metricType === "partition") {
-      assistant.dataset.excludeFieldName = "partitions_exclude";
+    if (metricType !== "") {
+      assistant.dataset.metricType = metricType;
     }
 
-    if (metricType === "disk") {
-      assistant.dataset.excludeFieldName = "disks_exclude";
-    }
-
-    if (metricType === "interface") {
-      assistant.dataset.excludeFieldName = "interfaces_exclude";
+    if (excludeFieldName !== "") {
+      assistant.dataset.excludeFieldName = excludeFieldName;
     }
 
     const controls = document.createElement("div");
@@ -2158,12 +2149,13 @@ window.form = new (class {
     input.className = "a-overview-phost-input";
     input.dataset.overrideKey = fieldName;
     input.value = value ?? "";
+    input.placeholder = mode === "wildcard" ? "Шаблон с *" : "Имя элемента";
 
     const btn = document.createElement("button");
 
     btn.type = "button";
-    btn.className = "js-item-match-test";
-    btn.textContent = this.lu("test", "Test");
+    btn.className = "btn-alt js-item-match-test";
+    btn.textContent = this.lu("test", "Тест");
 
     const preview = document.createElement("div");
 

@@ -76,26 +76,40 @@
 /* Item Match Assistant (widget.edit.php) */
 .item-match-assistant {
   display: grid;
-  gap: 8px;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+
+.item-match-assistant--inline {
+  gap: 3px;
 }
 
 .item-match-controls {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
-.item-match-controls input[type="text"] {
-  flex: 1 1 260px;
-  min-width: 180px;
+.item-match-controls input[type="text"],
+.item-match-controls .input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.item-match-controls .js-item-match-test {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .item-match-preview {
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  line-height: 1.45;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.35;
   border: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.08));
   background: var(--color-form-field-focus-background, rgba(0, 0, 0, 0.04));
 }
@@ -198,12 +212,18 @@
 .form-grid > .js-host-accordion-mount,
 .form-grid > .a-overview-hidden-metrics,
 .form-grid > .a-overview-global-thresholds-fieldset,
-.form-grid > fieldset.a-overview-global-thresholds-fieldset {
+.form-grid > fieldset.a-overview-global-thresholds-fieldset,
+.form-grid .item-match-assistant--inline {
   grid-column: 1 / -1;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+}
+
+.form-grid .item-match-assistant--inline + .item-match-preview,
+.form-grid .item-match-assistant--inline .item-match-preview {
+  grid-column: 1 / -1;
 }
 
 .a-overview-color-hint {
@@ -212,12 +232,19 @@
   color: var(--font-alt-color, #6a737d);
 }
 
+.ho-thresholds-cascade {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
 .ho-threshold-colors-inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: 4px 10px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .ho-threshold-colors-inline.is-solid-mode .js-threshold-color-row {
@@ -232,7 +259,7 @@
 .ho-threshold-table {
   display: flex;
   flex-direction: column;
-  margin-top: 6px;
+  margin-top: 0;
   border: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.08));
   border-radius: 4px;
   overflow: hidden;
@@ -265,7 +292,7 @@
 
 .ho-threshold-table-cell {
   min-width: 0;
-  padding: 6px 8px;
+  padding: 4px 6px;
   font-size: 11px;
 }
 
@@ -345,7 +372,12 @@
 }
 
 .ho-threshold-block-wrap {
-  margin: 4px 0 6px;
+  margin: 2px 0 4px;
+  grid-column: 1 / -1;
+}
+
+.a-overview-phost-row--item + .ho-threshold-block-wrap {
+  margin-left: 0;
 }
 
 .ho-threshold-block-wrap .ho-threshold-compact-row {
@@ -435,12 +467,12 @@
 }
 
 .a-overview-phost-body {
-  padding: 4px 8px 6px;
+  padding: 3px 6px 4px;
   border-top: 1px solid var(--table-border-color, rgba(0, 0, 0, 0.06));
 }
 
 .a-overview-phost-section {
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .a-overview-phost-section-head {
@@ -464,15 +496,32 @@
 }
 
 .a-overview-phost-section-body {
-  padding: 2px 0 4px 12px;
+  padding: 1px 0 3px 10px;
 }
 
 .a-overview-phost-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
-  margin-bottom: 4px;
+  gap: 3px 6px;
+  margin-bottom: 3px;
+}
+
+.a-overview-phost-row--item {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 6.5rem) minmax(0, 1fr);
+  align-items: start;
+  column-gap: 6px;
+  row-gap: 2px;
+}
+
+.a-overview-phost-row--item > .a-overview-phost-label {
+  flex: 0 0 auto;
+  padding-top: 4px;
+}
+
+.a-overview-phost-row--item > .item-match-assistant {
+  grid-column: 2;
 }
 
 .a-overview-phost-row--stack {
@@ -487,17 +536,21 @@
 }
 
 .a-overview-phost-label {
-  flex: 0 0 7rem;
+  flex: 0 0 auto;
   max-width: 100%;
   color: var(--font-alt-color, #555);
   font-size: 11px;
+  line-height: 1.25;
 }
 
 .a-overview-phost-input,
 .a-overview-phost-textarea {
-  flex: 1 1 12rem;
+  flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
+  padding: 2px 5px;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .a-overview-phost-textarea {

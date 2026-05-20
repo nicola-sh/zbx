@@ -18,6 +18,9 @@ use Zabbix\Widgets\Fields\CWidgetFieldTextBox;
 
 class WidgetForm extends CWidgetForm
 {
+    /** @var array<string, mixed> Temporary overrides while validate() runs. */
+    private array $field_value_overrides = [];
+
     public const CHART_TYPE_LINE = 0;
     public const CHART_TYPE_AREA = 1;
     public const CHART_TYPE_BAR  = 2;
@@ -183,14 +186,27 @@ class WidgetForm extends CWidgetForm
         return self::DEFAULT_PERIOD;
     }
 
+    public function getFieldValue(string $field_name)
+    {
+        if (array_key_exists($field_name, $this->field_value_overrides)) {
+            return $this->field_value_overrides[$field_name];
+        }
+
+        return parent::getFieldValue($field_name);
+    }
+
     public function validate(bool $strict = false): array
     {
-        $this->setFieldValue(
-            'chart_period',
-            self::normalizePeriodForStorage($this->getFieldValue('chart_period'))
+        $this->field_value_overrides['chart_period'] = self::normalizePeriodForStorage(
+            parent::getFieldValue('chart_period')
         );
 
-        $errors = parent::validate($strict);
+        try {
+            $errors = parent::validate($strict);
+        }
+        finally {
+            $this->field_value_overrides = [];
+        }
 
         if (!self::hasConfiguredValue($this->getFieldValue('hostid'))
                 && !self::hasConfiguredValue($this->getFieldValue('override_hostid'))) {
