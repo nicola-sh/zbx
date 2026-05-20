@@ -44,6 +44,12 @@ Goal: thresholds and host cards should be predictable, simple, and easy to confi
 - [x] Preserve selected host detail panel through widget refresh.
 - [x] Keep per-host override editor resources cleaned up correctly.
 
+### Step 2.4 - Editor simplification (0.7.2)
+- [x] Move global thresholds and bar colors into **Appearance** section.
+- [x] Add context help icons (`?`) for editor fields (`help_ui`).
+- [x] Remove dashboard multi-host list search/filter UI.
+- [x] Remove separate JSON editors for custom per-host badges and extra overrides (visual badges + accordion sync remain).
+
 Acceptance checklist:
 - [x] Threshold color transitions reflect configured values.
 - [x] Re-opening editor keeps values intact.
@@ -58,6 +64,10 @@ Goal: one chart can reliably mix series from different hosts/items.
 ### Step 3.1 - Series model extension
 - [x] Extend series schema to support `hostid`/`host` per series.
 - [x] Keep `itemid`/`item_name` host-scoped during resolution.
+
+### Step 3.4 - Series editor UX (0.4.1)
+- [x] Item picker: Find, Browse items (`mode=browse`), Quick add presets.
+- [x] Color picker per series; dashboard time toggle in form.
 
 ### Step 3.2 - Data loading safety
 - [x] Add safe limits for history/trend fetches.

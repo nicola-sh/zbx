@@ -1364,6 +1364,7 @@ window.form = new (class {
     this.syncGlobalHiddenMetricsFromFirstHost();
     this.writePerHostProfilesToHidden();
     this.refreshAllThresholdScales();
+    this.bindEditorHelpIcons();
   }
 
   defaultMetricSelection() {

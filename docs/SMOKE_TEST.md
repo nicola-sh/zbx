@@ -1,5 +1,7 @@
 # Smoke test runbook (Zabbix 7.4)
 
+Target module versions: **AOverview 0.7.2**, **ACharts 0.4.1**.
+
 ## Prerequisites
 
 - Zabbix 7.4 with modules directory writable
@@ -16,22 +18,28 @@
 
 1. Add widget **AOverview**, select one host, save.
 2. Confirm metrics render with traffic-light colors.
-3. Open widget editor, change a threshold, save, reload dashboard.
-4. Add a second host; confirm multi-host list, search filter, and detail panel.
-5. Click a metric bar; confirm sparkline opens and respects per-host config (swap invert, load cap).
-6. Use **Test** on an item row in the editor; confirm lookup feedback.
+3. Open editor → **Appearance** → change a global threshold → save → reload dashboard; confirm bar colors update.
+4. Hover **?** on a field; confirm hint text appears.
+5. Add a second host; on dashboard confirm multi-host **list** (traffic light + name), click a row → **detail** panel, **Back to list**.
+6. In per-host accordion, toggle a metric off for one host; save; confirm that host hides the metric in detail view.
+7. **Badges**: add a text badge, save; confirm it shows on the card.
+8. Click a metric bar; confirm sparkline opens (per-host config: swap invert, load cap).
+9. Use **Test** on an item row in the accordion; confirm lookup feedback.
 
 ## ACharts
 
 1. Add widget **ACharts**, select one or more hosts.
-2. Add two series with different items, save.
-3. Confirm chart loads; change period preset, reload.
-4. Enable **Use dashboard time range**, align dashboard time selector, confirm chart range updates on refresh.
-5. Multi-host: assign each series to a host, save, confirm mixed series chart.
-6. Remove all series JSON content; confirm validation error on save.
+2. Add two series (different items), save; confirm chart loads.
+3. Use **Browse items** on a series; pick an item from the list; save.
+4. Use **Quick add** (e.g. CPU) on another series; confirm item name is filled.
+5. Change period preset; reload dashboard.
+6. Enable **Use dashboard time range**; align dashboard time selector; refresh widget; confirm range follows dashboard.
+7. Multi-host: assign each series to a different host; save; confirm mixed series in one chart.
+8. Clear all series / invalid JSON; confirm validation error on save.
 
 ## Regression checks
 
 - No PHP 500 in `zabbix_server.log` / PHP-FPM log during edit/save/view.
 - Browser console: no uncaught errors on dashboard refresh.
-- Rapid dashboard refresh: chart does not show stale data from previous fetch.
+- Rapid dashboard refresh: chart does not show stale data from a previous fetch.
+- After module update: hard refresh (Ctrl+F5) if sparkline thresholds look wrong on multi-host.
