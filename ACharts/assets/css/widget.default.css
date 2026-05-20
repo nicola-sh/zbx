@@ -3,6 +3,11 @@
  * Copyright (c) 2026 nicola
  */
 
+.dashboard-widget-acharts {
+  font-family: var(--charts-font);
+  font-size: var(--charts-font-size);
+}
+
 .dashboard-widget-acharts .a-charts-root {
   display: flex;
   flex-direction: column;
@@ -10,57 +15,86 @@
   min-height: 0;
   margin: 0 var(--charts-inline-spacing);
   color: var(--charts-text);
+  box-sizing: border-box;
 }
 
 .dashboard-widget-acharts .a-charts-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: 10px;
+  margin: 0 0 8px;
   flex: 0 0 auto;
+  min-height: 18px;
 }
 
 .dashboard-widget-acharts .a-charts-host {
   font-weight: 600;
-  font-size: 13px;
-  line-height: 1.3;
+  font-size: var(--charts-header-size);
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--charts-text);
 }
 
 .dashboard-widget-acharts .a-charts-period {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--charts-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border: 1px solid var(--charts-border);
+  border-radius: 3px;
+  background: var(--charts-surface);
 }
 
 .dashboard-widget-acharts .a-charts-warnings {
   flex: 0 0 auto;
-  margin-bottom: 6px;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  border-radius: var(--charts-plot-radius);
+  border: 1px solid color-mix(in srgb, #c46a00 35%, var(--charts-border));
+  background: color-mix(in srgb, #c46a00 8%, var(--charts-surface));
 }
 
 .dashboard-widget-acharts .a-charts-warning {
-  font-size: 11px;
-  color: #c46a00;
-  line-height: 1.35;
+  font-size: 10px;
+  color: color-mix(in srgb, #c46a00 85%, var(--charts-text));
+  line-height: 1.4;
+}
+
+.dashboard-widget-acharts .a-charts-warning + .a-charts-warning {
+  margin-top: 2px;
 }
 
 .dashboard-widget-acharts .a-charts-stage {
   position: relative;
   flex: 1 1 auto;
-  min-height: 120px;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
+}
+
+.dashboard-widget-acharts .a-charts-plot {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--charts-border);
+  border-radius: var(--charts-plot-radius);
+  background: var(--charts-plot-bg);
+  overflow: hidden;
 }
 
 .dashboard-widget-acharts .a-charts-canvas-wrap {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
+  padding: 8px 6px 4px;
 }
 
 .dashboard-widget-acharts .a-charts-canvas {
@@ -69,21 +103,74 @@
   height: 100% !important;
 }
 
+.dashboard-widget-acharts .a-charts-loading {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--charts-plot-bg) 72%, transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.dashboard-widget-acharts.is-loading .a-charts-loading {
+  display: flex;
+}
+
+.dashboard-widget-acharts .a-charts-loading::after {
+  content: "";
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--charts-border);
+  border-top-color: var(--charts-accent);
+  border-radius: 50%;
+  animation: a-charts-spin 0.7s linear infinite;
+}
+
+@keyframes a-charts-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dashboard-widget-acharts .a-charts-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  font-size: var(--charts-font-size);
+  color: var(--charts-muted);
+  text-align: center;
+  line-height: 1.45;
+  z-index: 3;
+  background: color-mix(in srgb, var(--charts-plot-bg) 90%, transparent);
+}
+
 .dashboard-widget-acharts .a-charts-empty {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
+  min-height: 120px;
   margin: 0 var(--charts-inline-spacing);
   color: var(--charts-muted);
   font-size: 13px;
   text-align: center;
-}
-
-.dashboard-widget-acharts.is-loading .a-charts-stage {
-  opacity: 0.55;
+  line-height: 1.45;
 }
 
 .dashboard-widget-acharts.hidden_header .a-charts-header {
   display: none;
+}
+
+.dashboard-widget-acharts .a-charts-stage.legend-bottom .a-charts-plot {
+  order: 0;
+}
+
+/* Chart.js legend lives inside canvas; extra bottom padding when legend bottom */
+.dashboard-widget-acharts .a-charts-stage.legend-bottom .a-charts-canvas-wrap {
+  padding-bottom: 2px;
 }

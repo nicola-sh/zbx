@@ -4,10 +4,31 @@
  */
 
 .dashboard-widget-acharts {
-  --charts-inline-spacing: 12px;
+  --charts-inline-spacing: 10px;
+  --charts-font: var(--ui-font-family, "Roboto", "Helvetica Neue", Arial, sans-serif);
   --charts-text: var(--ui-color-text-main, #1f2c33);
   --charts-muted: var(--ui-color-text-secondary, #768d99);
   --charts-border: var(--ui-border-color-default, #dfe4e7);
   --charts-surface: var(--ui-bg-color-page, #ffffff);
-  --charts-grid: rgba(118, 141, 153, 0.25);
+  --charts-plot-bg: var(--ui-bg-color-block, #f8f9fa);
+  --charts-grid: color-mix(in srgb, var(--charts-muted) 22%, transparent);
+  --charts-grid-strong: color-mix(in srgb, var(--charts-muted) 35%, transparent);
+  --charts-crosshair: color-mix(in srgb, var(--charts-muted) 55%, transparent);
+  --charts-tooltip-bg: color-mix(in srgb, var(--charts-text) 92%, #000);
+  --charts-tooltip-text: #fff;
+  --charts-accent: var(--ui-color-primary, #0275b8);
+  --charts-legend-gap: 14px;
+  --charts-plot-radius: 4px;
+  --charts-line-width: 2;
+  --charts-font-size: 11px;
+  --charts-header-size: 12px;
+}
+
+/* Dark / blue themes common in Zabbix */
+.dashboard-widget-acharts[data-theme="dark"],
+body.theme-dark .dashboard-widget-acharts,
+body.dark-theme .dashboard-widget-acharts {
+  --charts-plot-bg: color-mix(in srgb, var(--charts-surface) 88%, #0d1117);
+  --charts-grid: color-mix(in srgb, var(--charts-muted) 18%, transparent);
+  --charts-tooltip-bg: color-mix(in srgb, #1a1f26 92%, #000);
 }

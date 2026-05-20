@@ -112,16 +112,22 @@ $chart_wrap = (new CDiv())
     ->addClass('a-charts-stage')
     ->addClass('legend-' . $legend_class);
 
-$chart_wrap->addItem(
+$plot = (new CDiv())->addClass('a-charts-plot');
+
+$plot->addItem(
     (new CDiv())
         ->addClass('a-charts-canvas-wrap')
         ->addItem(
             (new CTag('canvas', true))
                 ->addClass('a-charts-canvas')
                 ->setAttribute('role', 'img')
-                ->setAttribute('aria-label', 'Host metrics chart')
+                ->setAttribute('aria-label', _('Metrics chart'))
         )
 );
+
+$plot->addItem((new CDiv())->addClass('a-charts-loading'));
+
+$chart_wrap->addItem($plot);
 
 $root->addItem($chart_wrap);
 
