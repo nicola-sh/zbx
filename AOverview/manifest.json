@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2.0,
+  "id": "aoverview",
+  "type": "widget",
+  "name": "AOverview",
+  "namespace": "AOverview",
+  "version": "0.6.0",
+  "author": "nicola",
+  "description": "Dashboard widget: CPU, memory, load, swap, interfaces, disks, and partitions, badges, sparklines, and per-host overrides. Intended for typical Zabbix agent templates.",
+  "widget": {
+    "size": {
+      "width": 38,
+      "height": 4
+    },
+    "js_class": "CWidgetAOverview"
+  },
+  "actions": {
+    "widget.aoverview.lookup": {
+      "class": "MetricLookup",
+      "layout": "layout.json"
+    },
+    "widget.aoverview.sparkline": {
+      "class": "SparklineHistory",
+      "layout": "layout.json"
+    },
+    "widget.aoverview.view": {
+      "class": "WidgetView"
+    }
+  },
+  "assets": {
+    "css": [
+      "widget.edit.css",
+      "widget.config.css",
+      "widget.toolbar.css",
+      "widget.default.css",
+      "widget.sparkline.css"
+    ],
+    "js": ["class.sparkline.js", "class.widget.js"]
+  }
+}

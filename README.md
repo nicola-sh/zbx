@@ -4,8 +4,8 @@ Zabbix dashboard widgets for fast host health visibility and cross-host charting
 
 This repository contains two widgets:
 
-- `main_overview` - host health cards with traffic-light metrics, badges, and sparklines.
-- `main_charts` - time-series charts where each series can point to a specific host and item.
+- **AOverview** — host health cards with traffic-light metrics, badges, and sparklines.
+- **ACharts** — time-series charts where each series can point to a specific host and item.
 
 **Author:** nicola
 
@@ -17,13 +17,15 @@ This repository contains two widgets:
 
 ## Install
 
-1. Copy `main_overview` and `main_charts` into your Zabbix modules directory.
-2. In Zabbix, open **Administration -> General -> Modules** and enable both modules.
-3. Add widgets to a dashboard and configure fields in the widget editor.
+1. Copy `AOverview` and `ACharts` into your Zabbix modules directory.
+2. In Zabbix, open **Administration → General → Modules** and enable both modules.
+3. Add widgets **AOverview** and **ACharts** to a dashboard and configure fields in the widget editor.
+
+> **Migration:** If you used the old modules `main_overview` / `main_charts`, remove them from Modules, copy the new folders, enable **AOverview** / **ACharts**, and re-add widgets on dashboards (widget type names changed).
 
 ## Detailed functionality (step-by-step)
 
-### 1) `main_overview` - host status board
+### 1) AOverview — host status board
 
 Purpose: show host health in compact cards with clear status colors, optional badges, and quick drill-down.
 
@@ -70,7 +72,7 @@ Purpose: show host health in compact cards with clear status colors, optional ba
 
 ---
 
-### 2) `main_charts` - mixed host/item chart widget
+### 2) ACharts — mixed host/item chart widget
 
 Purpose: build one chart from multiple series, where each series can come from a different host and item.
 
@@ -114,9 +116,9 @@ Detailed roadmap and status are tracked in [TODO.md](TODO.md).
 
 ## Repository layout
 
-- `main_overview/` - Main Overview widget module.
-- `main_charts/` - Main Charts widget module.
+- `AOverview/` — AOverview widget module.
+- `ACharts/` — ACharts widget module.
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

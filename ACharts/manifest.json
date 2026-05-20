@@ -1,0 +1,38 @@
+{
+  "manifest_version": 2.0,
+  "id": "acharts",
+  "type": "widget",
+  "name": "ACharts",
+  "namespace": "ACharts",
+  "version": "0.3.0",
+  "author": "nicola",
+  "description": "Dashboard widget: time-series charts for host metrics using Chart.js. Configure one or more series (item names), period, and chart style.",
+  "widget": {
+    "size": {
+      "width": 48,
+      "height": 12
+    },
+    "js_class": "CWidgetACharts"
+  },
+  "actions": {
+    "widget.acharts.lookup": {
+      "class": "ItemLookup",
+      "layout": "layout.json"
+    },
+    "widget.acharts.history": {
+      "class": "ChartHistory",
+      "layout": "layout.json"
+    },
+    "widget.acharts.view": {
+      "class": "WidgetView"
+    }
+  },
+  "assets": {
+    "css": ["widget.config.css", "widget.default.css", "widget.edit.css"],
+    "js": [
+      "chart.umd.min.js",
+      "chartjs-adapter-date-fns.bundle.min.js",
+      "class.widget.js"
+    ]
+  }
+}
