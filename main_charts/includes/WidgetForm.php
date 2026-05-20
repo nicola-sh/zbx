@@ -28,6 +28,28 @@ class WidgetForm extends CWidgetForm
 
     public const DEFAULT_PERIOD = '3h';
 
+    private const PERIOD_OPTIONS = [
+        '1h' => '1 hour',
+        '3h' => '3 hours',
+        '12h' => '12 hours',
+        '1d' => '1 day',
+        '3d' => '3 days',
+        '1w' => '1 week',
+        '30d' => '30 days',
+    ];
+
+    private const CHART_TYPE_OPTIONS = [
+        '0' => 'Line',
+        '1' => 'Area',
+        '2' => 'Bar',
+    ];
+
+    private const LEGEND_OPTIONS = [
+        '0' => 'Top',
+        '1' => 'Bottom',
+        '2' => 'Hidden',
+    ];
+
     public function addFields(): self
     {
         return $this
@@ -38,32 +60,28 @@ class WidgetForm extends CWidgetForm
                 new CWidgetFieldMultiSelectOverrideHost()
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('chart_period', 'Period', [
-                    '1h' => '1 hour',
-                    '3h' => '3 hours',
-                    '12h' => '12 hours',
-                    '1d' => '1 day',
-                    '3d' => '3 days',
-                    '1w' => '1 week',
-                    '30d' => '30 days',
-                ]))
-                    ->setDefault(self::DEFAULT_PERIOD)
+                $this->makeRadioButtonField(
+                    'chart_period',
+                    'Period',
+                    self::PERIOD_OPTIONS,
+                    self::DEFAULT_PERIOD
+                )
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('chart_type', 'Chart type', [
-                    self::CHART_TYPE_LINE => 'Line',
-                    self::CHART_TYPE_AREA => 'Area',
-                    self::CHART_TYPE_BAR => 'Bar',
-                ]))
-                    ->setDefault(self::CHART_TYPE_LINE)
+                $this->makeRadioButtonField(
+                    'chart_type',
+                    'Chart type',
+                    self::CHART_TYPE_OPTIONS,
+                    (string) self::CHART_TYPE_LINE
+                )
             )
             ->addField(
-                (new CWidgetFieldRadioButtonList('legend_position', 'Legend', [
-                    self::LEGEND_TOP => 'Top',
-                    self::LEGEND_BOTTOM => 'Bottom',
-                    self::LEGEND_HIDDEN => 'Hidden',
-                ]))
-                    ->setDefault(self::LEGEND_TOP)
+                $this->makeRadioButtonField(
+                    'legend_position',
+                    'Legend',
+                    self::LEGEND_OPTIONS,
+                    (string) self::LEGEND_TOP
+                )
             )
             ->addField(
                 (new CWidgetFieldCheckBox('chart_stacked', 'Stacked (area/bar)'))
@@ -81,6 +99,49 @@ class WidgetForm extends CWidgetForm
                 (new CWidgetFieldTextBox('chart_series', 'Series (JSON)'))
                     ->setDefault(ChartSeriesHelper::encode(ChartSeriesHelper::defaults()))
             );
+    }
+
+    /**
+     * Some Zabbix builds use radio options in constructor, others rely on setValues().
+     * Keep both paths to avoid widget.edit fatals on mixed 7.x patch levels.
+     */
+    private function makeRadioButtonField(
+        string $name,
+        string $label,
+        array $options,
+        mixed $default
+    ): CWidgetFieldRadioButtonList {
+        try {
+            $field = new CWidgetFieldRadioButtonList($name, $label, $options);
+
+            return $field->setDefault($default);
+        }
+        catch (\Throwable $exception) {
+            $field = new CWidgetFieldRadioButtonList($name, $label);
+
+            if (!method_exists($field, 'setValues')) {
+                throw $exception;
+            }
+
+            $legacy_values = [];
+
+            foreach ($options as $value => $option_label) {
+                $legacy_values[] = [
+                    'value' => (string) $value,
+                    'label' => (string) $option_label,
+                ];
+            }
+
+            error_log(sprintf(
+                '[main_charts] Falling back to setValues() for "%s": %s',
+                $name,
+                $exception->getMessage()
+            ));
+
+            return $field
+                ->setValues($legacy_values)
+                ->setDefault($default);
+        }
     }
 
     public function validate(bool $strict = false): array
