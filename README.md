@@ -75,37 +75,30 @@ Purpose: show host health in compact cards with clear status colors, optional ba
 
 ---
 
-### 2) ACharts — metrics from one host
+### 2) ACharts — host + metric per series
 
-Purpose: one chart on the dashboard for **one selected host**, with up to eight series (CPU, memory, disk, custom items, etc.) from that host only.
+Purpose: one chart where **each line is a concrete metric (item) on a concrete host**. Typical case: one host (e.g. `zabbix-server`) and several series (CPU, Memory). Also supported: several hosts, each series with its own host and item.
 
 #### A. Editor setup flow (step-by-step)
 
-1. **Select host**
-   - Exactly one host in the widget (not a host group and not multiple hosts on one chart).
+1. **Select host(s)**
+   - One host: all series use that host automatically (column Host is hidden).
+   - Several hosts: each series row has a **Host** dropdown — pick the node before choosing the item.
 2. **Define chart series**
-   - Per series: label, color, and Zabbix **data item** on that host.
-   - Pick items via **Find**, **Browse items**, or **Quick add** (CPU, Memory, Load, Disk).
-   - Advanced: edit `chart_series` JSON; `hostid` in each entry is synced to the selected host on save.
-3. **Chart options**
-   - Chart type, period preset, grid, legend, **Use dashboard time range**, etc.
-4. **Validate and save**
-   - At least one series with item name or itemid; all items must resolve on the selected host.
-5. **Re-open and verify**
-   - Confirm series and chart settings persist.
+   - Per series: label, color, **data item** (Find / Browse items / Quick add scoped to that row’s host).
+3. **Chart options** — type, period, legend, dashboard time, etc.
+4. **Save** — validation requires item per series; with multiple hosts, host per series is required.
 
-#### B. Runtime behavior flow (step-by-step)
+**Example (one node, two metrics):** Host = `zabbix-server` → series 1 label `CPU`, item `CPU utilization` → series 2 label `Memory`, item `Memory utilization`.
 
-1. Parse widget config; use the single configured host (legacy multi-host configs use the first host only).
-2. Resolve each series item on that host (`SeriesHostResolver` + `MetricMatcher`).
-3. Fetch history/trends per series with safe limits and downsampling.
-4. Render Chart.js; refresh loads new history without stale overwrites.
-5. Show warnings for series whose items were not found (`missing_reason`).
+#### B. Runtime
 
-#### C. Behavior guarantees
+Resolve host + item per series (`SeriesHostResolver`), load history per item on that host, render Chart.js. Multi-host legends show `Host name / Label`.
 
-- All series belong to the widget host — no cross-host mixing.
-- Stable refresh without race-condition overwrites.
+#### C. Guarantees
+
+- Item lookup and history always use the series host — no accidental cross-host item.
+- Stable refresh without stale overwrites.
 
 ## TODO and progress
 

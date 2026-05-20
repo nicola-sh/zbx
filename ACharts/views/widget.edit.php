@@ -43,7 +43,7 @@ $form
             ->addItem(
                 (new CDiv())
                     ->addClass('a-charts-series-hint')
-                    ->addItem('Select one host above. Each series is a metric (item) from that host only — Find, Browse items, or Quick add (CPU, Memory, …).')
+                    ->addItem('Select host(s) above. Each series = one host + one metric (item): Find, Browse items, or Quick add. One host and several metrics (e.g. CPU + Memory) — add multiple series with the same host.')
             )
             ->addItem(
                 (new CDiv())

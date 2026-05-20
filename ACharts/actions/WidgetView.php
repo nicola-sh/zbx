@@ -25,7 +25,7 @@ class WidgetView extends CControllerDashboardWidgetView
             $this->setResponse(new CControllerResponseData([
                 'name' => $this->getInput('name', $this->widget->getName()),
                 'empty' => true,
-                'message' => _('Select a host, then add metrics for that host.'),
+                'message' => _('Select one or more hosts, then add a metric (item) per series.'),
                 'config' => $this->fields_values,
                 'layout_signature' => 'empty',
             ]));
@@ -63,7 +63,9 @@ class WidgetView extends CControllerDashboardWidgetView
 
         $resolved_series = $this->resolveSeries($series_config, $host_context);
         $primary_hostid = array_key_first($host_context);
-        $host_title = (string) ($host_context[$primary_hostid]['name'] ?? $primary_hostid);
+        $host_title = count($host_context) === 1
+            ? (string) ($host_context[$primary_hostid]['name'] ?? $primary_hostid)
+            : sprintf(_('%d hosts'), count($host_context));
 
         $this->setResponse(new CControllerResponseData([
             'name' => $this->getInput('name', $this->widget->getName()),
@@ -84,23 +86,10 @@ class WidgetView extends CControllerDashboardWidgetView
         $override = $this->normalizeHostIds($this->fields_values['override_hostid'] ?? []);
 
         if ($override !== []) {
-            return $this->takeSingleHostId($override);
+            return $override;
         }
 
-        return $this->takeSingleHostId($this->normalizeHostIds($this->fields_values['hostid'] ?? []));
-    }
-
-    /**
-     * @param list<string> $hostids
-     * @return list<string>
-     */
-    private function takeSingleHostId(array $hostids): array
-    {
-        if ($hostids === []) {
-            return [];
-        }
-
-        return [$hostids[0]];
+        return $this->normalizeHostIds($this->fields_values['hostid'] ?? []);
     }
 
     /**
@@ -139,6 +128,7 @@ class WidgetView extends CControllerDashboardWidgetView
             $collection_by_host[$hostid] = $matcher->collect([$hostid], array_values(array_unique($item_names)));
         }
 
+        $multi_host = count($host_context) > 1;
         $resolved = [];
 
         foreach ($series_config as $entry) {
@@ -150,7 +140,7 @@ class WidgetView extends CControllerDashboardWidgetView
             $metric = $hostid !== null
                 ? $this->resolveSeriesMetric($entry, $metrics, $matcher, $hostid)
                 : null;
-            $legend_label = (string) $entry['label'];
+            $legend_label = $this->buildLegendLabel((string) $entry['label'], $series_host_name, $multi_host);
             $item_name = trim((string) ($entry['item_name'] ?? ''));
 
             if ($metric !== null && $item_name === '') {
@@ -292,6 +282,15 @@ class WidgetView extends CControllerDashboardWidgetView
         return implode('|', $parts);
     }
 
+    private function buildLegendLabel(string $label, ?string $host_name, bool $multi_host): string
+    {
+        if (!$multi_host || $host_name === null || $host_name === '') {
+            return $label;
+        }
+
+        return sprintf('%s / %s', $host_name, $label);
+    }
+
     /**
      * @param array<string, mixed> $entry
      * @param array<string, array{hostid: string, name: string, host: string}> $host_context
@@ -303,6 +302,12 @@ class WidgetView extends CControllerDashboardWidgetView
         }
 
         if ($hostid === null) {
+            if (count($host_context) > 1
+                    && trim((string) ($entry['hostid'] ?? '')) === ''
+                    && trim((string) ($entry['host'] ?? '')) === '') {
+                return 'Select a host for this series when multiple hosts are configured.';
+            }
+
             if (trim((string) ($entry['hostid'] ?? '')) !== '' || trim((string) ($entry['host'] ?? '')) !== '') {
                 return 'Series host is not present in selected hosts.';
             }

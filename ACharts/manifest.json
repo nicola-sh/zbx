@@ -6,7 +6,7 @@
   "namespace": "ACharts",
   "version": "0.4.2",
   "author": "nicola",
-  "description": "Dashboard widget: time-series charts for metrics from one selected host using Chart.js. Configure series (item names), period, and chart style.",
+  "description": "Dashboard widget: Chart.js time-series chart. Each series binds one host and one Zabbix item (metric); supports one host with several metrics or several hosts on one chart.",
   "widget": {
     "size": {
       "width": 48,

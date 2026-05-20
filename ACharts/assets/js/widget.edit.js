@@ -21,6 +21,7 @@
     add_series: 'Add series',
     add_from_template: 'Quick add',
     col_label: 'Label',
+    col_host: 'Host',
     col_item: 'Data item',
     col_color: 'Color',
     col_actions: '',
@@ -30,7 +31,8 @@
     pick_item_empty: 'No numeric items on this host.',
     pick_item_loading: 'Loading items…',
     remove_series: 'Remove',
-    pick_host: 'Select one host above — all metrics must belong to that host.',
+    pick_host: 'Select host(s) above, or pick a host in this row.',
+    host_required: 'Select a host for this series.',
     enter_item: 'Enter an item name or use Browse items.',
     checking: 'Checking…',
     exact_fmt: 'Exact match: %s',
@@ -246,15 +248,21 @@
     syncFromDom() {
       const rows = this.mount.querySelectorAll('.charts-series-row');
       const series = [];
-      const hostid = this.getSelectedHostId();
+      const hosts = this.getSelectedHosts();
+      const defaultHostid = hosts.length === 1 ? hosts[0].hostid : '';
 
       rows.forEach((row, index) => {
         const existing = this.readSeries()[index] || {};
         const label = row.querySelector('.js-series-label')?.value?.trim() ?? '';
+        let hostid = row.querySelector('.js-series-host')?.value?.trim() ?? '';
         const item_name = row.querySelector('.js-series-item-name')?.value?.trim() ?? '';
         const itemid = row.querySelector('.js-series-itemid')?.value?.trim() ?? '';
         const colorRaw = row.querySelector('.js-series-color')?.value ?? '';
         const color = this.normalizeColor(colorRaw, existing.color);
+
+        if (hostid === '' && defaultHostid !== '') {
+          hostid = defaultHostid;
+        }
 
         if (item_name === '' && itemid === '') {
           return;
@@ -280,13 +288,16 @@
     render() {
       const series = this.readSeries();
       const hosts = this.getSelectedHosts();
+      const multiHost = hosts.length > 1;
 
       this.mount.replaceChildren();
+      this.mount.classList.toggle('is-multi-host', multiHost);
 
       const header = document.createElement('div');
       header.className = 'charts-series-header';
       header.innerHTML = `
         <span class="charts-series-col-label">${UI.col_label}</span>
+        ${multiHost ? `<span class="charts-series-col-host">${UI.col_host}</span>` : ''}
         <span class="charts-series-col-item">${UI.col_item}</span>
         <span class="charts-series-col-color">${UI.col_color}</span>
         <span class="charts-series-col-actions">${UI.col_actions}</span>
@@ -301,7 +312,7 @@
       }
       else {
         series.forEach((entry, index) => {
-          body.appendChild(this.createSeriesRow(entry, index));
+          body.appendChild(this.createSeriesRow(entry, index, hosts, multiHost));
         });
       }
 
@@ -344,11 +355,11 @@
     createEmptyHint() {
       const hint = document.createElement('div');
       hint.className = 'charts-series-empty';
-      hint.textContent = 'Add metrics (items) from the selected host — one series per line.';
+      hint.textContent = 'Add a series: pick a host (if several above) and one data item (metric) per line.';
       return hint;
     }
 
-    createSeriesRow(entry, index) {
+    createSeriesRow(entry, index, hosts, multiHost) {
       const row = document.createElement('div');
       row.className = 'charts-series-row';
       row.dataset.seriesKey = entry.key || `series_${index + 1}`;
@@ -364,6 +375,37 @@
       labelCol.className = 'charts-series-col-label';
       labelCol.appendChild(labelInput);
       row.appendChild(labelCol);
+
+      if (multiHost) {
+        const hostSelect = document.createElement('select');
+        hostSelect.className = 'text-box-default js-series-host';
+        hostSelect.required = true;
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = '— host —';
+        hostSelect.appendChild(placeholder);
+
+        for (const host of hosts) {
+          const opt = document.createElement('option');
+          opt.value = host.hostid;
+          opt.textContent = host.label;
+          if (entry.hostid === host.hostid) {
+            opt.selected = true;
+          }
+          hostSelect.appendChild(opt);
+        }
+
+        hostSelect.addEventListener('change', () => {
+          row.querySelector('.charts-series-item-picker')?.setAttribute('hidden', 'hidden');
+          this.syncFromDom();
+        });
+
+        const hostCol = document.createElement('div');
+        hostCol.className = 'charts-series-col-host';
+        hostCol.appendChild(hostSelect);
+        row.appendChild(hostCol);
+      }
 
       const itemidInput = document.createElement('input');
       itemidInput.type = 'hidden';
@@ -476,17 +518,14 @@
         return;
       }
 
-      const hostid = this.getSelectedHostId();
-      if (hostid === '') {
-        this.render();
-        return;
-      }
+      const hosts = this.getSelectedHosts();
+      const series = this.readSeries().map((entry) => {
+        const hostid = entry.hostid && hosts.some((h) => h.hostid === entry.hostid)
+          ? entry.hostid
+          : (hosts.length === 1 ? hosts[0].hostid : '');
 
-      const series = this.readSeries().map((entry) => ({
-        ...entry,
-        hostid,
-        host: '',
-      }));
+        return { ...entry, hostid, host: '' };
+      });
       this.writeSeries(series);
     }
 
@@ -679,8 +718,22 @@
       );
     }
 
-    resolveRowHostId(_row) {
-      return this.getSelectedHostId();
+    resolveRowHostId(row) {
+      const hosts = this.getSelectedHosts();
+      const select = row?.querySelector('.js-series-host');
+
+      if (select) {
+        const selected = String(select.value ?? '').trim();
+        if (selected !== '') {
+          return selected;
+        }
+      }
+
+      if (hosts.length === 1) {
+        return hosts[0].hostid;
+      }
+
+      return '';
     }
 
     async lookupItem(row) {

@@ -10,7 +10,7 @@ namespace Modules\ACharts\Includes;
 use API;
 
 /**
- * Resolves series hostid against the widget's single selected host (shared by WidgetView and ChartHistory).
+ * Resolves each series hostid against hosts selected in the widget (shared by WidgetView and ChartHistory).
  */
 final class SeriesHostResolver
 {

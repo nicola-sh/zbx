@@ -69,7 +69,8 @@ class WidgetForm extends CWidgetForm
     {
         return $this
             ->addField(
-                new CWidgetFieldMultiSelectHost('hostid', 'Host')
+                (new CWidgetFieldMultiSelectHost('hostid', 'Hosts'))
+                    ->setMultiple(true)
             )
             ->addField(
                 new CWidgetFieldMultiSelectOverrideHost()
@@ -160,11 +161,6 @@ class WidgetForm extends CWidgetForm
 
         $hostids = self::resolveHostIdsFromValues($values);
 
-        if (count($hostids) > 1) {
-            $values['hostid'] = [$hostids[0]];
-            $hostids = [$hostids[0]];
-        }
-
         if (count($hostids) === 1 && array_key_exists('chart_series', $values)) {
             $values['chart_series'] = self::bindSeriesToHost(
                 (string) $values['chart_series'],
@@ -232,10 +228,6 @@ class WidgetForm extends CWidgetForm
 
         $selected_hostids = $this->resolveSelectedHostIds();
 
-        if (count($selected_hostids) > 1) {
-            $this->addFieldError($errors, 'hostid', 'select exactly one host');
-        }
-
         $raw = trim((string) $this->getFieldValue('chart_series'));
 
         if ($raw === '') {
@@ -261,6 +253,7 @@ class WidgetForm extends CWidgetForm
         foreach ($series as $index => $entry) {
             $item_name = trim((string) ($entry['item_name'] ?? ''));
             $itemid = trim((string) ($entry['itemid'] ?? ''));
+            $series_hostid = trim((string) ($entry['hostid'] ?? ''));
 
             if ($item_name === '' && $itemid === '') {
                 $this->addFieldError(
@@ -268,20 +261,26 @@ class WidgetForm extends CWidgetForm
                     'chart_series',
                     'series '.($index + 1).': item name or itemid is required'
                 );
+
+                continue;
             }
-        }
 
-        if (count($selected_hostids) === 1) {
-            foreach ($series as $index => $entry) {
-                $series_hostid = trim((string) ($entry['hostid'] ?? ''));
+            if (count($selected_hostids) > 1
+                    && $series_hostid === ''
+                    && trim((string) ($entry['host'] ?? '')) === '') {
+                $this->addFieldError(
+                    $errors,
+                    'chart_series',
+                    'series '.($index + 1).': select a host for this metric'
+                );
+            }
 
-                if ($series_hostid !== '' && $series_hostid !== $selected_hostids[0]) {
-                    $this->addFieldError(
-                        $errors,
-                        'chart_series',
-                        'series '.($index + 1).': item must belong to the selected host'
-                    );
-                }
+            if ($series_hostid !== '' && !in_array($series_hostid, $selected_hostids, true)) {
+                $this->addFieldError(
+                    $errors,
+                    'chart_series',
+                    'series '.($index + 1).': host must be one of the hosts selected above'
+                );
             }
         }
 
