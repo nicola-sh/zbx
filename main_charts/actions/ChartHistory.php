@@ -177,7 +177,9 @@ class ChartHistory extends CController
                     'itemid' => (string) $item['itemid'],
                     'name' => (string) ($item['name'] ?? ''),
                     'value_type' => (int) ($item['value_type'] ?? 0),
+                    'units' => (string) ($item['units'] ?? ''),
                 ],
+                'units' => (string) ($item['units'] ?? ''),
                 'points' => $loaded['points'],
                 'gapThresholdFloor' => $loaded['gapThresholdFloor'],
             ];
@@ -235,7 +237,7 @@ class ChartHistory extends CController
 
         if ($itemid !== null) {
             $items = API::Item()->get([
-                'output' => ['itemid', 'name', 'value_type'],
+                'output' => ['itemid', 'name', 'value_type', 'units'],
                 'hostids' => [$hostid],
                 'itemids' => [$itemid],
                 'limit' => 1,
@@ -246,6 +248,7 @@ class ChartHistory extends CController
                     'itemid' => (string) $items[0]['itemid'],
                     'name' => (string) ($items[0]['name'] ?? ''),
                     'value_type' => (int) ($items[0]['value_type'] ?? 0),
+                    'units' => trim((string) ($items[0]['units'] ?? '')),
                 ];
             }
         }

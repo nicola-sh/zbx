@@ -607,10 +607,14 @@ class CWidgetMainOverview extends CWidget {
     const barEl = cellEl.querySelector('.metric-bar');
     const fillEl = cellEl.querySelector('.metric-fill');
 
-    if ((cellValue.state ?? 'ok') === 'empty' || display.value == null) {
+    const emptyStates = new Set(['empty', 'missing', 'ambiguous']);
+    const isEmptyState = emptyStates.has(cellValue.state ?? '');
+
+    if (isEmptyState || display.value == null) {
       this._cancelTicker(cellId);
       this.prevValues.delete(cellId);
-      this._setMetricCellEmpty(cellEl, display.value_text ?? 'No data');
+      const emptyLabel = display.text || display.empty_text || display.value_text || 'No data';
+      this._setMetricCellEmpty(cellEl, emptyLabel, cellValue.state_reason ?? '');
 
       if (fillEl) {
         fillEl.style.width = '0%';
@@ -654,8 +658,15 @@ class CWidgetMainOverview extends CWidget {
     }
   }
 
-  _setMetricCellEmpty(cellEl, valueText) {
+  _setMetricCellEmpty(cellEl, valueText, stateReason = '') {
     cellEl.classList.add('is-empty');
+
+    if (stateReason) {
+      cellEl.setAttribute('title', stateReason);
+    }
+    else {
+      cellEl.removeAttribute('title');
+    }
 
     const barEl = cellEl.querySelector('.metric-bar');
     if (barEl) {

@@ -62,8 +62,22 @@ function render_metric_cell(array $cell, bool $is_multi = false): CDiv
         $metric_cell->setAttribute('data-sparkline-spec', $sparkline_spec);
     }
 
-    if ($state === 'empty') {
+    if (in_array($state, ['empty', 'missing', 'ambiguous'], true)) {
         $metric_cell->addClass('is-empty');
+    }
+
+    if ($state === 'ambiguous') {
+        $metric_cell->addClass('is-ambiguous');
+    }
+
+    if ($state === 'missing') {
+        $metric_cell->addClass('is-missing');
+    }
+
+    $state_reason = trim((string) ($cell['state_reason'] ?? ''));
+
+    if ($state_reason !== '') {
+        $metric_cell->setAttribute('title', $state_reason);
     }
 
     return $metric_cell
@@ -106,7 +120,7 @@ function _render_metric_text(array $cell, bool $is_multi = false): CTag
         ? $value_text
         : (string) ($cell['display']['text'] ?? ''));
 
-    if (($cell['state'] ?? 'ok') === 'empty') {
+    if (in_array((string) ($cell['state'] ?? 'ok'), ['empty', 'missing', 'ambiguous'], true)) {
         $text->addClass('empty');
     }
 
@@ -120,7 +134,7 @@ function _render_metric_bar(array $cell): CDiv
     $state = (string) ($cell['state'] ?? 'ok');
     $bar = (new CDiv())->addClass('metric-bar');
 
-    if ($state === 'empty') {
+    if (in_array($state, ['empty', 'missing', 'ambiguous'], true)) {
         $bar->setAttribute('hidden', 'hidden');
     }
 

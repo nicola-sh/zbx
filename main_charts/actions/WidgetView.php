@@ -133,6 +133,10 @@ class WidgetView extends CControllerDashboardWidgetView
                 continue;
             }
 
+            if (trim((string) ($entry['itemid'] ?? '')) !== '') {
+                continue;
+            }
+
             $item_name = trim((string) ($entry['item_name'] ?? ''));
 
             if ($item_name === '') {
@@ -158,16 +162,22 @@ class WidgetView extends CControllerDashboardWidgetView
                 ? (array) (($collection_by_host[$hostid]['metrics'] ?? []))
                 : [];
             $metric = $hostid !== null
-                ? $matcher->resolve($metrics, (string) ($entry['item_name'] ?? ''))
+                ? $this->resolveSeriesMetric($entry, $metrics, $matcher, $hostid)
                 : null;
             $legend_label = $this->buildLegendLabel((string) $entry['label'], $host_name, $multi_host);
+            $item_name = trim((string) ($entry['item_name'] ?? ''));
+
+            if ($metric !== null && $item_name === '') {
+                $item_name = (string) ($metric['name'] ?? '');
+            }
 
             $resolved[] = [
                 'key' => $entry['key'],
                 'label' => $entry['label'],
                 'legend_label' => $legend_label,
                 'color' => $entry['color'],
-                'item_name' => $entry['item_name'],
+                'item_name' => $item_name,
+                'itemid' => trim((string) ($entry['itemid'] ?? '')),
                 'hostid' => $hostid,
                 'host_name' => $host_name,
                 'host' => $entry['host'] ?? '',
@@ -177,12 +187,56 @@ class WidgetView extends CControllerDashboardWidgetView
                     'itemid' => (string) $metric['itemid'],
                     'name' => (string) ($metric['name'] ?? ''),
                     'value_type' => (int) ($metric['value_type'] ?? 0),
+                    'units' => (string) ($metric['units'] ?? ''),
                     'hostid' => $hostid,
                 ] : null,
             ];
         }
 
         return $resolved;
+    }
+
+    /**
+     * @param array<string, mixed> $entry
+     * @param array<string, array<string, mixed>> $metrics
+     */
+    private function resolveSeriesMetric(
+        array $entry,
+        array $metrics,
+        MetricMatcher $matcher,
+        string $hostid
+    ): ?array {
+        $itemid = trim((string) ($entry['itemid'] ?? ''));
+
+        if ($itemid !== '') {
+            $items = API::Item()->get([
+                'output' => ['itemid', 'name', 'value_type', 'units'],
+                'hostids' => [$hostid],
+                'itemids' => [$itemid],
+                'limit' => 1,
+            ]);
+
+            if ($items === []) {
+                return null;
+            }
+
+            $item = $items[0];
+
+            return [
+                'itemid' => (string) ($item['itemid'] ?? ''),
+                'name' => (string) ($item['name'] ?? ''),
+                'value_type' => (int) ($item['value_type'] ?? 0),
+                'units' => trim((string) ($item['units'] ?? '')),
+            ];
+        }
+
+        $item_name = trim((string) ($entry['item_name'] ?? ''));
+
+        if ($item_name === '') {
+            return null;
+        }
+
+        return $matcher->resolve($metrics, $item_name);
     }
 
     /**
@@ -212,6 +266,7 @@ class WidgetView extends CControllerDashboardWidgetView
                     'host_name' => $entry['host_name'] ?? null,
                     'itemid' => $entry['item']['itemid'] ?? null,
                     'value_type' => $entry['item']['value_type'] ?? null,
+                    'units' => $entry['item']['units'] ?? '',
                 ];
             }, array_values(array_filter(
                 $series,

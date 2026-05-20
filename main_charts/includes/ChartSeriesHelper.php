@@ -23,6 +23,7 @@ final class ChartSeriesHelper
                 'key' => 'cpu',
                 'label' => 'CPU',
                 'item_name' => 'CPU utilization',
+                'itemid' => '',
                 'color' => '458ADC',
                 'hostid' => '',
                 'host' => '',
@@ -31,6 +32,7 @@ final class ChartSeriesHelper
                 'key' => 'ram',
                 'label' => 'Memory',
                 'item_name' => 'Memory utilization',
+                'itemid' => '',
                 'color' => '4C9F38',
                 'hostid' => '',
                 'host' => '',
@@ -87,15 +89,16 @@ final class ChartSeriesHelper
             }
 
             $item_name = trim((string) ($entry['item_name'] ?? ''));
+            $itemid = self::normalizeOptionalString($entry['itemid'] ?? null);
 
-            if ($item_name === '') {
+            if ($item_name === '' && $itemid === null) {
                 continue;
             }
 
             $label = trim((string) ($entry['label'] ?? ''));
 
             if ($label === '') {
-                $label = $item_name;
+                $label = $item_name !== '' ? $item_name : ('Item ' . ($index + 1));
             }
 
             $key = trim((string) ($entry['key'] ?? ''));
@@ -112,6 +115,7 @@ final class ChartSeriesHelper
                 'key' => $key,
                 'label' => $label,
                 'item_name' => $item_name,
+                'itemid' => $itemid ?? '',
                 'color' => $color,
                 'hostid' => $hostid ?? '',
                 'host' => $host ?? '',
