@@ -28,6 +28,7 @@ class WidgetForm extends CWidgetForm
 
     public const DEFAULT_PERIOD = '3h';
 
+    /** @var array<string, string> Period code => label */
     private const PERIOD_OPTIONS = [
         '1h' => '1 hour',
         '3h' => '3 hours',
@@ -36,6 +37,17 @@ class WidgetForm extends CWidgetForm
         '3d' => '3 days',
         '1w' => '1 week',
         '30d' => '30 days',
+    ];
+
+    /** Legacy radio indices from older editor builds. */
+    private const PERIOD_INDEX_TO_CODE = [
+        '0' => '1h',
+        '1' => '3h',
+        '2' => '12h',
+        '3' => '1d',
+        '4' => '3d',
+        '5' => '1w',
+        '6' => '30d',
     ];
 
     private const CHART_TYPE_OPTIONS = [
@@ -103,8 +115,8 @@ class WidgetForm extends CWidgetForm
     }
 
     /**
-     * Some Zabbix builds use radio options in constructor, others rely on setValues().
-     * Keep both paths to avoid widget.edit fatals on mixed 7.x patch levels.
+     * Zabbix 7.x radio fields must use simple stored values (0, 1, 2…).
+     * Using period codes (1h, 3h) as radio values makes some builds submit labels instead.
      */
     private function makeRadioButtonField(
         string $name,
@@ -112,41 +124,72 @@ class WidgetForm extends CWidgetForm
         array $options,
         mixed $default
     ): CWidgetFieldRadioButtonList {
-        try {
-            $field = new CWidgetFieldRadioButtonList($name, $label, $options);
+        $field = new CWidgetFieldRadioButtonList($name, $label);
 
+        if (!method_exists($field, 'setValues')) {
             return $field->setDefault($default);
         }
-        catch (\Throwable $exception) {
-            $field = new CWidgetFieldRadioButtonList($name, $label);
 
-            if (!method_exists($field, 'setValues')) {
-                throw $exception;
-            }
+        $values = [];
 
-            $legacy_values = [];
-
-            foreach ($options as $value => $option_label) {
-                $legacy_values[] = [
-                    'value' => (string) $value,
-                    'label' => (string) $option_label,
-                ];
-            }
-
-            error_log(sprintf(
-                '[acharts] Falling back to setValues() for "%s": %s',
-                $name,
-                $exception->getMessage()
-            ));
-
-            return $field
-                ->setValues($legacy_values)
-                ->setDefault($default);
+        foreach ($options as $value => $option_label) {
+            $values[] = [
+                'value' => (string) $value,
+                'label' => (string) $option_label,
+            ];
         }
+
+        return $field
+            ->setValues($values)
+            ->setDefault((string) $default);
+    }
+
+    protected function normalizeValues(array $values): array
+    {
+        $values = parent::normalizeValues($values);
+
+        if (array_key_exists('chart_period', $values)) {
+            $values['chart_period'] = self::normalizePeriodForStorage($values['chart_period']);
+        }
+
+        return $values;
+    }
+
+    /**
+     * Converts stored widget value (code, index, or label) to a history period code.
+     */
+    public static function normalizePeriodForStorage(mixed $value): string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return self::DEFAULT_PERIOD;
+        }
+
+        if (isset(self::PERIOD_INDEX_TO_CODE[$value])) {
+            return self::PERIOD_INDEX_TO_CODE[$value];
+        }
+
+        if (array_key_exists($value, self::PERIOD_OPTIONS)) {
+            return $value;
+        }
+
+        foreach (self::PERIOD_OPTIONS as $code => $label) {
+            if ($value === $label) {
+                return $code;
+            }
+        }
+
+        return self::DEFAULT_PERIOD;
     }
 
     public function validate(bool $strict = false): array
     {
+        $this->setFieldValue(
+            'chart_period',
+            self::normalizePeriodForStorage($this->getFieldValue('chart_period'))
+        );
+
         $errors = parent::validate($strict);
 
         if (!self::hasConfiguredValue($this->getFieldValue('hostid'))

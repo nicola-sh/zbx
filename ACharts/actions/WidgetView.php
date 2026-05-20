@@ -249,7 +249,9 @@ class WidgetView extends CControllerDashboardWidgetView
         return [
             'hostid' => $primary_hostid,
             'hosts' => array_values($host_context),
-            'period' => (string) ($this->fields_values['chart_period'] ?? WidgetForm::DEFAULT_PERIOD),
+            'period' => WidgetForm::normalizePeriodForStorage(
+                $this->fields_values['chart_period'] ?? WidgetForm::DEFAULT_PERIOD
+            ),
             'chart_type' => (int) ($this->fields_values['chart_type'] ?? WidgetForm::CHART_TYPE_LINE),
             'legend_position' => (int) ($this->fields_values['legend_position'] ?? WidgetForm::LEGEND_TOP),
             'chart_stacked' => (int) ($this->fields_values['chart_stacked'] ?? 0),

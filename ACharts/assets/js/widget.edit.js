@@ -625,16 +625,15 @@
   }
 
   function boot() {
-    if (window.__aChartsSeriesEditor) {
-      return;
-    }
-
     const mount = document.querySelector('.js-charts-series-editor');
-    if (!mount) {
+    const textarea = document.querySelector('textarea[name="chart_series"]');
+
+    if (!mount || !textarea) {
       return;
     }
 
     let defaultSeries = [];
+
     try {
       defaultSeries = JSON.parse(mount.getAttribute('data-default-series') || '[]');
     }
@@ -642,25 +641,37 @@
       defaultSeries = [];
     }
 
-    window.__aChartsSeriesEditor = new AChartsSeriesEditor({
-      lookup_action: mount.getAttribute('data-lookup-action') || '',
-      max_series: Number(mount.getAttribute('data-max-series') || MAX_SERIES),
-      default_series: defaultSeries,
-    });
+    if (!window.__aChartsSeriesEditor) {
+      window.__aChartsSeriesEditor = new AChartsSeriesEditor({
+        lookup_action: mount.getAttribute('data-lookup-action') || '',
+        max_series: Number(mount.getAttribute('data-max-series') || MAX_SERIES),
+        default_series: defaultSeries,
+      });
+    }
+
+    window.__aChartsSeriesEditor.mount = mount;
+    window.__aChartsSeriesEditor.textarea = textarea;
     window.__aChartsSeriesEditor.init();
   }
 
+  function scheduleBoot() {
+    window.requestAnimationFrame(() => {
+      boot();
+    });
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
+    document.addEventListener('DOMContentLoaded', scheduleBoot);
   }
   else {
-    boot();
+    scheduleBoot();
   }
 
   try {
     const overlay = overlays_stack.getById('widget_properties');
+
     if (overlay?.$dialogue?.[0]) {
-      overlay.$dialogue[0].addEventListener('overlay.reload', boot);
+      overlay.$dialogue[0].addEventListener('overlay.reload', scheduleBoot);
     }
   }
   catch (_e) {
