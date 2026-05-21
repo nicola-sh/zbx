@@ -9,8 +9,8 @@ namespace Modules\AOverview\Actions;
 
 use CController;
 use CControllerResponseData;
-use Modules\AOverview\Includes\MetricMatcher;
-use Modules\AOverview\Includes\RequestRateLimiter;
+use Modules\ZbxCommon\Includes\MetricMatcher;
+use Modules\ZbxCommon\Includes\RequestRateLimiter;
 use Modules\AOverview\Includes\WildcardMetricResolver;
 use Modules\AOverview\Includes\WidgetForm;
 

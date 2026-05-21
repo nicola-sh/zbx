@@ -2,10 +2,13 @@
 
 Zabbix dashboard widgets for fast host health visibility and cross-host charting.
 
-This repository contains two widgets:
+This repository contains a shared library module and two dashboard widgets:
 
+- **ZbxCommon** — shared PHP (`MetricMatcher`, rate limiter) for both widgets.
 - **AOverview** (v0.7.2) — host health cards with traffic-light metrics, badges, and sparklines.
-- **ACharts** (v0.4.2) — time-series chart for **one host**: several metrics (items) from that node on a single Chart.js graph.
+- **ACharts** (v0.4.3) — Chart.js graph: each series = **one host + one metric** (e.g. zabbix-server CPU + Memory on one chart, or CPU from host A and RAM from host B).
+
+Editors use **vanilla JavaScript** and Zabbix form fields (no React/Vue). See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 **Author:** nicola
 
@@ -23,9 +26,11 @@ This repository contains two widgets:
 
 ## Install
 
-1. Copy `AOverview` and `ACharts` into your Zabbix modules directory.
-2. In Zabbix, open **Administration → General → Modules** and enable both modules.
-3. Add widgets **AOverview** and **ACharts** to a dashboard and configure fields in the widget editor.
+1. Copy **`ZbxCommon`**, **`AOverview`**, and **`ACharts`** into your Zabbix UI modules directory (e.g. `/usr/share/zabbix/ui/modules/`).
+2. **Administration → General → Modules** — enable **Zbx Common** first, then **AOverview** and **ACharts**.
+3. Add widgets to a dashboard and configure fields in the widget editor.
+
+Details: [docs/SHARED_MODULE.md](docs/SHARED_MODULE.md) (layout in Zabbix, autoload, official doc links).
 
 > **Migration:** If you used the old modules `main_overview` / `main_charts`, remove them from Modules, copy the new folders, enable **AOverview** / **ACharts**, and re-add widgets on dashboards (widget type names changed).
 
@@ -106,8 +111,10 @@ Detailed roadmap and status are tracked in [TODO.md](TODO.md).
 
 ## Repository layout
 
+- `ZbxCommon/` — shared PHP library module (enable before widgets).
 - `AOverview/` — AOverview widget module.
 - `ACharts/` — ACharts widget module.
+- `docs/` — development, shared module, smoke test, troubleshooting.
 
 ## License
 

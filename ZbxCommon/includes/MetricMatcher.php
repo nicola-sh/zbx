@@ -5,10 +5,13 @@
  * Copyright (c) 2026 nicola
  */
 
-namespace Modules\AOverview\Includes;
+namespace Modules\ZbxCommon\Includes;
 
 use API;
 
+/**
+ * Resolve Zabbix items by exact or partial name (shared by AOverview and ACharts).
+ */
 class MetricMatcher
 {
     public const STATUS_EMPTY = 'empty';

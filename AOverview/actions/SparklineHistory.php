@@ -10,8 +10,8 @@ namespace Modules\AOverview\Actions;
 use API;
 use CController;
 use CControllerResponseData;
-use Modules\AOverview\Includes\MetricMatcher;
-use Modules\AOverview\Includes\RequestRateLimiter;
+use Modules\ZbxCommon\Includes\MetricMatcher;
+use Modules\ZbxCommon\Includes\RequestRateLimiter;
 use RuntimeException;
 use Throwable;
 

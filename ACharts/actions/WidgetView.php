@@ -11,7 +11,7 @@ use API;
 use CControllerDashboardWidgetView;
 use CControllerResponseData;
 use Modules\ACharts\Includes\ChartSeriesHelper;
-use Modules\ACharts\Includes\MetricMatcher;
+use Modules\ZbxCommon\Includes\MetricMatcher;
 use Modules\ACharts\Includes\SeriesHostResolver;
 use Modules\ACharts\Includes\WidgetForm;
 

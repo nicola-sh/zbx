@@ -10,8 +10,8 @@ namespace Modules\ACharts\Actions;
 use API;
 use CController;
 use CControllerResponseData;
-use Modules\ACharts\Includes\MetricMatcher;
-use Modules\ACharts\Includes\RequestRateLimiter;
+use Modules\ZbxCommon\Includes\MetricMatcher;
+use Modules\ZbxCommon\Includes\RequestRateLimiter;
 
 class ItemLookup extends CController
 {

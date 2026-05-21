@@ -21,10 +21,10 @@ jobs:
           set -euo pipefail
           while IFS= read -r -d '' file; do
             php -l "$file"
-          done < <(find ACharts AOverview -name '*.php' -print0)
+          done < <(find ZbxCommon ACharts AOverview -name '*.php' -print0)
 
-      - name: MetricMatcher sync check
-        run: bash scripts/check-metric-matcher-sync.sh
+      - name: ZbxCommon shared library check
+        run: bash scripts/check-zbx-common-usage.sh
 
       - name: Node.js
         uses: actions/setup-node@v4

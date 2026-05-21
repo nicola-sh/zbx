@@ -14,7 +14,7 @@ use CControllerDashboardWidgetView;
 use CControllerResponseData;
 use Modules\AOverview\Includes\CWidgetFieldBadgesList;
 use Modules\AOverview\Includes\HostProfilesHelper;
-use Modules\AOverview\Includes\MetricMatcher;
+use Modules\ZbxCommon\Includes\MetricMatcher;
 use Modules\AOverview\Includes\WildcardMetricResolver;
 use Modules\AOverview\Includes\WidgetForm;
 
