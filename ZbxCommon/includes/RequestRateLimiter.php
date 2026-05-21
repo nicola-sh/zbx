@@ -5,10 +5,10 @@
  * Copyright (c) 2026 nicola
  */
 
-namespace Modules\ACharts\Includes;
+namespace Modules\ZbxCommon\Includes;
 
 /**
- * Simple per-session rate limit for widget JSON actions.
+ * Per-session rate limit for widget JSON actions (shared by AOverview and ACharts).
  */
 final class RequestRateLimiter
 {
@@ -23,7 +23,7 @@ final class RequestRateLimiter
         }
 
         $now = time();
-        $bucket_key = 'acharts_rl_' . $action_key;
+        $bucket_key = 'zbx_rl_' . preg_replace('/[^a-z0-9_]/', '', strtolower($action_key));
 
         if (!isset($_SESSION[$bucket_key]) || !is_array($_SESSION[$bucket_key])) {
             $_SESSION[$bucket_key] = ['start' => $now, 'count' => 0];
